@@ -67,7 +67,9 @@ case "$cmd" in
       num=$(printf '%.0f' "$val")
       if (( num < 0 )); then num=0; fi
       if (( num > 100 )); then num=100; fi
-      wpctl set-volume @DEFAULT_AUDIO_SINK@ "${num}%" >/dev/null 2>&1 || true
+      # wpctl requires float 0.0 - 1.0 (e.g. 0.50 for 50%)
+      float_val=$(awk -v n="$num" 'BEGIN { printf "%.2f", n / 100 }')
+      wpctl set-volume @DEFAULT_AUDIO_SINK@ "$float_val" >/dev/null 2>&1 || true
     fi
     ;;
 

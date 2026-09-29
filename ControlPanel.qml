@@ -16,12 +16,11 @@ Item {
   readonly property string pluginPath: manifest && manifest.__sourceDir ? manifest.__sourceDir : "/home/ac/.config/omarchy/plugins/ac.control-panel"
 
   readonly property var categories: [
-    { id: "displays", label: "Displays", icon: "󰍹" },
-    { id: "power", label: "Power & Battery", icon: "󰂄" },
-    { id: "appearance", label: "Appearance", icon: "" },
-    { id: "sound", label: "Sound", icon: "󰕾" },
-    { id: "network", label: "Network", icon: "󰛳" },
-    { id: "about", label: "About System", icon: "" }
+    { id: "displays", label: "Displays", icon: "󰍹", key: "1" },
+    { id: "power", label: "Power & Battery", icon: "󰂄", key: "2" },
+    { id: "appearance", label: "Appearance", icon: "", key: "3" },
+    { id: "sound", label: "Sound", icon: "󰕾", key: "4" },
+    { id: "about", label: "About System", icon: "", key: "5" }
   ]
 
   function open(payloadJson) {
@@ -51,13 +50,21 @@ Item {
     }
   }
 
+  function cycleCategory(delta) {
+    var ids = categories.map(function(c) { return c.id })
+    var idx = ids.indexOf(currentCategory)
+    if (idx < 0) idx = 0
+    var nextIdx = (idx + delta + ids.length) % ids.length
+    currentCategory = ids[nextIdx]
+  }
+
   FloatingWindow {
     id: window
     title: "Control Panel"
     color: Color.background
-    implicitWidth: 840
-    implicitHeight: 580
-    minimumSize: Qt.size(680, 480)
+    implicitWidth: 880
+    implicitHeight: 620
+    minimumSize: Qt.size(720, 520)
 
     onVisibleChanged: {
       if (!visible && !root.closingFromHost && root.shell && typeof root.shell.hide === "function") {
@@ -65,19 +72,47 @@ Item {
       }
     }
 
-    Item {
+    PanelKeyCatcher {
+      id: keyCatcher
       anchors.fill: parent
-      focus: true
 
-      Keys.onEscapePressed: function(event) {
-        root.dismiss()
-        event.accepted = true
+      onCloseRequested: root.dismiss()
+
+      onTabRequested: function(direction) {
+        root.cycleCategory(direction)
+      }
+
+      onMoveRequested: function(dx, dy) {
+        if (dy !== 0) {
+          root.cycleCategory(dy)
+        } else if (dx !== 0) {
+          if (categoryLoader.item && typeof categoryLoader.item.handleKeyH === "function") {
+            categoryLoader.item.handleKeyH(dx)
+          }
+        }
+      }
+
+      onTextKey: function(key) {
+        if (key === "1") root.currentCategory = "displays"
+        else if (key === "2") root.currentCategory = "power"
+        else if (key === "3") root.currentCategory = "appearance"
+        else if (key === "4") root.currentCategory = "sound"
+        else if (key === "5") root.currentCategory = "about"
+        else if (categoryLoader.item && typeof categoryLoader.item.handleTextKey === "function") {
+          categoryLoader.item.handleTextKey(key)
+        }
+      }
+
+      onActivateRequested: {
+        if (categoryLoader.item && typeof categoryLoader.item.handleActivate === "function") {
+          categoryLoader.item.handleActivate()
+        }
       }
 
       ColumnLayout {
         anchors.fill: parent
         anchors.margins: 18
-        spacing: 14
+        spacing: 12
 
         // Window Header
         RowLayout {
@@ -114,7 +149,7 @@ Item {
           opacity: 0.25
         }
 
-        // Main content area: Sidebar + Details
+        // Main content area: Sidebar + Details View
         RowLayout {
           Layout.fillWidth: true
           Layout.fillHeight: true
@@ -122,7 +157,7 @@ Item {
 
           // Left Sidebar
           Rectangle {
-            Layout.preferredWidth: 200
+            Layout.preferredWidth: 220
             Layout.fillHeight: true
             color: "transparent"
 
@@ -133,12 +168,58 @@ Item {
               Repeater {
                 model: root.categories
 
-                delegate: Button {
+                delegate: Rectangle {
                   Layout.fillWidth: true
-                  text: modelData.label
-                  iconText: modelData.icon
-                  selected: root.currentCategory === modelData.id
-                  onClicked: root.currentCategory = modelData.id
+                  Layout.preferredHeight: 44
+                  radius: Style.cornerRadius || 6
+                  color: (root.currentCategory === modelData.id)
+                    ? Color.pickAlpha("surface.selected", "#2a3036")
+                    : Color.pickAlpha("surface.hover", "#1b1f23")
+                  border.color: (root.currentCategory === modelData.id) ? Color.accent : "transparent"
+                  border.width: 1
+
+                  MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.currentCategory = modelData.id
+                  }
+
+                  RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    spacing: 10
+
+                    Text {
+                      text: modelData.icon
+                      font.family: Style.font.family
+                      font.pixelSize: 16
+                      color: (root.currentCategory === modelData.id) ? Color.accent : Color.muted
+                    }
+
+                    Text {
+                      Layout.fillWidth: true
+                      text: modelData.label
+                      font.family: Style.font.family
+                      font.pixelSize: Style.font.body || 13
+                      font.bold: (root.currentCategory === modelData.id)
+                      color: Color.foreground
+                    }
+
+                    Rectangle {
+                      width: 18
+                      height: 18
+                      radius: 3
+                      color: Color.pickAlpha("surface.subtle", "#121416")
+
+                      Text {
+                        anchors.centerIn: parent
+                        text: modelData.key
+                        font.family: Style.font.family
+                        font.pixelSize: 10
+                        color: Color.muted
+                      }
+                    }
+                  }
                 }
               }
 
@@ -205,7 +286,7 @@ Item {
 
                   Text {
                     anchors.centerIn: parent
-                    text: "Configure " + root.currentCategory + " settings here."
+                    text: "Loading " + root.currentCategory + "..."
                     color: Color.muted
                     font.family: Style.font.family
                     font.pixelSize: Style.font.body || 13
@@ -214,6 +295,28 @@ Item {
               }
             }
           }
+        }
+
+        // Bottom Keyboard Hints Footer
+        Rectangle {
+          Layout.fillWidth: true
+          height: 1
+          color: Color.muted
+          opacity: 0.2
+        }
+
+        RowLayout {
+          Layout.fillWidth: true
+          spacing: 12
+
+          Text {
+            text: "⌨ Shortcuts: [1-5] Switch Category  •  [j/k] Navigate  •  [h/l] Adjust Slider  •  [m] Mute  •  [Esc] Close"
+            font.family: Style.font.family
+            font.pixelSize: 11
+            color: Color.muted
+          }
+
+          Item { Layout.fillWidth: true }
         }
       }
     }

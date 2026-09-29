@@ -13,6 +13,26 @@ Item {
   property int volume: 50
   property bool muted: false
   property var sinks: []
+  property string statusMessage: ""
+
+  // Keyboard navigation handler from parent
+  function handleKeyH(dx) {
+    if (dx < 0) {
+      setVolume(Math.max(0, root.volume - 5))
+    } else {
+      setVolume(Math.min(100, root.volume + 5))
+    }
+  }
+
+  function handleTextKey(key) {
+    if (key === "m" || key === "M") {
+      toggleMute()
+    }
+  }
+
+  function handleActivate() {
+    toggleMute()
+  }
 
   function refresh() {
     if (!stateProcess.running && pluginPath.length > 0) {
@@ -26,17 +46,32 @@ Item {
     root.volume = v
     setVolProcess.command = [pluginPath + "/scripts/system-control.sh", "audio-set-volume", String(v)]
     setVolProcess.running = true
+    notifyStatus("Volume: " + v + "%")
   }
 
   function toggleMute() {
     root.muted = !root.muted
     setMuteProcess.command = [pluginPath + "/scripts/system-control.sh", "audio-set-mute", "toggle"]
     setMuteProcess.running = true
+    notifyStatus(root.muted ? "Audio Muted" : "Audio Unmuted")
   }
 
-  function setDefaultSink(id) {
+  function setDefaultSink(id, name) {
     setSinkProcess.command = [pluginPath + "/scripts/system-control.sh", "audio-set-sink", String(id)]
     setSinkProcess.running = true
+    notifyStatus("Output: " + name)
+  }
+
+  function notifyStatus(msg) {
+    statusMessage = msg
+    statusClearTimer.restart()
+  }
+
+  Timer {
+    id: statusClearTimer
+    interval: 3000
+    repeat: false
+    onTriggered: root.statusMessage = ""
   }
 
   Component.onCompleted: refresh()
@@ -84,10 +119,35 @@ Item {
       width: parent.width - 24
       spacing: 16
 
+      // Status Notification Toast
+      Rectangle {
+        Layout.fillWidth: true
+        Layout.preferredHeight: 32
+        visible: root.statusMessage.length > 0
+        radius: 6
+        color: Color.pickAlpha("accent.subtle", "#1f3b30")
+        border.color: Color.accent
+        border.width: 1
+
+        RowLayout {
+          anchors.fill: parent
+          anchors.leftMargin: 12
+          anchors.rightMargin: 12
+
+          Text {
+            text: "✓  " + root.statusMessage
+            font.family: Style.font.family
+            font.pixelSize: 12
+            font.bold: true
+            color: Color.accent
+          }
+        }
+      }
+
       // Section: Master Volume
       Rectangle {
         Layout.fillWidth: true
-        Layout.preferredHeight: 110
+        Layout.preferredHeight: 120
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
@@ -106,6 +166,13 @@ Item {
               color: root.muted ? Color.urgent : Color.foreground
             }
 
+            Text {
+              text: " (Use [h/l] to adjust, [m] to mute)"
+              font.family: Style.font.family
+              font.pixelSize: Style.font.subtext || 11
+              color: Color.muted
+            }
+
             Item { Layout.fillWidth: true }
 
             Text {
@@ -114,6 +181,16 @@ Item {
               font.pixelSize: Style.font.subtitle || 14
               font.bold: true
               color: root.muted ? Color.urgent : Color.accent
+            }
+
+            Button {
+              text: "-5%"
+              onClicked: root.handleKeyH(-1)
+            }
+
+            Button {
+              text: "+5%"
+              onClicked: root.handleKeyH(1)
             }
 
             Button {
@@ -140,7 +217,7 @@ Item {
       // Section: Output Devices
       Rectangle {
         Layout.fillWidth: true
-        Layout.preferredHeight: 180
+        Layout.preferredHeight: 190
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
@@ -152,7 +229,7 @@ Item {
           RowLayout {
             Layout.fillWidth: true
             Text {
-              text: "󰓃  Output Devices"
+              text: "󰓃  Audio Output Devices"
               font.family: Style.font.family
               font.pixelSize: Style.font.subtitle || 14
               font.bold: true
@@ -169,7 +246,7 @@ Item {
           }
 
           Text {
-            text: "Select primary audio output sink."
+            text: "Click any device below to make it your active default audio output."
             font.family: Style.font.family
             font.pixelSize: Style.font.subtext || 11
             color: Color.muted
@@ -184,7 +261,7 @@ Item {
 
               delegate: Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 46
+                Layout.preferredHeight: 48
                 radius: 6
                 color: modelData.isDefault
                   ? Color.pickAlpha("surface.selected", "#2a3036")
@@ -195,7 +272,7 @@ Item {
                 MouseArea {
                   anchors.fill: parent
                   cursorShape: Qt.PointingHandCursor
-                  onClicked: root.setDefaultSink(modelData.id)
+                  onClicked: root.setDefaultSink(modelData.id, modelData.name)
                 }
 
                 RowLayout {
@@ -206,7 +283,7 @@ Item {
                   Text {
                     text: modelData.name.indexOf("Charge") !== -1 ? "󰥰" : "󰕾"
                     font.family: Style.font.family
-                    font.pixelSize: 16
+                    font.pixelSize: 18
                     color: modelData.isDefault ? Color.accent : Color.muted
                   }
 
@@ -222,14 +299,14 @@ Item {
 
                   Rectangle {
                     visible: modelData.isDefault
-                    width: 58
-                    height: 20
+                    width: 64
+                    height: 22
                     radius: 4
                     color: Color.pickAlpha("accent.subtle", "#1f3b30")
 
                     Text {
                       anchors.centerIn: parent
-                      text: "Default"
+                      text: "Active Output"
                       font.family: Style.font.family
                       font.pixelSize: 10
                       font.bold: true

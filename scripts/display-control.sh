@@ -38,7 +38,6 @@ case "$cmd" in
   set-brightness)
     val="${2:-}"
     if [[ -n "$val" ]]; then
-      # Clamp between 5 and 100
       num=$(printf '%.0f' "$val")
       if (( num < 5 )); then num=5; fi
       if (( num > 100 )); then num=100; fi
@@ -58,13 +57,16 @@ case "$cmd" in
     mode="${3:-}"
     scale="${4:-1}"
     if [[ -n "$monitor" && -n "$mode" ]]; then
-      hyprctl keyword monitor "${monitor},${mode},auto,${scale}" >/dev/null 2>&1 || true
-      # Update monitors.lua if present
+      # Modern Hyprland eval for Lua configuration
+      hyprctl eval "hl.monitor({ output = \"$monitor\", mode = \"$mode\", position = \"auto\", scale = $scale })" >/dev/null 2>&1 || true
+      
+      # Persist to monitors.lua
       lua_file="$HOME/.config/hypr/monitors.lua"
       if [[ -f "$lua_file" ]]; then
-        # Update or set the monitor definition
         if grep -q "output = \"$monitor\"" "$lua_file"; then
           sed -i -E "s|hl\.monitor\(\{ output = \"$monitor\", mode = \"[^\"]+\"|hl.monitor({ output = \"$monitor\", mode = \"$mode\"|" "$lua_file"
+        else
+          echo "hl.monitor({ output = \"$monitor\", mode = \"$mode\", position = \"auto\", scale = $scale })" >> "$lua_file"
         fi
       fi
     fi
