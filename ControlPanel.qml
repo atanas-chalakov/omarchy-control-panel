@@ -13,6 +13,7 @@ Item {
   property var manifest: null
   property bool closingFromHost: false
   property string currentCategory: "displays"
+  readonly property string pluginPath: manifest && manifest.__sourceDir ? manifest.__sourceDir : "/home/ac/.config/omarchy/plugins/ac.control-panel"
 
   readonly property var categories: [
     { id: "displays", label: "Displays", icon: "󰍹" },
@@ -176,18 +177,35 @@ Item {
                 color: Color.foreground
               }
 
-              Rectangle {
+              Loader {
+                id: categoryLoader
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                color: Color.pickAlpha("surface.subtle", "#181b1d")
-                radius: Style.cornerRadius || 8
 
-                Text {
-                  anchors.centerIn: parent
-                  text: "Configure " + root.currentCategory + " settings here."
-                  color: Color.muted
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.body || 13
+                source: {
+                  if (root.currentCategory === "displays") return "views/DisplaysView.qml"
+                  return ""
+                }
+
+                onLoaded: {
+                  if (item && "pluginPath" in item) {
+                    item.pluginPath = root.pluginPath
+                  }
+                }
+
+                Rectangle {
+                  anchors.fill: parent
+                  visible: categoryLoader.status !== Loader.Ready
+                  color: Color.pickAlpha("surface.subtle", "#181b1d")
+                  radius: Style.cornerRadius || 8
+
+                  Text {
+                    anchors.centerIn: parent
+                    text: "Configure " + root.currentCategory + " settings here."
+                    color: Color.muted
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.body || 13
+                  }
                 }
               }
             }
