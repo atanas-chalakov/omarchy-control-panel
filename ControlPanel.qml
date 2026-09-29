@@ -13,6 +13,7 @@ Item {
   property var manifest: null
   property bool closingFromHost: false
   property string currentCategory: "displays"
+  property string focusSection: "sidebar" // "sidebar" or "content"
   readonly property string pluginPath: manifest && manifest.__sourceDir ? manifest.__sourceDir : "/home/ac/.config/omarchy/plugins/ac.control-panel"
 
   readonly property var categories: [
@@ -37,6 +38,9 @@ Item {
     if (categoryLoader.item && typeof categoryLoader.item.refresh === "function") {
       categoryLoader.item.refresh()
     }
+    Qt.callLater(function() {
+      if (keyCatcher) keyCatcher.forceActiveFocus()
+    })
   }
 
   function close() {
@@ -70,7 +74,11 @@ Item {
     minimumSize: Qt.size(720, 520)
 
     onVisibleChanged: {
-      if (!visible && !root.closingFromHost && root.shell && typeof root.shell.hide === "function") {
+      if (visible) {
+        Qt.callLater(function() {
+          if (keyCatcher) keyCatcher.forceActiveFocus()
+        })
+      } else if (!root.closingFromHost && root.shell && typeof root.shell.hide === "function") {
         root.shell.hide((root.manifest && root.manifest.id) || "ac.control-panel")
       }
     }
@@ -82,33 +90,50 @@ Item {
       onCloseRequested: root.dismiss()
 
       onTabRequested: function(direction) {
-        root.cycleCategory(direction)
+        if (root.focusSection === "sidebar") {
+          root.focusSection = "content"
+        } else {
+          root.focusSection = "sidebar"
+        }
       }
 
       onMoveRequested: function(dx, dy) {
-        if (dy !== 0) {
-          root.cycleCategory(dy)
-        } else if (dx !== 0) {
-          if (categoryLoader.item && typeof categoryLoader.item.handleKeyH === "function") {
-            categoryLoader.item.handleKeyH(dx)
+        if (root.focusSection === "sidebar") {
+          if (dy !== 0) {
+            root.cycleCategory(dy)
+          } else if (dx > 0) {
+            root.focusSection = "content"
+          }
+        } else {
+          if (categoryLoader.item && typeof categoryLoader.item.handleMove === "function") {
+            var handled = categoryLoader.item.handleMove(dx, dy)
+            if (!handled && dx < 0) {
+              root.focusSection = "sidebar"
+            }
+          } else if (dx < 0) {
+            root.focusSection = "sidebar"
           }
         }
       }
 
       onTextKey: function(key) {
-        if (key === "1") root.currentCategory = "displays"
-        else if (key === "2") root.currentCategory = "power"
-        else if (key === "3") root.currentCategory = "appearance"
-        else if (key === "4") root.currentCategory = "sound"
-        else if (key === "5") root.currentCategory = "about"
-        else if (categoryLoader.item && typeof categoryLoader.item.handleTextKey === "function") {
+        if (key === "1") { root.currentCategory = "displays"; root.focusSection = "sidebar" }
+        else if (key === "2") { root.currentCategory = "power"; root.focusSection = "sidebar" }
+        else if (key === "3") { root.currentCategory = "appearance"; root.focusSection = "sidebar" }
+        else if (key === "4") { root.currentCategory = "sound"; root.focusSection = "sidebar" }
+        else if (key === "5") { root.currentCategory = "about"; root.focusSection = "sidebar" }
+        else if (root.focusSection === "content" && categoryLoader.item && typeof categoryLoader.item.handleTextKey === "function") {
           categoryLoader.item.handleTextKey(key)
         }
       }
 
       onActivateRequested: {
-        if (categoryLoader.item && typeof categoryLoader.item.handleActivate === "function") {
-          categoryLoader.item.handleActivate()
+        if (root.focusSection === "sidebar") {
+          root.focusSection = "content"
+        } else {
+          if (categoryLoader.item && typeof categoryLoader.item.handleActivate === "function") {
+            categoryLoader.item.handleActivate()
+          }
         }
       }
 
@@ -138,6 +163,63 @@ Item {
           }
 
           Item { Layout.fillWidth: true }
+
+          // Active Panel Indicator & Switcher Pills
+          RowLayout {
+            spacing: 6
+
+            Rectangle {
+              height: 24
+              width: 82
+              radius: 12
+              color: root.focusSection === "sidebar"
+                ? Color.pickAlpha("accent.subtle", "#203a30")
+                : Color.pickAlpha("surface.subtle", "#181b1d")
+              border.color: root.focusSection === "sidebar" ? Color.accent : "transparent"
+              border.width: 1
+
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.focusSection = "sidebar"
+              }
+
+              Text {
+                anchors.centerIn: parent
+                text: "󰁥 Sidebar"
+                font.family: Style.font.family
+                font.pixelSize: 11
+                font.bold: root.focusSection === "sidebar"
+                color: root.focusSection === "sidebar" ? Color.accent : Color.muted
+              }
+            }
+
+            Rectangle {
+              height: 24
+              width: 88
+              radius: 12
+              color: root.focusSection === "content"
+                ? Color.pickAlpha("accent.subtle", "#203a30")
+                : Color.pickAlpha("surface.subtle", "#181b1d")
+              border.color: root.focusSection === "content" ? Color.accent : "transparent"
+              border.width: 1
+
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.focusSection = "content"
+              }
+
+              Text {
+                anchors.centerIn: parent
+                text: "Settings 󰁤"
+                font.family: Style.font.family
+                font.pixelSize: 11
+                font.bold: root.focusSection === "content"
+                color: root.focusSection === "content" ? Color.accent : Color.muted
+              }
+            }
+          }
 
           Button {
             text: "✕"
@@ -176,15 +258,34 @@ Item {
                   Layout.preferredHeight: 44
                   radius: Style.cornerRadius || 6
                   color: (root.currentCategory === modelData.id)
-                    ? Color.pickAlpha("surface.selected", "#2a3036")
-                    : Color.pickAlpha("surface.hover", "#1b1f23")
-                  border.color: (root.currentCategory === modelData.id) ? Color.accent : "transparent"
-                  border.width: 1
+                    ? (root.focusSection === "sidebar" ? Color.pickAlpha("surface.selected", "#2a3036") : Color.pickAlpha("surface.subtle", "#20252b"))
+                    : (mouseArea.containsMouse ? Color.pickAlpha("surface.hover", "#1b1f23") : "transparent")
+                  border.color: (root.currentCategory === modelData.id)
+                    ? (root.focusSection === "sidebar" ? Color.accent : Color.pickAlpha("accent.subtle", "#40ffffff"))
+                    : "transparent"
+                  border.width: (root.currentCategory === modelData.id && root.focusSection === "sidebar") ? 2 : 1
+
+                  // Accent bar when sidebar has focus
+                  Rectangle {
+                    width: 3
+                    height: 22
+                    radius: 2
+                    color: Color.accent
+                    anchors.left: parent.left
+                    anchors.leftMargin: 3
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: (root.currentCategory === modelData.id) && (root.focusSection === "sidebar")
+                  }
 
                   MouseArea {
+                    id: mouseArea
                     anchors.fill: parent
+                    hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: root.currentCategory = modelData.id
+                    onClicked: {
+                      root.currentCategory = modelData.id
+                      root.focusSection = "sidebar"
+                    }
                   }
 
                   RowLayout {
@@ -243,6 +344,12 @@ Item {
             Layout.fillHeight: true
             color: "transparent"
 
+            MouseArea {
+              anchors.fill: parent
+              z: -1
+              onPressed: root.focusSection = "content"
+            }
+
             ColumnLayout {
               anchors.fill: parent
               spacing: 12
@@ -278,6 +385,9 @@ Item {
                 onLoaded: {
                   if (item && "pluginPath" in item) {
                     item.pluginPath = root.pluginPath
+                  }
+                  if (item && "activeFocusSection" in item) {
+                    item.activeFocusSection = Qt.binding(function() { return root.focusSection === "content" })
                   }
                   if (item && typeof item.refresh === "function") {
                     item.refresh()
@@ -316,7 +426,7 @@ Item {
           spacing: 12
 
           Text {
-            text: "⌨ Shortcuts: [1-5] Switch Category  •  [j/k] Navigate  •  [h/l] Adjust Slider  •  [m] Mute  •  [Esc] Close"
+            text: "⌨ Shortcuts: [Tab] Switch Panels  •  [←/→/↑/↓ or hjkl] Navigate  •  [Enter/Space] Select  •  [1-5] Jump  •  [Esc] Close"
             font.family: Style.font.family
             font.pixelSize: 11
             color: Color.muted

@@ -18,6 +18,22 @@ Item {
   property string ram: ""
   property string uptime: ""
   property string hostname: ""
+  property bool activeFocusSection: false
+
+  function handleMove(dx, dy) {
+    if (dx < 0) return false // switch back to sidebar
+    return true
+  }
+
+  function handleActivate() {
+    refresh()
+  }
+
+  function handleTextKey(key) {
+    if (key === "r" || key === "R") {
+      refresh()
+    }
+  }
 
   function refresh() {
     if (!stateProcess.running && pluginPath.length > 0) {
@@ -127,6 +143,8 @@ Item {
           Button {
             text: "Refresh"
             iconText: ""
+            bordered: true
+            hasCursor: root.activeFocusSection
             onClicked: root.refresh()
           }
         }

@@ -32,6 +32,60 @@ Item {
     { label: "1280 × 720 (HD)", mode: "1280x720@60" }
   ]
 
+  property bool activeFocusSection: false
+  property int focusedRow: 0   // 0: Resolution, 1: Scale, 2: Brightness
+  property int focusedCol: 0
+
+  function handleMove(dx, dy) {
+    if (dy !== 0) {
+      focusedRow = Math.max(0, Math.min(2, focusedRow + dy))
+      var maxCol = (focusedRow === 0 ? commonModes.length - 1 : (focusedRow === 1 ? scaleOptions.length - 1 : 1))
+      focusedCol = Math.max(0, Math.min(maxCol, focusedCol))
+      return true
+    }
+    if (dx !== 0) {
+      if (dx < 0 && focusedCol === 0) {
+        return false // signal parent to switch back to sidebar
+      }
+      var maxColH = (focusedRow === 0 ? commonModes.length - 1 : (focusedRow === 1 ? scaleOptions.length - 1 : 1))
+      if (dx > 0) {
+        focusedCol = Math.min(maxColH, focusedCol + 1)
+      } else {
+        focusedCol = Math.max(0, focusedCol - 1)
+      }
+      return true
+    }
+    return false
+  }
+
+  function handleActivate() {
+    if (focusedRow === 0) {
+      if (focusedCol >= 0 && focusedCol < commonModes.length) {
+        setMode(commonModes[focusedCol].mode)
+      }
+    } else if (focusedRow === 1) {
+      if (focusedCol >= 0 && focusedCol < scaleOptions.length) {
+        setScale(scaleOptions[focusedCol].value)
+      }
+    } else if (focusedRow === 2) {
+      if (focusedCol === 0) {
+        handleKeyH(-1)
+      } else {
+        handleKeyH(1)
+      }
+    }
+  }
+
+  function handleTextKey(key) {
+    if (key === "h" || key === "H") {
+      handleKeyH(-1)
+    } else if (key === "l" || key === "L") {
+      handleKeyH(1)
+    } else if (key === "r" || key === "R") {
+      refresh()
+    }
+  }
+
   // Keyboard navigation handler from parent
   function handleKeyH(dx) {
     if (dx < 0) {
@@ -39,10 +93,6 @@ Item {
     } else {
       setBrightness(Math.min(100, root.brightness + 5))
     }
-  }
-
-  function handleActivate() {
-    refresh()
   }
 
   function refresh() {
@@ -299,7 +349,13 @@ Item {
                   var resPrefix = activeMonitor.width + "x" + activeMonitor.height
                   return modelData.mode.indexOf(resPrefix) === 0
                 }
-                onClicked: root.setMode(modelData.mode)
+                bordered: true
+                hasCursor: root.activeFocusSection && root.focusedRow === 0 && root.focusedCol === index
+                onClicked: {
+                  root.focusedRow = 0
+                  root.focusedCol = index
+                  root.setMode(modelData.mode)
+                }
               }
             }
           }
@@ -361,7 +417,13 @@ Item {
                   var target = Number(modelData.value)
                   return Math.abs(root.currentScale - target) < 0.05
                 }
-                onClicked: root.setScale(modelData.value)
+                bordered: true
+                hasCursor: root.activeFocusSection && root.focusedRow === 1 && root.focusedCol === index
+                onClicked: {
+                  root.focusedRow = 1
+                  root.focusedCol = index
+                  root.setScale(modelData.value)
+                }
               }
             }
           }
@@ -402,12 +464,24 @@ Item {
 
             Button {
               text: "-5%"
-              onClicked: root.handleKeyH(-1)
+              bordered: true
+              hasCursor: root.activeFocusSection && root.focusedRow === 2 && root.focusedCol === 0
+              onClicked: {
+                root.focusedRow = 2
+                root.focusedCol = 0
+                root.handleKeyH(-1)
+              }
             }
 
             Button {
               text: "+5%"
-              onClicked: root.handleKeyH(1)
+              bordered: true
+              hasCursor: root.activeFocusSection && root.focusedRow === 2 && root.focusedCol === 1
+              onClicked: {
+                root.focusedRow = 2
+                root.focusedCol = 1
+                root.handleKeyH(1)
+              }
             }
           }
 

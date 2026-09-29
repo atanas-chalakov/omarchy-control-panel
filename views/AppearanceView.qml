@@ -13,6 +13,50 @@ Item {
   onPluginPathChanged: refresh()
   property string currentTheme: "Tokyo Night"
   property var themes: []
+  property bool activeFocusSection: false
+  property int focusedIndex: 0
+
+  function handleMove(dx, dy) {
+    if (dy !== 0) {
+      var next = focusedIndex + (dy * 3)
+      if (next >= 0 && next < themes.length) {
+        focusedIndex = next
+        return true
+      }
+      if (dy > 0 && focusedIndex < themes.length - 1) {
+        focusedIndex = themes.length - 1
+        return true
+      }
+      return false
+    }
+    if (dx !== 0) {
+      if (dx < 0) {
+        if (focusedIndex % 3 === 0) {
+          return false // leftmost column -> return to sidebar
+        }
+        focusedIndex = Math.max(0, focusedIndex - 1)
+        return true
+      } else {
+        if (focusedIndex < themes.length - 1) {
+          focusedIndex = focusedIndex + 1
+          return true
+        }
+      }
+    }
+    return false
+  }
+
+  function handleActivate() {
+    if (focusedIndex >= 0 && focusedIndex < themes.length) {
+      setTheme(themes[focusedIndex])
+    }
+  }
+
+  function handleTextKey(key) {
+    if (key === "r" || key === "R") {
+      refresh()
+    }
+  }
 
   function refresh() {
     if (!stateProcess.running && pluginPath.length > 0) {
@@ -38,7 +82,15 @@ Item {
         try {
           var data = JSON.parse(text)
           if (data.current) root.currentTheme = data.current
-          if (Array.isArray(data.themes)) root.themes = data.themes
+          if (Array.isArray(data.themes)) {
+            root.themes = data.themes
+            for (var i = 0; i < data.themes.length; i++) {
+              if (data.themes[i].toLowerCase() === root.currentTheme.toLowerCase()) {
+                root.focusedIndex = i
+                break
+              }
+            }
+          }
         } catch (e) {
           console.warn("AppearanceView: JSON parse error", e)
         }
@@ -172,16 +224,25 @@ Item {
                   Layout.fillWidth: true
                   Layout.preferredHeight: 46
                   radius: 6
-                  color: (root.currentTheme.toLowerCase() === modelData.toLowerCase())
+                  readonly property bool isCurrent: root.currentTheme.toLowerCase() === modelData.toLowerCase()
+                  readonly property bool isCursorTarget: root.activeFocusSection && root.focusedIndex === index
+                  color: isCursorTarget
                     ? Color.pickAlpha("surface.selected", "#2a3036")
-                    : Color.pickAlpha("surface.hover", "#1f2327")
-                  border.color: (root.currentTheme.toLowerCase() === modelData.toLowerCase()) ? Color.accent : "transparent"
-                  border.width: 1
+                    : (isCurrent
+                      ? Color.pickAlpha("surface.selected", "#2a3036")
+                      : Color.pickAlpha("surface.hover", "#1f2327"))
+                  border.color: isCursorTarget
+                    ? Color.accent
+                    : (isCurrent ? Color.accent : "transparent")
+                  border.width: isCursorTarget ? 2 : 1
 
                   MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: root.setTheme(modelData)
+                    onClicked: {
+                      root.focusedIndex = index
+                      root.setTheme(modelData)
+                    }
                   }
 
                   RowLayout {

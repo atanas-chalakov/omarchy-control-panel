@@ -56,6 +56,48 @@ Item {
     { label: "Never", seconds: 0 }
   ]
 
+  property bool activeFocusSection: false
+  property int focusedRow: 0   // 0: Profiles, 1: Screen Off, 2: Lock Screen
+  property int focusedCol: 0
+
+  function handleMove(dx, dy) {
+    if (dy !== 0) {
+      focusedRow = Math.max(0, Math.min(2, focusedRow + dy))
+      var maxCol = (focusedRow === 0 ? powerProfiles.length - 1 : (focusedRow === 1 ? screensaverOptions.length - 1 : lockOptions.length - 1))
+      focusedCol = Math.max(0, Math.min(maxCol, focusedCol))
+      return true
+    }
+    if (dx !== 0) {
+      if (dx < 0 && focusedCol === 0) {
+        return false // signals parent to switch focus back to sidebar!
+      }
+      var maxColH = (focusedRow === 0 ? powerProfiles.length - 1 : (focusedRow === 1 ? screensaverOptions.length - 1 : lockOptions.length - 1))
+      if (dx > 0) {
+        focusedCol = Math.min(maxColH, focusedCol + 1)
+      } else {
+        focusedCol = Math.max(0, focusedCol - 1)
+      }
+      return true
+    }
+    return false
+  }
+
+  function handleActivate() {
+    if (focusedRow === 0) {
+      if (focusedCol >= 0 && focusedCol < powerProfiles.length) {
+        setProfile(powerProfiles[focusedCol].id)
+      }
+    } else if (focusedRow === 1) {
+      if (focusedCol >= 0 && focusedCol < screensaverOptions.length) {
+        setIdle(screensaverOptions[focusedCol].seconds, root.lockTimeout)
+      }
+    } else if (focusedRow === 2) {
+      if (focusedCol >= 0 && focusedCol < lockOptions.length) {
+        setIdle(root.screensaverTimeout, lockOptions[focusedCol].seconds)
+      }
+    }
+  }
+
   function refresh() {
     if (!stateProcess.running && pluginPath.length > 0) {
       stateProcess.command = [pluginPath + "/scripts/power-control.sh", "get-state"]
@@ -251,16 +293,23 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 radius: 6
-                color: (root.currentProfile === modelData.id)
+                readonly property bool isCursorTarget: root.activeFocusSection && root.focusedRow === 0 && root.focusedCol === index
+                color: isCursorTarget
                   ? Color.pickAlpha("surface.selected", "#2a3036")
-                  : Color.pickAlpha("surface.hover", "#1f2327")
-                border.color: (root.currentProfile === modelData.id) ? Color.accent : "transparent"
-                border.width: 1
+                  : ((root.currentProfile === modelData.id) ? Color.pickAlpha("surface.selected", "#2a3036") : Color.pickAlpha("surface.hover", "#1f2327"))
+                border.color: isCursorTarget
+                  ? Color.accent
+                  : ((root.currentProfile === modelData.id) ? Color.accent : "transparent")
+                border.width: isCursorTarget ? 2 : 1
 
                 MouseArea {
                   anchors.fill: parent
                   cursorShape: Qt.PointingHandCursor
-                  onClicked: root.setProfile(modelData.id)
+                  onClicked: {
+                    root.focusedRow = 0
+                    root.focusedCol = index
+                    root.setProfile(modelData.id)
+                  }
                 }
 
                 ColumnLayout {
@@ -357,7 +406,13 @@ Item {
                 Layout.fillWidth: true
                 text: modelData.label
                 selected: root.screensaverTimeout === modelData.seconds
-                onClicked: root.setIdle(modelData.seconds, root.lockTimeout)
+                bordered: true
+                hasCursor: root.activeFocusSection && root.focusedRow === 1 && root.focusedCol === index
+                onClicked: {
+                  root.focusedRow = 1
+                  root.focusedCol = index
+                  root.setIdle(modelData.seconds, root.lockTimeout)
+                }
               }
             }
           }
@@ -419,7 +474,13 @@ Item {
                 Layout.fillWidth: true
                 text: modelData.label
                 selected: root.lockTimeout === modelData.seconds
-                onClicked: root.setIdle(root.screensaverTimeout, modelData.seconds)
+                bordered: true
+                hasCursor: root.activeFocusSection && root.focusedRow === 2 && root.focusedCol === index
+                onClicked: {
+                  root.focusedRow = 2
+                  root.focusedCol = index
+                  root.setIdle(root.screensaverTimeout, modelData.seconds)
+                }
               }
             }
           }

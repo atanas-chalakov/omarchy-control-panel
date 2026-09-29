@@ -15,6 +15,80 @@ Item {
   property bool muted: false
   property var sinks: []
   property string statusMessage: ""
+  property bool activeFocusSection: false
+  property int focusedRow: 0   // 0: Volume Controls, 1: Output Devices
+  property int focusedCol: 0   // 0: -5%, 1: +5%, 2: Mute
+  property int focusedSinkIndex: 0
+
+  function handleMove(dx, dy) {
+    if (dy !== 0) {
+      if (dy > 0) {
+        if (focusedRow === 0 && sinks.length > 0) {
+          focusedRow = 1
+          return true
+        } else if (focusedRow === 1) {
+          focusedSinkIndex = Math.min(sinks.length - 1, focusedSinkIndex + 1)
+          return true
+        }
+      } else {
+        if (focusedRow === 1) {
+          if (focusedSinkIndex === 0) {
+            focusedRow = 0
+          } else {
+            focusedSinkIndex = Math.max(0, focusedSinkIndex - 1)
+          }
+          return true
+        }
+      }
+      return false
+    }
+    if (dx !== 0) {
+      if (focusedRow === 0) {
+        if (dx < 0 && focusedCol === 0) {
+          return false // back to sidebar
+        }
+        if (dx > 0) {
+          focusedCol = Math.min(2, focusedCol + 1)
+        } else {
+          focusedCol = Math.max(0, focusedCol - 1)
+        }
+        return true
+      } else if (focusedRow === 1) {
+        if (dx < 0) {
+          return false // back to sidebar
+        }
+      }
+    }
+    return false
+  }
+
+  function handleActivate() {
+    if (focusedRow === 0) {
+      if (focusedCol === 0) {
+        handleKeyH(-1)
+      } else if (focusedCol === 1) {
+        handleKeyH(1)
+      } else if (focusedCol === 2) {
+        toggleMute()
+      }
+    } else if (focusedRow === 1) {
+      if (focusedSinkIndex >= 0 && focusedSinkIndex < sinks.length) {
+        setDefaultSink(sinks[focusedSinkIndex].id, sinks[focusedSinkIndex].name)
+      }
+    }
+  }
+
+  function handleTextKey(key) {
+    if (key === "m" || key === "M") {
+      toggleMute()
+    } else if (key === "h" || key === "H") {
+      handleKeyH(-1)
+    } else if (key === "l" || key === "L") {
+      handleKeyH(1)
+    } else if (key === "r" || key === "R") {
+      refresh()
+    }
+  }
 
   // Keyboard navigation handler from parent
   function handleKeyH(dx) {
@@ -23,16 +97,6 @@ Item {
     } else {
       setVolume(Math.min(100, root.volume + 5))
     }
-  }
-
-  function handleTextKey(key) {
-    if (key === "m" || key === "M") {
-      toggleMute()
-    }
-  }
-
-  function handleActivate() {
-    toggleMute()
   }
 
   function refresh() {
@@ -186,19 +250,37 @@ Item {
 
             Button {
               text: "-5%"
-              onClicked: root.handleKeyH(-1)
+              bordered: true
+              hasCursor: root.activeFocusSection && root.focusedRow === 0 && root.focusedCol === 0
+              onClicked: {
+                root.focusedRow = 0
+                root.focusedCol = 0
+                root.handleKeyH(-1)
+              }
             }
 
             Button {
               text: "+5%"
-              onClicked: root.handleKeyH(1)
+              bordered: true
+              hasCursor: root.activeFocusSection && root.focusedRow === 0 && root.focusedCol === 1
+              onClicked: {
+                root.focusedRow = 0
+                root.focusedCol = 1
+                root.handleKeyH(1)
+              }
             }
 
             Button {
               text: root.muted ? "Unmute" : "Mute"
               iconText: root.muted ? "󰕾" : "󰝟"
               selected: root.muted
-              onClicked: root.toggleMute()
+              bordered: true
+              hasCursor: root.activeFocusSection && root.focusedRow === 0 && root.focusedCol === 2
+              onClicked: {
+                root.focusedRow = 0
+                root.focusedCol = 2
+                root.toggleMute()
+              }
             }
           }
 
@@ -264,16 +346,25 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 48
                 radius: 6
-                color: modelData.isDefault
+                readonly property bool isCursorTarget: root.activeFocusSection && root.focusedRow === 1 && root.focusedSinkIndex === index
+                color: isCursorTarget
                   ? Color.pickAlpha("surface.selected", "#2a3036")
-                  : Color.pickAlpha("surface.hover", "#1f2327")
-                border.color: modelData.isDefault ? Color.accent : "transparent"
-                border.width: 1
+                  : (modelData.isDefault
+                    ? Color.pickAlpha("surface.selected", "#2a3036")
+                    : Color.pickAlpha("surface.hover", "#1f2327"))
+                border.color: isCursorTarget
+                  ? Color.accent
+                  : (modelData.isDefault ? Color.accent : "transparent")
+                border.width: isCursorTarget ? 2 : 1
 
                 MouseArea {
                   anchors.fill: parent
                   cursorShape: Qt.PointingHandCursor
-                  onClicked: root.setDefaultSink(modelData.id, modelData.name)
+                  onClicked: {
+                    root.focusedRow = 1
+                    root.focusedSinkIndex = index
+                    root.setDefaultSink(modelData.id, modelData.name)
+                  }
                 }
 
                 RowLayout {
