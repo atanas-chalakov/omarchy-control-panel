@@ -93,13 +93,21 @@ Item {
           if (data.profile) root.currentProfile = data.profile
           if (data.battery) {
             root.batteryPresent = data.battery.present === true
-            root.batteryCapacity = Number(data.battery.capacity || 100)
+            root.batteryCapacity = (data.battery.capacity !== undefined && data.battery.capacity !== null) ? Number(data.battery.capacity) : 100
             root.batteryStatus = String(data.battery.status || "Unknown")
             root.acOnline = data.battery.acOnline === true
           }
           if (data.idle) {
-            root.screensaverTimeout = Number(data.idle.screensaver || 150)
-            root.lockTimeout = Number(data.idle.lock || 300)
+            if (data.idle.screensaver !== undefined && data.idle.screensaver !== null) {
+              root.screensaverTimeout = Number(data.idle.screensaver)
+            } else {
+              root.screensaverTimeout = 150
+            }
+            if (data.idle.lock !== undefined && data.idle.lock !== null) {
+              root.lockTimeout = Number(data.idle.lock)
+            } else {
+              root.lockTimeout = 300
+            }
           }
         } catch (e) {
           console.warn("PowerView: JSON parse error", e)
