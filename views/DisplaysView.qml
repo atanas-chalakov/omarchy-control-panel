@@ -33,65 +33,77 @@ Item {
   ]
 
   property bool activeFocusSection: false
-  property int focusedRow: 0   // 0: Resolution, 1: Scale, 2: Brightness
-  property int focusedCol: 0
+  property int focusedRow: 0   // 0: Brightness, 1: Scale, 2: Resolution
+
+  function currentScaleIndex() {
+    var best = 0
+    var minDiff = 999
+    for (var i = 0; i < scaleOptions.length; i++) {
+      var diff = Math.abs(root.currentScale - Number(scaleOptions[i].value))
+      if (diff < minDiff) { minDiff = diff; best = i }
+    }
+    return best
+  }
+
+  function currentModeIndex() {
+    if (!activeMonitor) return 0
+    var resPrefix = activeMonitor.width + "x" + activeMonitor.height
+    for (var i = 0; i < commonModes.length; i++) {
+      if (commonModes[i].mode.indexOf(resPrefix) === 0) return i
+    }
+    return 0
+  }
+
+  function cycleScale(delta) {
+    var idx = currentScaleIndex()
+    var next = Math.max(0, Math.min(scaleOptions.length - 1, idx + delta))
+    setScale(scaleOptions[next].value)
+  }
+
+  function cycleMode(delta) {
+    var idx = currentModeIndex()
+    var next = Math.max(0, Math.min(commonModes.length - 1, idx + delta))
+    setMode(commonModes[next].mode)
+  }
+
+  function adjustBrightness(delta) {
+    var val = Math.max(5, Math.min(100, root.brightness + delta))
+    setBrightness(val)
+  }
 
   function handleMove(dx, dy) {
     if (dy !== 0) {
       focusedRow = Math.max(0, Math.min(2, focusedRow + dy))
-      var maxCol = (focusedRow === 0 ? commonModes.length - 1 : (focusedRow === 1 ? scaleOptions.length - 1 : 1))
-      focusedCol = Math.max(0, Math.min(maxCol, focusedCol))
       return true
     }
     if (dx !== 0) {
-      if (dx < 0 && focusedCol === 0) {
-        return false // signal parent to switch back to sidebar
-      }
-      var maxColH = (focusedRow === 0 ? commonModes.length - 1 : (focusedRow === 1 ? scaleOptions.length - 1 : 1))
-      if (dx > 0) {
-        focusedCol = Math.min(maxColH, focusedCol + 1)
-      } else {
-        focusedCol = Math.max(0, focusedCol - 1)
-      }
+      if (focusedRow === 0) adjustBrightness(dx * 5)
+      else if (focusedRow === 1) cycleScale(dx)
+      else if (focusedRow === 2) cycleMode(dx)
       return true
     }
     return false
   }
 
   function handleActivate() {
-    if (focusedRow === 0) {
-      if (focusedCol >= 0 && focusedCol < commonModes.length) {
-        setMode(commonModes[focusedCol].mode)
-      }
-    } else if (focusedRow === 1) {
-      if (focusedCol >= 0 && focusedCol < scaleOptions.length) {
-        setScale(scaleOptions[focusedCol].value)
-      }
-    } else if (focusedRow === 2) {
-      if (focusedCol === 0) {
-        handleKeyH(-1)
-      } else {
-        handleKeyH(1)
-      }
-    }
+    if (focusedRow === 0) adjustBrightness(5)
+    else if (focusedRow === 1) cycleScale(1)
+    else if (focusedRow === 2) cycleMode(1)
   }
 
   function handleTextKey(key) {
-    if (key === "h" || key === "H") {
-      handleKeyH(-1)
-    } else if (key === "l" || key === "L") {
-      handleKeyH(1)
-    } else if (key === "r" || key === "R") {
+    if (key === "r" || key === "R") {
       refresh()
-    }
-  }
-
-  // Keyboard navigation handler from parent
-  function handleKeyH(dx) {
-    if (dx < 0) {
-      setBrightness(Math.max(5, root.brightness - 5))
-    } else {
-      setBrightness(Math.min(100, root.brightness + 5))
+    } else if (key === "b" || key === "B") {
+      focusedRow = 0
+    } else if (key === "s" || key === "S") {
+      focusedRow = 1
+    } else if (key === "m" || key === "M") {
+      focusedRow = 2
+    } else if (key === "h" || key === "H") {
+      adjustBrightness(-5)
+    } else if (key === "l" || key === "L") {
+      adjustBrightness(5)
     }
   }
 
@@ -183,7 +195,7 @@ Item {
 
     ColumnLayout {
       width: parent.width - 24
-      spacing: 16
+      spacing: 14
 
       // Status Notification Toast
       Rectangle {
@@ -210,10 +222,10 @@ Item {
         }
       }
 
-      // Section: Monitor Info Card
+      // Display Hero Card
       Rectangle {
         Layout.fillWidth: true
-        Layout.preferredHeight: 80
+        Layout.preferredHeight: 76
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
@@ -223,8 +235,8 @@ Item {
           spacing: 14
 
           Rectangle {
-            width: 48
-            height: 48
+            width: 46
+            height: 46
             radius: 8
             color: Color.pickAlpha("surface.selected", "#2a3036")
 
@@ -252,7 +264,7 @@ Item {
               }
 
               Rectangle {
-                width: 68
+                width: 72
                 height: 20
                 radius: 4
                 color: Color.pickAlpha("accent.subtle", "#1f3b30")
@@ -269,7 +281,7 @@ Item {
             }
 
             Text {
-              text: activeMonitor ? (activeMonitor.description || activeMonitor.model || "") : ""
+              text: activeMonitor ? (activeMonitor.description || activeMonitor.model || (activeMonitor.width + "x" + activeMonitor.height + " @ " + activeMonitor.refreshRate + "Hz")) : ""
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 12
               color: Color.muted
@@ -284,12 +296,22 @@ Item {
         }
       }
 
-      // Section: Resolution Selection
+      // Setting Row 0: Brightness Stepper & Slider Card
       Rectangle {
+        id: brightnessCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 140
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        Layout.preferredHeight: 112
         radius: Style.cornerRadius || 8
+        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 0
+        color: brightnessCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
+        border.color: brightnessCard.isFocused ? Color.accent : "transparent"
+        border.width: brightnessCard.isFocused ? 2 : 1
+
+        MouseArea {
+          anchors.fill: parent
+          z: -1
+          onClicked: root.focusedRow = 0
+        }
 
         ColumnLayout {
           anchors.fill: parent
@@ -298,161 +320,44 @@ Item {
 
           RowLayout {
             Layout.fillWidth: true
+            spacing: 12
+
+            Text {
+              text: "󰃠"
+              font.family: Style.font.family
+              font.pixelSize: 18
+              color: brightnessCard.isFocused ? Color.accent : Color.foreground
+            }
+
             ColumnLayout {
+              Layout.fillWidth: true
               spacing: 2
-              Text {
-                text: "󰹑  Screen Resolution"
-                font.family: Style.font.family
-                font.pixelSize: Style.font.subtitle || 14
-                font.bold: true
-                color: Color.foreground
+
+              RowLayout {
+                spacing: 8
+                Text {
+                  text: "Display Brightness"
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.subtitle || 14
+                  font.bold: true
+                  color: Color.foreground
+                }
+                Text {
+                  visible: brightnessCard.isFocused
+                  text: "• Use [←/→ or h/l] to adjust ±5%"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: Color.accent
+                }
               }
+
               Text {
-                text: "Click any resolution below to apply and persist to monitors.lua"
+                text: "Backlight screen brightness percentage."
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
               }
             }
-
-            Item { Layout.fillWidth: true }
-
-            Rectangle {
-              width: 130
-              height: 24
-              radius: 4
-              color: Color.pickAlpha("surface.selected", "#2a3036")
-
-              Text {
-                anchors.centerIn: parent
-                text: activeMonitor ? (activeMonitor.width + "x" + activeMonitor.height + " @ " + activeMonitor.refreshRate + "Hz") : ""
-                font.family: Style.font.family
-                font.pixelSize: 11
-                font.bold: true
-                color: Color.accent
-              }
-            }
-          }
-
-          RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-
-            Repeater {
-              model: root.commonModes
-
-              delegate: Button {
-                Layout.fillWidth: true
-                text: modelData.label
-                selected: {
-                  if (!activeMonitor) return false
-                  var resPrefix = activeMonitor.width + "x" + activeMonitor.height
-                  return modelData.mode.indexOf(resPrefix) === 0
-                }
-                bordered: true
-                hasCursor: root.activeFocusSection && root.focusedRow === 0 && root.focusedCol === index
-                onClicked: {
-                  root.focusedRow = 0
-                  root.focusedCol = index
-                  root.setMode(modelData.mode)
-                }
-              }
-            }
-          }
-        }
-      }
-
-      // Section: Scaling
-      Rectangle {
-        Layout.fillWidth: true
-        Layout.preferredHeight: 110
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
-        radius: Style.cornerRadius || 8
-
-        ColumnLayout {
-          anchors.fill: parent
-          anchors.margins: 14
-          spacing: 10
-
-          ColumnLayout {
-            spacing: 2
-            RowLayout {
-              Text {
-                text: "󰘵  Display Scaling"
-                font.family: Style.font.family
-                font.pixelSize: Style.font.subtitle || 14
-                font.bold: true
-                color: Color.foreground
-              }
-
-              Item { Layout.fillWidth: true }
-
-              Text {
-                text: "Current: " + root.currentScale + "x"
-                font.family: Style.font.family
-                font.pixelSize: Style.font.subtext || 12
-                color: Color.accent
-              }
-            }
-
-            Text {
-              text: "Scale text, window borders, and UI elements for high-DPI display."
-              font.family: Style.font.family
-              font.pixelSize: Style.font.subtext || 11
-              color: Color.muted
-            }
-          }
-
-          RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-
-            Repeater {
-              model: root.scaleOptions
-
-              delegate: Button {
-                Layout.fillWidth: true
-                text: modelData.label
-                selected: {
-                  var target = Number(modelData.value)
-                  return Math.abs(root.currentScale - target) < 0.05
-                }
-                bordered: true
-                hasCursor: root.activeFocusSection && root.focusedRow === 1 && root.focusedCol === index
-                onClicked: {
-                  root.focusedRow = 1
-                  root.focusedCol = index
-                  root.setScale(modelData.value)
-                }
-              }
-            }
-          }
-        }
-      }
-
-      // Section: Brightness
-      Rectangle {
-        Layout.fillWidth: true
-        Layout.preferredHeight: 104
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
-        radius: Style.cornerRadius || 8
-
-        ColumnLayout {
-          anchors.fill: parent
-          anchors.margins: 14
-          spacing: 8
-
-          RowLayout {
-            Layout.fillWidth: true
-            Text {
-              text: "󰃠  Brightness  (Use [h/l] to adjust ±5%)"
-              font.family: Style.font.family
-              font.pixelSize: Style.font.subtitle || 14
-              font.bold: true
-              color: Color.foreground
-            }
-
-            Item { Layout.fillWidth: true }
 
             Text {
               text: root.brightness + "%"
@@ -462,25 +367,29 @@ Item {
               color: Color.accent
             }
 
-            Button {
-              text: "-5%"
-              bordered: true
-              hasCursor: root.activeFocusSection && root.focusedRow === 2 && root.focusedCol === 0
-              onClicked: {
-                root.focusedRow = 2
-                root.focusedCol = 0
-                root.handleKeyH(-1)
-              }
-            }
+            RowLayout {
+              spacing: 6
 
-            Button {
-              text: "+5%"
-              bordered: true
-              hasCursor: root.activeFocusSection && root.focusedRow === 2 && root.focusedCol === 1
-              onClicked: {
-                root.focusedRow = 2
-                root.focusedCol = 1
-                root.handleKeyH(1)
+              Button {
+                text: "◀"
+                implicitWidth: 32
+                implicitHeight: 32
+                bordered: true
+                onClicked: {
+                  root.focusedRow = 0
+                  root.adjustBrightness(-5)
+                }
+              }
+
+              Button {
+                text: "▶"
+                implicitWidth: 32
+                implicitHeight: 32
+                bordered: true
+                onClicked: {
+                  root.focusedRow = 0
+                  root.adjustBrightness(5)
+                }
               }
             }
           }
@@ -494,6 +403,272 @@ Item {
             value: root.brightness
             onMoved: function(v) { root.brightness = Math.round(v) }
             onReleased: function(v) { root.setBrightness(v) }
+          }
+        }
+      }
+
+      // Setting Row 1: Display Scaling Stepper Card
+      Rectangle {
+        id: scaleCard
+        Layout.fillWidth: true
+        Layout.preferredHeight: 112
+        radius: Style.cornerRadius || 8
+        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 1
+        color: scaleCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
+        border.color: scaleCard.isFocused ? Color.accent : "transparent"
+        border.width: scaleCard.isFocused ? 2 : 1
+
+        MouseArea {
+          anchors.fill: parent
+          z: -1
+          onClicked: root.focusedRow = 1
+        }
+
+        ColumnLayout {
+          anchors.fill: parent
+          anchors.margins: 14
+          spacing: 10
+
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+
+            Text {
+              text: "󰘵"
+              font.family: Style.font.family
+              font.pixelSize: 18
+              color: scaleCard.isFocused ? Color.accent : Color.foreground
+            }
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 2
+
+              RowLayout {
+                spacing: 8
+                Text {
+                  text: "Display Scaling"
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.subtitle || 14
+                  font.bold: true
+                  color: Color.foreground
+                }
+                Text {
+                  visible: scaleCard.isFocused
+                  text: "• Use [←/→ or h/l] to cycle"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: Color.accent
+                }
+              }
+
+              Text {
+                text: "Interface, window border, and font scale factor."
+                font.family: Style.font.family
+                font.pixelSize: Style.font.subtext || 11
+                color: Color.muted
+              }
+            }
+
+            // Stepper buttons
+            RowLayout {
+              spacing: 6
+
+              Button {
+                text: "◀"
+                implicitWidth: 32
+                implicitHeight: 32
+                bordered: true
+                onClicked: {
+                  root.focusedRow = 1
+                  root.cycleScale(-1)
+                }
+              }
+
+              Button {
+                text: "▶"
+                implicitWidth: 32
+                implicitHeight: 32
+                bordered: true
+                onClicked: {
+                  root.focusedRow = 1
+                  root.cycleScale(1)
+                }
+              }
+            }
+          }
+
+          // Visual segmented option cards
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Repeater {
+              model: root.scaleOptions
+
+              delegate: Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 34
+                radius: 6
+                readonly property bool isSelected: Math.abs(root.currentScale - Number(modelData.value)) < 0.05
+                color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
+                border.color: isSelected ? Color.accent : "transparent"
+                border.width: isSelected ? 1 : 0
+
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    root.focusedRow = 1
+                    root.setScale(modelData.value)
+                  }
+                }
+
+                Text {
+                  anchors.centerIn: parent
+                  text: modelData.label
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: isSelected
+                  color: isSelected ? Color.accent : Color.foreground
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Setting Row 2: Resolution Stepper Card
+      Rectangle {
+        id: modeCard
+        Layout.fillWidth: true
+        Layout.preferredHeight: 112
+        radius: Style.cornerRadius || 8
+        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 2
+        color: modeCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
+        border.color: modeCard.isFocused ? Color.accent : "transparent"
+        border.width: modeCard.isFocused ? 2 : 1
+
+        MouseArea {
+          anchors.fill: parent
+          z: -1
+          onClicked: root.focusedRow = 2
+        }
+
+        ColumnLayout {
+          anchors.fill: parent
+          anchors.margins: 14
+          spacing: 10
+
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+
+            Text {
+              text: "󰹑"
+              font.family: Style.font.family
+              font.pixelSize: 18
+              color: modeCard.isFocused ? Color.accent : Color.foreground
+            }
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 2
+
+              RowLayout {
+                spacing: 8
+                Text {
+                  text: "Screen Resolution"
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.subtitle || 14
+                  font.bold: true
+                  color: Color.foreground
+                }
+                Text {
+                  visible: modeCard.isFocused
+                  text: "• Use [←/→ or h/l] to cycle"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: Color.accent
+                }
+              }
+
+              Text {
+                text: "Resolution modes configured for this display."
+                font.family: Style.font.family
+                font.pixelSize: Style.font.subtext || 11
+                color: Color.muted
+              }
+            }
+
+            // Stepper buttons
+            RowLayout {
+              spacing: 6
+
+              Button {
+                text: "◀"
+                implicitWidth: 32
+                implicitHeight: 32
+                bordered: true
+                onClicked: {
+                  root.focusedRow = 2
+                  root.cycleMode(-1)
+                }
+              }
+
+              Button {
+                text: "▶"
+                implicitWidth: 32
+                implicitHeight: 32
+                bordered: true
+                onClicked: {
+                  root.focusedRow = 2
+                  root.cycleMode(1)
+                }
+              }
+            }
+          }
+
+          // Visual segmented option cards
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Repeater {
+              model: root.commonModes
+
+              delegate: Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 34
+                radius: 6
+                readonly property bool isSelected: {
+                  if (!activeMonitor) return false
+                  var resPrefix = activeMonitor.width + "x" + activeMonitor.height
+                  return modelData.mode.indexOf(resPrefix) === 0
+                }
+                color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
+                border.color: isSelected ? Color.accent : "transparent"
+                border.width: isSelected ? 1 : 0
+
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    root.focusedRow = 2
+                    root.setMode(modelData.mode)
+                  }
+                }
+
+                Text {
+                  anchors.centerIn: parent
+                  text: modelData.label
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: isSelected
+                  color: isSelected ? Color.accent : Color.foreground
+                }
+              }
+            }
           }
         }
       }

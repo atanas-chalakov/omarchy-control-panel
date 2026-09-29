@@ -86,6 +86,7 @@ Item {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
+      blocked: categoryLoader.item && categoryLoader.item.hasActiveInput === true
 
       onCloseRequested: root.dismiss()
 
@@ -106,12 +107,7 @@ Item {
           }
         } else {
           if (categoryLoader.item && typeof categoryLoader.item.handleMove === "function") {
-            var handled = categoryLoader.item.handleMove(dx, dy)
-            if (!handled && dx < 0) {
-              root.focusSection = "sidebar"
-            }
-          } else if (dx < 0) {
-            root.focusSection = "sidebar"
+            categoryLoader.item.handleMove(dx, dy)
           }
         }
       }
@@ -426,7 +422,7 @@ Item {
           spacing: 12
 
           Text {
-            text: "⌨ Shortcuts: [Tab] Switch Panels  •  [←/→/↑/↓ or hjkl] Navigate  •  [Enter/Space] Select  •  [1-5] Jump  •  [Esc] Close"
+            text: "⌨ Shortcuts: [Tab] Switch Panels  •  [↑/↓ or j/k] Select Setting  •  [←/→ or h/l] Adjust Value  •  [Enter/Space] Activate  •  [1-5] Categories  •  [Esc] Close"
             font.family: Style.font.family
             font.pixelSize: 11
             color: Color.muted

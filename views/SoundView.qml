@@ -15,87 +15,62 @@ Item {
   property bool muted: false
   property var sinks: []
   property string statusMessage: ""
+
   property bool activeFocusSection: false
-  property int focusedRow: 0   // 0: Volume Controls, 1: Output Devices
-  property int focusedCol: 0   // 0: -5%, 1: +5%, 2: Mute
-  property int focusedSinkIndex: 0
+  property int focusedRow: 0   // 0: Volume, 1: Mute, 2: Output Device
+
+  function currentSinkIndex() {
+    for (var i = 0; i < sinks.length; i++) {
+      if (sinks[i].isDefault) return i
+    }
+    return 0
+  }
+
+  function cycleSink(delta) {
+    if (sinks.length === 0) return
+    var idx = currentSinkIndex()
+    var next = (idx + delta + sinks.length) % sinks.length
+    setDefaultSink(sinks[next].id, sinks[next].name)
+  }
+
+  function adjustVolume(delta) {
+    var v = Math.max(0, Math.min(100, root.volume + delta))
+    setVolume(v)
+  }
 
   function handleMove(dx, dy) {
     if (dy !== 0) {
-      if (dy > 0) {
-        if (focusedRow === 0 && sinks.length > 0) {
-          focusedRow = 1
-          return true
-        } else if (focusedRow === 1) {
-          focusedSinkIndex = Math.min(sinks.length - 1, focusedSinkIndex + 1)
-          return true
-        }
-      } else {
-        if (focusedRow === 1) {
-          if (focusedSinkIndex === 0) {
-            focusedRow = 0
-          } else {
-            focusedSinkIndex = Math.max(0, focusedSinkIndex - 1)
-          }
-          return true
-        }
-      }
-      return false
+      focusedRow = Math.max(0, Math.min(2, focusedRow + dy))
+      return true
     }
     if (dx !== 0) {
-      if (focusedRow === 0) {
-        if (dx < 0 && focusedCol === 0) {
-          return false // back to sidebar
-        }
-        if (dx > 0) {
-          focusedCol = Math.min(2, focusedCol + 1)
-        } else {
-          focusedCol = Math.max(0, focusedCol - 1)
-        }
-        return true
-      } else if (focusedRow === 1) {
-        if (dx < 0) {
-          return false // back to sidebar
-        }
-      }
+      if (focusedRow === 0) adjustVolume(dx * 5)
+      else if (focusedRow === 1) toggleMute()
+      else if (focusedRow === 2) cycleSink(dx)
+      return true
     }
     return false
   }
 
   function handleActivate() {
-    if (focusedRow === 0) {
-      if (focusedCol === 0) {
-        handleKeyH(-1)
-      } else if (focusedCol === 1) {
-        handleKeyH(1)
-      } else if (focusedCol === 2) {
-        toggleMute()
-      }
-    } else if (focusedRow === 1) {
-      if (focusedSinkIndex >= 0 && focusedSinkIndex < sinks.length) {
-        setDefaultSink(sinks[focusedSinkIndex].id, sinks[focusedSinkIndex].name)
-      }
-    }
+    if (focusedRow === 0) toggleMute()
+    else if (focusedRow === 1) toggleMute()
+    else if (focusedRow === 2) cycleSink(1)
   }
 
   function handleTextKey(key) {
     if (key === "m" || key === "M") {
       toggleMute()
-    } else if (key === "h" || key === "H") {
-      handleKeyH(-1)
-    } else if (key === "l" || key === "L") {
-      handleKeyH(1)
     } else if (key === "r" || key === "R") {
       refresh()
-    }
-  }
-
-  // Keyboard navigation handler from parent
-  function handleKeyH(dx) {
-    if (dx < 0) {
-      setVolume(Math.max(0, root.volume - 5))
-    } else {
-      setVolume(Math.min(100, root.volume + 5))
+    } else if (key === "v" || key === "V") {
+      focusedRow = 0
+    } else if (key === "o" || key === "O") {
+      focusedRow = 2
+    } else if (key === "h" || key === "H") {
+      adjustVolume(-5)
+    } else if (key === "l" || key === "L") {
+      adjustVolume(5)
     }
   }
 
@@ -182,7 +157,7 @@ Item {
 
     ColumnLayout {
       width: parent.width - 24
-      spacing: 16
+      spacing: 14
 
       // Status Notification Toast
       Rectangle {
@@ -209,12 +184,22 @@ Item {
         }
       }
 
-      // Section: Master Volume
+      // Setting Row 0: Master Volume Stepper & Slider Card
       Rectangle {
+        id: volumeCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 120
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        Layout.preferredHeight: 112
         radius: Style.cornerRadius || 8
+        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 0
+        color: volumeCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
+        border.color: volumeCard.isFocused ? Color.accent : "transparent"
+        border.width: volumeCard.isFocused ? 2 : 1
+
+        MouseArea {
+          anchors.fill: parent
+          z: -1
+          onClicked: root.focusedRow = 0
+        }
 
         ColumnLayout {
           anchors.fill: parent
@@ -223,22 +208,44 @@ Item {
 
           RowLayout {
             Layout.fillWidth: true
-            Text {
-              text: root.muted ? "󰝟  Master Volume" : (root.volume > 50 ? "󰕾  Master Volume" : "󰖀  Master Volume")
-              font.family: Style.font.family
-              font.pixelSize: Style.font.subtitle || 14
-              font.bold: true
-              color: root.muted ? Color.urgent : Color.foreground
-            }
+            spacing: 12
 
             Text {
-              text: " (Use [h/l] to adjust, [m] to mute)"
+              text: root.muted ? "󰝟" : (root.volume > 50 ? "󰕾" : "󰖀")
               font.family: Style.font.family
-              font.pixelSize: Style.font.subtext || 11
-              color: Color.muted
+              font.pixelSize: 18
+              color: root.muted ? Color.urgent : (volumeCard.isFocused ? Color.accent : Color.foreground)
             }
 
-            Item { Layout.fillWidth: true }
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 2
+
+              RowLayout {
+                spacing: 8
+                Text {
+                  text: "Master Volume"
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.subtitle || 14
+                  font.bold: true
+                  color: Color.foreground
+                }
+                Text {
+                  visible: volumeCard.isFocused
+                  text: "• Use [←/→ or h/l] to adjust ±5%"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: Color.accent
+                }
+              }
+
+              Text {
+                text: "System main sound output volume level."
+                font.family: Style.font.family
+                font.pixelSize: Style.font.subtext || 11
+                color: Color.muted
+              }
+            }
 
             Text {
               text: root.muted ? "MUTED" : (root.volume + "%")
@@ -248,38 +255,29 @@ Item {
               color: root.muted ? Color.urgent : Color.accent
             }
 
-            Button {
-              text: "-5%"
-              bordered: true
-              hasCursor: root.activeFocusSection && root.focusedRow === 0 && root.focusedCol === 0
-              onClicked: {
-                root.focusedRow = 0
-                root.focusedCol = 0
-                root.handleKeyH(-1)
-              }
-            }
+            RowLayout {
+              spacing: 6
 
-            Button {
-              text: "+5%"
-              bordered: true
-              hasCursor: root.activeFocusSection && root.focusedRow === 0 && root.focusedCol === 1
-              onClicked: {
-                root.focusedRow = 0
-                root.focusedCol = 1
-                root.handleKeyH(1)
+              Button {
+                text: "◀"
+                implicitWidth: 32
+                implicitHeight: 32
+                bordered: true
+                onClicked: {
+                  root.focusedRow = 0
+                  root.adjustVolume(-5)
+                }
               }
-            }
 
-            Button {
-              text: root.muted ? "Unmute" : "Mute"
-              iconText: root.muted ? "󰕾" : "󰝟"
-              selected: root.muted
-              bordered: true
-              hasCursor: root.activeFocusSection && root.focusedRow === 0 && root.focusedCol === 2
-              onClicked: {
-                root.focusedRow = 0
-                root.focusedCol = 2
-                root.toggleMute()
+              Button {
+                text: "▶"
+                implicitWidth: 32
+                implicitHeight: 32
+                bordered: true
+                onClicked: {
+                  root.focusedRow = 0
+                  root.adjustVolume(5)
+                }
               }
             }
           }
@@ -297,12 +295,112 @@ Item {
         }
       }
 
-      // Section: Output Devices
+      // Setting Row 1: Mute Audio Toggle Card
       Rectangle {
+        id: muteCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 190
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        Layout.preferredHeight: 74
         radius: Style.cornerRadius || 8
+        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 1
+        color: muteCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
+        border.color: muteCard.isFocused ? Color.accent : "transparent"
+        border.width: muteCard.isFocused ? 2 : 1
+
+        MouseArea {
+          anchors.fill: parent
+          cursorShape: Qt.PointingHandCursor
+          onClicked: {
+            root.focusedRow = 1
+            root.toggleMute()
+          }
+        }
+
+        RowLayout {
+          anchors.fill: parent
+          anchors.margins: 14
+          spacing: 14
+
+          Rectangle {
+            width: 44
+            height: 44
+            radius: 8
+            color: root.muted ? Color.pickAlpha("urgent.subtle", "#3a1f1f") : Color.pickAlpha("surface.hover", "#20252b")
+
+            Text {
+              anchors.centerIn: parent
+              text: root.muted ? "󰝟" : "󰕾"
+              font.family: Style.font.family
+              font.pixelSize: 20
+              color: root.muted ? Color.urgent : Color.foreground
+            }
+          }
+
+          ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 2
+
+            RowLayout {
+              spacing: 8
+              Text {
+                text: "Mute All Audio"
+                font.family: Style.font.family
+                font.pixelSize: Style.font.subtitle || 14
+                font.bold: true
+                color: Color.foreground
+              }
+              Text {
+                visible: muteCard.isFocused
+                text: "• Press [Enter/Space or m] to toggle"
+                font.family: Style.font.family
+                font.pixelSize: 11
+                color: Color.accent
+              }
+            }
+
+            Text {
+              text: root.muted ? "Audio is currently muted" : "Audio output is active and unmuted"
+              font.family: Style.font.family
+              font.pixelSize: Style.font.subtext || 11
+              color: Color.muted
+            }
+          }
+
+          Rectangle {
+            width: 90
+            height: 32
+            radius: 16
+            color: root.muted ? Color.urgent : Color.pickAlpha("surface.selected", "#2a3036")
+            border.color: muteCard.isFocused ? Color.accent : "transparent"
+            border.width: muteCard.isFocused ? 2 : 0
+
+            Text {
+              anchors.centerIn: parent
+              text: root.muted ? "MUTED" : "UNMUTED"
+              font.family: Style.font.family
+              font.pixelSize: 11
+              font.bold: true
+              color: root.muted ? "#ffffff" : Color.muted
+            }
+          }
+        }
+      }
+
+      // Setting Row 2: Audio Output Device Card
+      Rectangle {
+        id: sinkCard
+        Layout.fillWidth: true
+        Layout.preferredHeight: 120
+        radius: Style.cornerRadius || 8
+        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 2
+        color: sinkCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
+        border.color: sinkCard.isFocused ? Color.accent : "transparent"
+        border.width: sinkCard.isFocused ? 2 : 1
+
+        MouseArea {
+          anchors.fill: parent
+          z: -1
+          onClicked: root.focusedRow = 2
+        }
 
         ColumnLayout {
           anchors.fill: parent
@@ -311,31 +409,75 @@ Item {
 
           RowLayout {
             Layout.fillWidth: true
+            spacing: 12
+
             Text {
-              text: "󰓃  Audio Output Devices"
+              text: "󰓃"
               font.family: Style.font.family
-              font.pixelSize: Style.font.subtitle || 14
-              font.bold: true
-              color: Color.foreground
+              font.pixelSize: 18
+              color: sinkCard.isFocused ? Color.accent : Color.foreground
             }
 
-            Item { Layout.fillWidth: true }
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 2
 
-            Button {
-              text: "Refresh"
-              iconText: ""
-              onClicked: root.refresh()
+              RowLayout {
+                spacing: 8
+                Text {
+                  text: "Audio Output Device"
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.subtitle || 14
+                  font.bold: true
+                  color: Color.foreground
+                }
+                Text {
+                  visible: sinkCard.isFocused
+                  text: "• Use [←/→ or h/l] to cycle"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: Color.accent
+                }
+              }
+
+              Text {
+                text: "Select default speaker or headphone sink."
+                font.family: Style.font.family
+                font.pixelSize: Style.font.subtext || 11
+                color: Color.muted
+              }
+            }
+
+            // Stepper buttons
+            RowLayout {
+              spacing: 6
+
+              Button {
+                text: "◀"
+                implicitWidth: 32
+                implicitHeight: 32
+                bordered: true
+                onClicked: {
+                  root.focusedRow = 2
+                  root.cycleSink(-1)
+                }
+              }
+
+              Button {
+                text: "▶"
+                implicitWidth: 32
+                implicitHeight: 32
+                bordered: true
+                onClicked: {
+                  root.focusedRow = 2
+                  root.cycleSink(1)
+                }
+              }
             }
           }
 
-          Text {
-            text: "Click any device below to make it your active default audio output."
-            font.family: Style.font.family
-            font.pixelSize: Style.font.subtext || 11
-            color: Color.muted
-          }
-
-          ColumnLayout {
+          // Devices list pills
+          RowLayout {
             Layout.fillWidth: true
             spacing: 8
 
@@ -344,38 +486,30 @@ Item {
 
               delegate: Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 48
+                Layout.preferredHeight: 36
                 radius: 6
-                readonly property bool isCursorTarget: root.activeFocusSection && root.focusedRow === 1 && root.focusedSinkIndex === index
-                color: isCursorTarget
-                  ? Color.pickAlpha("surface.selected", "#2a3036")
-                  : (modelData.isDefault
-                    ? Color.pickAlpha("surface.selected", "#2a3036")
-                    : Color.pickAlpha("surface.hover", "#1f2327"))
-                border.color: isCursorTarget
-                  ? Color.accent
-                  : (modelData.isDefault ? Color.accent : "transparent")
-                border.width: isCursorTarget ? 2 : 1
+                color: modelData.isDefault ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
+                border.color: modelData.isDefault ? Color.accent : "transparent"
+                border.width: modelData.isDefault ? 1 : 0
 
                 MouseArea {
                   anchors.fill: parent
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
-                    root.focusedRow = 1
-                    root.focusedSinkIndex = index
+                    root.focusedRow = 2
                     root.setDefaultSink(modelData.id, modelData.name)
                   }
                 }
 
                 RowLayout {
                   anchors.fill: parent
-                  anchors.margins: 12
-                  spacing: 10
+                  anchors.margins: 8
+                  spacing: 6
 
                   Text {
                     text: modelData.name.indexOf("Charge") !== -1 ? "󰥰" : "󰕾"
                     font.family: Style.font.family
-                    font.pixelSize: 18
+                    font.pixelSize: 14
                     color: modelData.isDefault ? Color.accent : Color.muted
                   }
 
@@ -383,27 +517,18 @@ Item {
                     Layout.fillWidth: true
                     text: modelData.name
                     font.family: Style.font.family
-                    font.pixelSize: Style.font.body || 13
+                    font.pixelSize: 11
                     font.bold: modelData.isDefault
-                    color: Color.foreground
+                    color: modelData.isDefault ? Color.accent : Color.foreground
                     elide: Text.ElideRight
                   }
 
-                  Rectangle {
+                  Text {
                     visible: modelData.isDefault
-                    width: 64
-                    height: 22
-                    radius: 4
-                    color: Color.pickAlpha("accent.subtle", "#1f3b30")
-
-                    Text {
-                      anchors.centerIn: parent
-                      text: "Active Output"
-                      font.family: Style.font.family
-                      font.pixelSize: 10
-                      font.bold: true
-                      color: Color.accent
-                    }
+                    text: "✓"
+                    font.family: Style.font.family
+                    font.pixelSize: 11
+                    color: Color.accent
                   }
                 }
               }

@@ -21,7 +21,6 @@ Item {
   property bool activeFocusSection: false
 
   function handleMove(dx, dy) {
-    if (dx < 0) return false // switch back to sidebar
     return true
   }
 

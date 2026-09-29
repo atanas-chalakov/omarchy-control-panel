@@ -24,19 +24,19 @@ Item {
       id: "power-saver",
       title: "Power Saver",
       icon: "",
-      description: "Low power draw, reduces CPU frequency to extend battery run time."
+      description: "Low power draw, reduces CPU frequency to extend battery life."
     },
     {
       id: "balanced",
       title: "Balanced",
       icon: "󰾅",
-      description: "Standard dynamic scaling balancing performance and battery longevity."
+      description: "Standard dynamic scaling balancing performance and power."
     },
     {
       id: "performance",
       title: "Performance",
       icon: "󰓅",
-      description: "Maximum responsiveness and CPU clock speeds for heavy development tasks."
+      description: "Maximum responsiveness and CPU clock speeds for heavy workloads."
     }
   ]
 
@@ -58,42 +58,83 @@ Item {
 
   property bool activeFocusSection: false
   property int focusedRow: 0   // 0: Profiles, 1: Screen Off, 2: Lock Screen
-  property int focusedCol: 0
+
+  function currentProfileIndex() {
+    for (var i = 0; i < powerProfiles.length; i++) {
+      if (powerProfiles[i].id === root.currentProfile) return i
+    }
+    return 1
+  }
+
+  function currentScreensaverIndex() {
+    for (var i = 0; i < screensaverOptions.length; i++) {
+      if (screensaverOptions[i].seconds === root.screensaverTimeout) return i
+    }
+    return 1
+  }
+
+  function currentLockIndex() {
+    for (var i = 0; i < lockOptions.length; i++) {
+      if (lockOptions[i].seconds === root.lockTimeout) return i
+    }
+    return 1
+  }
+
+  function cycleProfile(delta) {
+    var idx = currentProfileIndex()
+    var next = (idx + delta + powerProfiles.length) % powerProfiles.length
+    setProfile(powerProfiles[next].id)
+  }
+
+  function cycleScreensaver(delta) {
+    var idx = currentScreensaverIndex()
+    var next = Math.max(0, Math.min(screensaverOptions.length - 1, idx + delta))
+    setIdle(screensaverOptions[next].seconds, root.lockTimeout)
+  }
+
+  function cycleLock(delta) {
+    var idx = currentLockIndex()
+    var next = Math.max(0, Math.min(lockOptions.length - 1, idx + delta))
+    setIdle(root.screensaverTimeout, lockOptions[next].seconds)
+  }
 
   function handleMove(dx, dy) {
     if (dy !== 0) {
       focusedRow = Math.max(0, Math.min(2, focusedRow + dy))
-      var maxCol = (focusedRow === 0 ? powerProfiles.length - 1 : (focusedRow === 1 ? screensaverOptions.length - 1 : lockOptions.length - 1))
-      focusedCol = Math.max(0, Math.min(maxCol, focusedCol))
       return true
     }
     if (dx !== 0) {
-      if (dx < 0 && focusedCol === 0) {
-        return false // signals parent to switch focus back to sidebar!
-      }
-      var maxColH = (focusedRow === 0 ? powerProfiles.length - 1 : (focusedRow === 1 ? screensaverOptions.length - 1 : lockOptions.length - 1))
-      if (dx > 0) {
-        focusedCol = Math.min(maxColH, focusedCol + 1)
-      } else {
-        focusedCol = Math.max(0, focusedCol - 1)
-      }
+      if (focusedRow === 0) cycleProfile(dx)
+      else if (focusedRow === 1) cycleScreensaver(dx)
+      else if (focusedRow === 2) cycleLock(dx)
       return true
     }
     return false
   }
 
   function handleActivate() {
-    if (focusedRow === 0) {
-      if (focusedCol >= 0 && focusedCol < powerProfiles.length) {
-        setProfile(powerProfiles[focusedCol].id)
-      }
-    } else if (focusedRow === 1) {
-      if (focusedCol >= 0 && focusedCol < screensaverOptions.length) {
-        setIdle(screensaverOptions[focusedCol].seconds, root.lockTimeout)
-      }
-    } else if (focusedRow === 2) {
-      if (focusedCol >= 0 && focusedCol < lockOptions.length) {
-        setIdle(root.screensaverTimeout, lockOptions[focusedCol].seconds)
+    if (focusedRow === 0) cycleProfile(1)
+    else if (focusedRow === 1) cycleScreensaver(1)
+    else if (focusedRow === 2) cycleLock(1)
+  }
+
+  function handleTextKey(key) {
+    if (key === "r" || key === "R") {
+      refresh()
+    } else if (key === "p" || key === "P") {
+      focusedRow = 0
+    } else if (key === "s" || key === "S") {
+      focusedRow = 1
+    } else if (key === "l" || key === "L") {
+      focusedRow = 2
+    } else if (key >= "1" && key <= "5") {
+      var n = parseInt(key) - 1
+      if (focusedRow === 0 && n < powerProfiles.length) {
+        setProfile(powerProfiles[n].id)
+      } else if (focusedRow === 1 && n < screensaverOptions.length) {
+        setIdle(screensaverOptions[n].seconds, root.lockTimeout)
+      } else if (focusedRow === 2 && n < lockOptions.length) {
+        setIdle(root.screensaverTimeout, lockOptions[n].seconds)
       }
     }
   }
@@ -177,12 +218,12 @@ Item {
 
     ColumnLayout {
       width: parent.width - 24
-      spacing: 16
+      spacing: 14
 
-      // Section: Battery & Power Status Card
+      // Power/Battery Hero Card
       Rectangle {
         Layout.fillWidth: true
-        Layout.preferredHeight: 84
+        Layout.preferredHeight: 76
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
@@ -192,8 +233,8 @@ Item {
           spacing: 14
 
           Rectangle {
-            width: 48
-            height: 48
+            width: 46
+            height: 46
             radius: 8
             color: Color.pickAlpha("surface.selected", "#2a3036")
 
@@ -221,7 +262,7 @@ Item {
               }
 
               Rectangle {
-                width: 76
+                width: 80
                 height: 20
                 radius: 4
                 color: root.acOnline ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.selected", "#2a3036")
@@ -238,7 +279,7 @@ Item {
             }
 
             Text {
-              text: root.batteryPresent ? ("State: " + root.batteryStatus) : "Running on direct AC power"
+              text: root.batteryPresent ? ("Status: " + root.batteryStatus) : "Direct AC supply active"
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 12
               color: Color.muted
@@ -253,96 +294,149 @@ Item {
         }
       }
 
-      // Section: Power Profile Selector Cards
+      // Setting Row 0: Power Mode Profile
       Rectangle {
+        id: profileCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 180
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        Layout.preferredHeight: 112
         radius: Style.cornerRadius || 8
+        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 0
+        color: profileCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
+        border.color: profileCard.isFocused ? Color.accent : "transparent"
+        border.width: profileCard.isFocused ? 2 : 1
+
+        MouseArea {
+          anchors.fill: parent
+          z: -1
+          onClicked: root.focusedRow = 0
+        }
 
         ColumnLayout {
           anchors.fill: parent
           anchors.margins: 14
           spacing: 10
 
-          ColumnLayout {
-            spacing: 2
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+
             Text {
-              text: "󰓅  Power Mode Profile"
+              text: {
+                for (var i = 0; i < root.powerProfiles.length; i++) {
+                  if (root.powerProfiles[i].id === root.currentProfile) return root.powerProfiles[i].icon
+                }
+                return "󰾅"
+              }
               font.family: Style.font.family
-              font.pixelSize: Style.font.subtitle || 14
-              font.bold: true
-              color: Color.foreground
+              font.pixelSize: 18
+              color: profileCard.isFocused ? Color.accent : Color.foreground
             }
-            Text {
-              text: "Select how system power and CPU governor behave on AC and battery."
-              font.family: Style.font.family
-              font.pixelSize: Style.font.subtext || 11
-              color: Color.muted
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 2
+
+              RowLayout {
+                spacing: 8
+                Text {
+                  text: "Power Profile"
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.subtitle || 14
+                  font.bold: true
+                  color: Color.foreground
+                }
+                Text {
+                  visible: profileCard.isFocused
+                  text: "• Use [←/→ or h/l] to cycle"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: Color.accent
+                }
+              }
+
+              Text {
+                text: {
+                  for (var i = 0; i < root.powerProfiles.length; i++) {
+                    if (root.powerProfiles[i].id === root.currentProfile) return root.powerProfiles[i].description
+                  }
+                  return ""
+                }
+                font.family: Style.font.family
+                font.pixelSize: Style.font.subtext || 11
+                color: Color.muted
+                elide: Text.ElideRight
+              }
+            }
+
+            // Stepper buttons
+            RowLayout {
+              spacing: 6
+
+              Button {
+                text: "◀"
+                implicitWidth: 32
+                implicitHeight: 32
+                bordered: true
+                onClicked: {
+                  root.focusedRow = 0
+                  root.cycleProfile(-1)
+                }
+              }
+
+              Button {
+                text: "▶"
+                implicitWidth: 32
+                implicitHeight: 32
+                bordered: true
+                onClicked: {
+                  root.focusedRow = 0
+                  root.cycleProfile(1)
+                }
+              }
             }
           }
 
+          // Visual segmented option cards
           RowLayout {
             Layout.fillWidth: true
-            spacing: 10
+            spacing: 8
 
             Repeater {
               model: root.powerProfiles
 
               delegate: Rectangle {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
+                Layout.preferredHeight: 34
                 radius: 6
-                readonly property bool isCursorTarget: root.activeFocusSection && root.focusedRow === 0 && root.focusedCol === index
-                color: isCursorTarget
-                  ? Color.pickAlpha("surface.selected", "#2a3036")
-                  : ((root.currentProfile === modelData.id) ? Color.pickAlpha("surface.selected", "#2a3036") : Color.pickAlpha("surface.hover", "#1f2327"))
-                border.color: isCursorTarget
-                  ? Color.accent
-                  : ((root.currentProfile === modelData.id) ? Color.accent : "transparent")
-                border.width: isCursorTarget ? 2 : 1
+                readonly property bool isSelected: root.currentProfile === modelData.id
+                color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
+                border.color: isSelected ? Color.accent : "transparent"
+                border.width: isSelected ? 1 : 0
 
                 MouseArea {
                   anchors.fill: parent
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
                     root.focusedRow = 0
-                    root.focusedCol = index
                     root.setProfile(modelData.id)
                   }
                 }
 
-                ColumnLayout {
-                  anchors.fill: parent
-                  anchors.margins: 10
-                  spacing: 4
-
-                  RowLayout {
-                    spacing: 6
-                    Text {
-                      text: modelData.icon
-                      font.family: Style.font.family
-                      font.pixelSize: 14
-                      color: (root.currentProfile === modelData.id) ? Color.accent : Color.muted
-                    }
-                    Text {
-                      text: modelData.title
-                      font.family: Style.font.family
-                      font.pixelSize: Style.font.body || 13
-                      font.bold: true
-                      color: Color.foreground
-                    }
-                  }
-
+                RowLayout {
+                  anchors.centerIn: parent
+                  spacing: 6
                   Text {
-                    Layout.fillWidth: true
-                    text: modelData.description
+                    text: modelData.icon
                     font.family: Style.font.family
-                    font.pixelSize: 10
-                    wrapMode: Text.WordWrap
-                    color: Color.muted
-                    maximumLineCount: 2
-                    elide: Text.ElideRight
+                    font.pixelSize: 13
+                    color: isSelected ? Color.accent : Color.muted
+                  }
+                  Text {
+                    text: modelData.title
+                    font.family: Style.font.family
+                    font.pixelSize: 11
+                    font.bold: isSelected
+                    color: isSelected ? Color.accent : Color.foreground
                   }
                 }
               }
@@ -351,50 +445,98 @@ Item {
         }
       }
 
-      // Section: Screen Turn-Off Timeout
+      // Setting Row 1: Screen Off Timeout
       Rectangle {
+        id: screensaverCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 104
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        Layout.preferredHeight: 112
         radius: Style.cornerRadius || 8
+        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 1
+        color: screensaverCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
+        border.color: screensaverCard.isFocused ? Color.accent : "transparent"
+        border.width: screensaverCard.isFocused ? 2 : 1
+
+        MouseArea {
+          anchors.fill: parent
+          z: -1
+          onClicked: root.focusedRow = 1
+        }
 
         ColumnLayout {
           anchors.fill: parent
           anchors.margins: 14
-          spacing: 8
+          spacing: 10
 
           RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+
             Text {
-              text: "󰍹  Screen Off Timeout"
+              text: "󰍹"
               font.family: Style.font.family
-              font.pixelSize: Style.font.subtitle || 14
-              font.bold: true
-              color: Color.foreground
+              font.pixelSize: 18
+              color: screensaverCard.isFocused ? Color.accent : Color.foreground
             }
 
-            Item { Layout.fillWidth: true }
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 2
 
-            Text {
-              text: {
-                for (var i = 0; i < root.screensaverOptions.length; i++) {
-                  if (root.screensaverOptions[i].seconds === root.screensaverTimeout)
-                    return root.screensaverOptions[i].label
+              RowLayout {
+                spacing: 8
+                Text {
+                  text: "Screen Off Timeout"
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.subtitle || 14
+                  font.bold: true
+                  color: Color.foreground
                 }
-                return Math.round(root.screensaverTimeout / 60) + " min"
+                Text {
+                  visible: screensaverCard.isFocused
+                  text: "• Use [←/→ or h/l] to cycle"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: Color.accent
+                }
               }
-              font.family: Style.font.family
-              font.pixelSize: Style.font.subtext || 12
-              color: Color.accent
+
+              Text {
+                text: "Turn off screen or activate screensaver when workstation is idle."
+                font.family: Style.font.family
+                font.pixelSize: Style.font.subtext || 11
+                color: Color.muted
+              }
+            }
+
+            // Stepper buttons
+            RowLayout {
+              spacing: 6
+
+              Button {
+                text: "◀"
+                implicitWidth: 32
+                implicitHeight: 32
+                bordered: true
+                onClicked: {
+                  root.focusedRow = 1
+                  root.cycleScreensaver(-1)
+                }
+              }
+
+              Button {
+                text: "▶"
+                implicitWidth: 32
+                implicitHeight: 32
+                bordered: true
+                onClicked: {
+                  root.focusedRow = 1
+                  root.cycleScreensaver(1)
+                }
+              }
             }
           }
 
-          Text {
-            text: "Turn off screen or start screensaver when inactive."
-            font.family: Style.font.family
-            font.pixelSize: Style.font.subtext || 11
-            color: Color.muted
-          }
-
+          // Visual segmented option cards
           RowLayout {
             Layout.fillWidth: true
             spacing: 8
@@ -402,16 +544,31 @@ Item {
             Repeater {
               model: root.screensaverOptions
 
-              delegate: Button {
+              delegate: Rectangle {
                 Layout.fillWidth: true
-                text: modelData.label
-                selected: root.screensaverTimeout === modelData.seconds
-                bordered: true
-                hasCursor: root.activeFocusSection && root.focusedRow === 1 && root.focusedCol === index
-                onClicked: {
-                  root.focusedRow = 1
-                  root.focusedCol = index
-                  root.setIdle(modelData.seconds, root.lockTimeout)
+                Layout.preferredHeight: 34
+                radius: 6
+                readonly property bool isSelected: root.screensaverTimeout === modelData.seconds
+                color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
+                border.color: isSelected ? Color.accent : "transparent"
+                border.width: isSelected ? 1 : 0
+
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    root.focusedRow = 1
+                    root.setIdle(modelData.seconds, root.lockTimeout)
+                  }
+                }
+
+                Text {
+                  anchors.centerIn: parent
+                  text: modelData.label
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: isSelected
+                  color: isSelected ? Color.accent : Color.foreground
                 }
               }
             }
@@ -419,50 +576,98 @@ Item {
         }
       }
 
-      // Section: Lock Screen Timeout
+      // Setting Row 2: Lock Screen Timeout
       Rectangle {
+        id: lockCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 104
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        Layout.preferredHeight: 112
         radius: Style.cornerRadius || 8
+        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 2
+        color: lockCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
+        border.color: lockCard.isFocused ? Color.accent : "transparent"
+        border.width: lockCard.isFocused ? 2 : 1
+
+        MouseArea {
+          anchors.fill: parent
+          z: -1
+          onClicked: root.focusedRow = 2
+        }
 
         ColumnLayout {
           anchors.fill: parent
           anchors.margins: 14
-          spacing: 8
+          spacing: 10
 
           RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+
             Text {
-              text: "  Lock Screen Timeout"
+              text: ""
               font.family: Style.font.family
-              font.pixelSize: Style.font.subtitle || 14
-              font.bold: true
-              color: Color.foreground
+              font.pixelSize: 18
+              color: lockCard.isFocused ? Color.accent : Color.foreground
             }
 
-            Item { Layout.fillWidth: true }
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 2
 
-            Text {
-              text: {
-                for (var i = 0; i < root.lockOptions.length; i++) {
-                  if (root.lockOptions[i].seconds === root.lockTimeout)
-                    return root.lockOptions[i].label
+              RowLayout {
+                spacing: 8
+                Text {
+                  text: "Lock Screen Timeout"
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.subtitle || 14
+                  font.bold: true
+                  color: Color.foreground
                 }
-                return Math.round(root.lockTimeout / 60) + " min"
+                Text {
+                  visible: lockCard.isFocused
+                  text: "• Use [←/→ or h/l] to cycle"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: Color.accent
+                }
               }
-              font.family: Style.font.family
-              font.pixelSize: Style.font.subtext || 12
-              color: Color.accent
+
+              Text {
+                text: "Automatically lock the desktop after a designated idle period."
+                font.family: Style.font.family
+                font.pixelSize: Style.font.subtext || 11
+                color: Color.muted
+              }
+            }
+
+            // Stepper buttons
+            RowLayout {
+              spacing: 6
+
+              Button {
+                text: "◀"
+                implicitWidth: 32
+                implicitHeight: 32
+                bordered: true
+                onClicked: {
+                  root.focusedRow = 2
+                  root.cycleLock(-1)
+                }
+              }
+
+              Button {
+                text: "▶"
+                implicitWidth: 32
+                implicitHeight: 32
+                bordered: true
+                onClicked: {
+                  root.focusedRow = 2
+                  root.cycleLock(1)
+                }
+              }
             }
           }
 
-          Text {
-            text: "Lock the computer automatically after idle period."
-            font.family: Style.font.family
-            font.pixelSize: Style.font.subtext || 11
-            color: Color.muted
-          }
-
+          // Visual segmented option cards
           RowLayout {
             Layout.fillWidth: true
             spacing: 8
@@ -470,16 +675,31 @@ Item {
             Repeater {
               model: root.lockOptions
 
-              delegate: Button {
+              delegate: Rectangle {
                 Layout.fillWidth: true
-                text: modelData.label
-                selected: root.lockTimeout === modelData.seconds
-                bordered: true
-                hasCursor: root.activeFocusSection && root.focusedRow === 2 && root.focusedCol === index
-                onClicked: {
-                  root.focusedRow = 2
-                  root.focusedCol = index
-                  root.setIdle(root.screensaverTimeout, modelData.seconds)
+                Layout.preferredHeight: 34
+                radius: 6
+                readonly property bool isSelected: root.lockTimeout === modelData.seconds
+                color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
+                border.color: isSelected ? Color.accent : "transparent"
+                border.width: isSelected ? 1 : 0
+
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    root.focusedRow = 2
+                    root.setIdle(root.screensaverTimeout, modelData.seconds)
+                  }
+                }
+
+                Text {
+                  anchors.centerIn: parent
+                  text: modelData.label
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: isSelected
+                  color: isSelected ? Color.accent : Color.foreground
                 }
               }
             }
