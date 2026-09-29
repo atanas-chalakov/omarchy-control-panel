@@ -8,6 +8,7 @@ import qs.Ui
 
 Item {
   id: root
+  anchors.fill: parent
 
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
@@ -180,11 +181,14 @@ Item {
   }
 
   ScrollView {
+    id: scrollArea
     anchors.fill: parent
     clip: true
+    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+    ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
     ColumnLayout {
-      width: parent.width - 24
+      width: Math.max(200, scrollArea.availableWidth - 12)
       spacing: 14
 
       // Status Notification Toast
@@ -293,7 +297,8 @@ Item {
       Rectangle {
         id: btPowerCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 74
+        implicitHeight: Math.max(74, btPowerRowLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 0
         color: btPowerCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
@@ -310,6 +315,7 @@ Item {
         }
 
         RowLayout {
+          id: btPowerRowLayout
           anchors.fill: parent
           anchors.margins: 14
           spacing: 14
@@ -331,9 +337,12 @@ Item {
 
           ColumnLayout {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             spacing: 2
 
             RowLayout {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 8
               Text {
                 text: "Bluetooth Power"
@@ -344,18 +353,24 @@ Item {
               }
               Text {
                 visible: btPowerCard.isFocused
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: "• Press [Enter/Space or b] to toggle"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.accent
+                elide: Text.ElideRight
               }
             }
 
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
               text: root.powered ? "Bluetooth adapter is powered on and receptive." : "Bluetooth radio is completely switched off."
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11
               color: Color.muted
+              elide: Text.ElideRight
             }
           }
 
@@ -383,7 +398,8 @@ Item {
       Rectangle {
         id: scanCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 64
+        implicitHeight: Math.max(64, scanRowLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 1
         color: scanCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
@@ -401,6 +417,7 @@ Item {
         }
 
         RowLayout {
+          id: scanRowLayout
           anchors.fill: parent
           anchors.margins: 14
           spacing: 14
@@ -422,9 +439,12 @@ Item {
 
           ColumnLayout {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             spacing: 2
 
             RowLayout {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 8
               Text {
                 text: "Device Discovery"
@@ -435,18 +455,24 @@ Item {
               }
               Text {
                 visible: scanCard.isFocused
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: "• Press [Enter/Space or s] to scan"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.accent
+                elide: Text.ElideRight
               }
             }
 
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
               text: root.discovering ? "Actively scanning for nearby devices..." : "Discover nearby devices in pairing mode."
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11
               color: Color.muted
+              elide: Text.ElideRight
             }
           }
 
@@ -506,7 +532,8 @@ Item {
           delegate: Rectangle {
             id: delegateCard
             Layout.fillWidth: true
-            Layout.preferredHeight: 52
+            implicitHeight: Math.max(52, delegateBtRowLayout.implicitHeight + 16)
+            Layout.preferredHeight: implicitHeight
             radius: Style.cornerRadius || 6
             readonly property bool isFocused: root.activeFocusSection && root.focusedRow === (index + 2)
             color: delegateCard.isFocused
@@ -525,6 +552,7 @@ Item {
             }
 
             RowLayout {
+              id: delegateBtRowLayout
               anchors.fill: parent
               anchors.leftMargin: 14
               anchors.rightMargin: 14
@@ -549,11 +577,16 @@ Item {
               // Device Info
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 2
 
                 RowLayout {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   spacing: 6
                   Text {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     text: modelData.name || modelData.mac
                     font.family: Style.font.family
                     font.pixelSize: Style.font.body || 13

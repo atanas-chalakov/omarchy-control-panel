@@ -8,6 +8,7 @@ import qs.Ui
 
 Item {
   id: root
+  anchors.fill: parent
 
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
@@ -107,11 +108,13 @@ Item {
     // Header Card
     Rectangle {
       Layout.fillWidth: true
-      Layout.preferredHeight: 70
+      implicitHeight: Math.max(70, headerLayout.implicitHeight + 28)
+      Layout.preferredHeight: implicitHeight
       color: Color.pickAlpha("surface.subtle", "#181b1d")
       radius: Style.cornerRadius || 8
 
       RowLayout {
+        id: headerLayout
         anchors.fill: parent
         anchors.margins: 14
         spacing: 14
@@ -263,9 +266,11 @@ Item {
         anchors.fill: parent
         anchors.margins: 10
         clip: true
+        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+        ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
         ColumnLayout {
-          width: themesScroll.width - 12
+          width: Math.max(200, themesScroll.availableWidth - 12)
           spacing: 6
 
           Repeater {

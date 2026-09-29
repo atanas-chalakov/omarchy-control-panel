@@ -8,6 +8,7 @@ import qs.Ui
 
 Item {
   id: root
+  anchors.fill: parent
 
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
@@ -66,21 +67,26 @@ Item {
   }
 
   ScrollView {
+    id: scrollArea
     anchors.fill: parent
     clip: true
+    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+    ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
     ColumnLayout {
-      width: parent.width - 24
+      width: Math.max(200, scrollArea.availableWidth - 12)
       spacing: 16
 
       // Hero Card
       Rectangle {
         Layout.fillWidth: true
-        Layout.preferredHeight: 100
+        implicitHeight: Math.max(90, heroLayout.implicitHeight + 32)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
         RowLayout {
+          id: heroLayout
           anchors.fill: parent
           anchors.margins: 16
           spacing: 16
@@ -152,11 +158,13 @@ Item {
       // Hardware Specs Card
       Rectangle {
         Layout.fillWidth: true
-        Layout.preferredHeight: 220
+        implicitHeight: Math.max(200, specsLayout.implicitHeight + 32)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
         ColumnLayout {
+          id: specsLayout
           anchors.fill: parent
           anchors.margins: 16
           spacing: 12

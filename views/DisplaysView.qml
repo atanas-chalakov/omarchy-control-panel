@@ -8,6 +8,7 @@ import qs.Ui
 
 Item {
   id: root
+  anchors.fill: parent
 
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
@@ -265,11 +266,14 @@ Item {
   }
 
   ScrollView {
+    id: scrollArea
     anchors.fill: parent
     clip: true
+    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+    ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
     ColumnLayout {
-      width: parent.width - 24
+      width: Math.max(200, scrollArea.availableWidth - 12)
       spacing: 14
 
       // Status Notification Toast
@@ -375,7 +379,8 @@ Item {
       Rectangle {
         id: brightnessCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 112
+        implicitHeight: Math.max(116, brightnessColLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 0
         color: brightnessCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
@@ -384,11 +389,12 @@ Item {
 
         MouseArea {
           anchors.fill: parent
-          z: -1
+          cursorShape: Qt.PointingHandCursor
           onClicked: root.focusedRow = 0
         }
 
         ColumnLayout {
+          id: brightnessColLayout
           anchors.fill: parent
           anchors.margins: 14
           spacing: 10
@@ -406,9 +412,12 @@ Item {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 2
 
               RowLayout {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 8
                 Text {
                   text: "Display Brightness"
@@ -419,18 +428,24 @@ Item {
                 }
                 Text {
                   visible: brightnessCard.isFocused
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to adjust ±5%"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
+                  elide: Text.ElideRight
                 }
               }
 
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: "Backlight screen brightness percentage."
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
+                elide: Text.ElideRight
               }
             }
 
@@ -486,7 +501,8 @@ Item {
       Rectangle {
         id: nightlightToggleCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 74
+        implicitHeight: Math.max(74, nightlightToggleRowLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 1
         color: nightlightToggleCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
@@ -503,6 +519,7 @@ Item {
         }
 
         RowLayout {
+          id: nightlightToggleRowLayout
           anchors.fill: parent
           anchors.margins: 14
           spacing: 14
@@ -524,9 +541,12 @@ Item {
 
           ColumnLayout {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             spacing: 2
 
             RowLayout {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 8
               Text {
                 text: "Night Light (Blue Light Filter)"
@@ -537,18 +557,24 @@ Item {
               }
               Text {
                 visible: nightlightToggleCard.isFocused
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: "• Press [Enter/Space or n] to toggle"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.accent
+                elide: Text.ElideRight
               }
             }
 
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
               text: root.nightlightEnabled ? "Warmer colors active to reduce eye strain and assist sleep." : "Standard daytime color spectrum is currently active."
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11
               color: Color.muted
+              elide: Text.ElideRight
             }
           }
 
@@ -576,7 +602,8 @@ Item {
       Rectangle {
         id: nightlightTempCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 112
+        implicitHeight: Math.max(116, nightlightTempColLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 2
         color: nightlightTempCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
@@ -585,11 +612,12 @@ Item {
 
         MouseArea {
           anchors.fill: parent
-          z: -1
+          cursorShape: Qt.PointingHandCursor
           onClicked: root.focusedRow = 2
         }
 
         ColumnLayout {
+          id: nightlightTempColLayout
           anchors.fill: parent
           anchors.margins: 14
           spacing: 10
@@ -607,9 +635,12 @@ Item {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 2
 
               RowLayout {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 8
                 Text {
                   text: "Color Warmth (Temperature)"
@@ -620,18 +651,24 @@ Item {
                 }
                 Text {
                   visible: nightlightTempCard.isFocused
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to cycle"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
+                  elide: Text.ElideRight
                 }
               }
 
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: "Target color warmth in Kelvin when Night Light is enabled."
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
+                elide: Text.ElideRight
               }
             }
 
@@ -707,7 +744,8 @@ Item {
       Rectangle {
         id: scaleCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 112
+        implicitHeight: Math.max(116, scaleColLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 3
         color: scaleCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
@@ -716,11 +754,12 @@ Item {
 
         MouseArea {
           anchors.fill: parent
-          z: -1
+          cursorShape: Qt.PointingHandCursor
           onClicked: root.focusedRow = 3
         }
 
         ColumnLayout {
+          id: scaleColLayout
           anchors.fill: parent
           anchors.margins: 14
           spacing: 10
@@ -738,9 +777,12 @@ Item {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 2
 
               RowLayout {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 8
                 Text {
                   text: "Display Scaling"
@@ -751,18 +793,24 @@ Item {
                 }
                 Text {
                   visible: scaleCard.isFocused
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to cycle"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
+                  elide: Text.ElideRight
                 }
               }
 
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: "Interface, window border, and font scale factor."
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
+                elide: Text.ElideRight
               }
             }
 
@@ -838,7 +886,8 @@ Item {
       Rectangle {
         id: modeCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 112
+        implicitHeight: Math.max(116, modeColLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 4
         color: modeCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
@@ -847,11 +896,12 @@ Item {
 
         MouseArea {
           anchors.fill: parent
-          z: -1
+          cursorShape: Qt.PointingHandCursor
           onClicked: root.focusedRow = 4
         }
 
         ColumnLayout {
+          id: modeColLayout
           anchors.fill: parent
           anchors.margins: 14
           spacing: 10
@@ -869,9 +919,12 @@ Item {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 2
 
               RowLayout {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 8
                 Text {
                   text: "Screen Resolution"
@@ -882,18 +935,24 @@ Item {
                 }
                 Text {
                   visible: modeCard.isFocused
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to cycle"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
+                  elide: Text.ElideRight
                 }
               }
 
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: "Resolution modes configured for this display."
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
+                elide: Text.ElideRight
               }
             }
 

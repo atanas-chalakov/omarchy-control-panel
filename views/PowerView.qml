@@ -8,6 +8,7 @@ import qs.Ui
 
 Item {
   id: root
+  anchors.fill: parent
 
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
@@ -248,11 +249,14 @@ Item {
   }
 
   ScrollView {
+    id: scrollArea
     anchors.fill: parent
     clip: true
+    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+    ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
     ColumnLayout {
-      width: parent.width - 24
+      width: Math.max(200, scrollArea.availableWidth - 12)
       spacing: 14
 
       // Status Notification Toast
@@ -358,7 +362,8 @@ Item {
       Rectangle {
         id: profileCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 112
+        implicitHeight: Math.max(116, profileColLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 0
         color: profileCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
@@ -367,11 +372,12 @@ Item {
 
         MouseArea {
           anchors.fill: parent
-          z: -1
+          cursorShape: Qt.PointingHandCursor
           onClicked: root.focusedRow = 0
         }
 
         ColumnLayout {
+          id: profileColLayout
           anchors.fill: parent
           anchors.margins: 14
           spacing: 10
@@ -394,9 +400,12 @@ Item {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 2
 
               RowLayout {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 8
                 Text {
                   text: "Power Profile"
@@ -407,14 +416,19 @@ Item {
                 }
                 Text {
                   visible: profileCard.isFocused
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to cycle"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
+                  elide: Text.ElideRight
                 }
               }
 
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: {
                   for (var i = 0; i < root.powerProfiles.length; i++) {
                     if (root.powerProfiles[i].id === root.currentProfile) return root.powerProfiles[i].description
@@ -509,7 +523,8 @@ Item {
       Rectangle {
         id: stayAwakeCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 74
+        implicitHeight: Math.max(74, stayAwakeRowLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 1
         color: stayAwakeCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
@@ -526,6 +541,7 @@ Item {
         }
 
         RowLayout {
+          id: stayAwakeRowLayout
           anchors.fill: parent
           anchors.margins: 14
           spacing: 14
@@ -547,9 +563,12 @@ Item {
 
           ColumnLayout {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             spacing: 2
 
             RowLayout {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 8
               Text {
                 text: "Stay Awake (Inhibit Sleep)"
@@ -560,18 +579,24 @@ Item {
               }
               Text {
                 visible: stayAwakeCard.isFocused
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: "• Press [Enter/Space or a] to toggle"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.accent
+                elide: Text.ElideRight
               }
             }
 
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
               text: root.stayAwake ? "Idle inhibition active: screen will remain on and will not lock." : "Standard power-saving idle timers and automatic locking are enabled."
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11
               color: Color.muted
+              elide: Text.ElideRight
             }
           }
 
@@ -599,7 +624,8 @@ Item {
       Rectangle {
         id: screensaverCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 112
+        implicitHeight: Math.max(116, screensaverColLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 2
         color: screensaverCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
@@ -608,11 +634,12 @@ Item {
 
         MouseArea {
           anchors.fill: parent
-          z: -1
+          cursorShape: Qt.PointingHandCursor
           onClicked: root.focusedRow = 2
         }
 
         ColumnLayout {
+          id: screensaverColLayout
           anchors.fill: parent
           anchors.margins: 14
           spacing: 10
@@ -630,9 +657,12 @@ Item {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 2
 
               RowLayout {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 8
                 Text {
                   text: "Screen Off Timeout"
@@ -643,18 +673,24 @@ Item {
                 }
                 Text {
                   visible: screensaverCard.isFocused
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to cycle"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
+                  elide: Text.ElideRight
                 }
               }
 
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: "Turn off screen or activate screensaver when workstation is idle."
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
+                elide: Text.ElideRight
               }
             }
 
@@ -730,7 +766,8 @@ Item {
       Rectangle {
         id: lockCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 112
+        implicitHeight: Math.max(116, lockColLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 3
         color: lockCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
@@ -739,11 +776,12 @@ Item {
 
         MouseArea {
           anchors.fill: parent
-          z: -1
+          cursorShape: Qt.PointingHandCursor
           onClicked: root.focusedRow = 3
         }
 
         ColumnLayout {
+          id: lockColLayout
           anchors.fill: parent
           anchors.margins: 14
           spacing: 10
@@ -761,9 +799,12 @@ Item {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 2
 
               RowLayout {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 8
                 Text {
                   text: "Lock Screen Timeout"
@@ -774,18 +815,24 @@ Item {
                 }
                 Text {
                   visible: lockCard.isFocused
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to cycle"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
+                  elide: Text.ElideRight
                 }
               }
 
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: "Automatically lock the desktop after a designated idle period."
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
+                elide: Text.ElideRight
               }
             }
 

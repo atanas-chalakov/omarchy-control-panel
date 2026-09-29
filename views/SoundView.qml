@@ -8,6 +8,7 @@ import qs.Ui
 
 Item {
   id: root
+  anchors.fill: parent
 
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
@@ -239,11 +240,14 @@ Item {
   }
 
   ScrollView {
+    id: scrollArea
     anchors.fill: parent
     clip: true
+    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+    ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
     ColumnLayout {
-      width: parent.width - 24
+      width: Math.max(200, scrollArea.availableWidth - 12)
       spacing: 14
 
       // Status Notification Toast
@@ -285,7 +289,8 @@ Item {
       Rectangle {
         id: volumeCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 112
+        implicitHeight: Math.max(116, volumeColLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 0
         color: volumeCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
@@ -294,11 +299,12 @@ Item {
 
         MouseArea {
           anchors.fill: parent
-          z: -1
+          cursorShape: Qt.PointingHandCursor
           onClicked: root.focusedRow = 0
         }
 
         ColumnLayout {
+          id: volumeColLayout
           anchors.fill: parent
           anchors.margins: 14
           spacing: 10
@@ -316,9 +322,12 @@ Item {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 2
 
               RowLayout {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 8
                 Text {
                   text: "Master Output Volume"
@@ -329,18 +338,24 @@ Item {
                 }
                 Text {
                   visible: volumeCard.isFocused
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to adjust ±5%"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
+                  elide: Text.ElideRight
                 }
               }
 
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: "System main sound output volume level."
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
+                elide: Text.ElideRight
               }
             }
 
@@ -396,7 +411,8 @@ Item {
       Rectangle {
         id: muteCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 74
+        implicitHeight: Math.max(74, muteRowLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 1
         color: muteCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
@@ -413,6 +429,7 @@ Item {
         }
 
         RowLayout {
+          id: muteRowLayout
           anchors.fill: parent
           anchors.margins: 14
           spacing: 14
@@ -434,9 +451,12 @@ Item {
 
           ColumnLayout {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             spacing: 2
 
             RowLayout {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 8
               Text {
                 text: "Mute All Audio Output"
@@ -447,18 +467,24 @@ Item {
               }
               Text {
                 visible: muteCard.isFocused
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: "• Press [Enter/Space or m] to toggle"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.accent
+                elide: Text.ElideRight
               }
             }
 
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
               text: root.muted ? "Audio output is currently muted" : "Audio output is active and unmuted"
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11
               color: Color.muted
+              elide: Text.ElideRight
             }
           }
 
@@ -486,7 +512,8 @@ Item {
       Rectangle {
         id: sinkCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 120
+        implicitHeight: Math.max(124, sinkColLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 2
         color: sinkCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
@@ -495,14 +522,15 @@ Item {
 
         MouseArea {
           anchors.fill: parent
-          z: -1
+          cursorShape: Qt.PointingHandCursor
           onClicked: root.focusedRow = 2
         }
 
         ColumnLayout {
+          id: sinkColLayout
           anchors.fill: parent
           anchors.margins: 14
-          spacing: 10
+          spacing: 12
 
           RowLayout {
             Layout.fillWidth: true
@@ -517,9 +545,12 @@ Item {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 2
 
               RowLayout {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 8
                 Text {
                   text: "Audio Output Device"
@@ -530,18 +561,24 @@ Item {
                 }
                 Text {
                   visible: sinkCard.isFocused
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to cycle"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
+                  elide: Text.ElideRight
                 }
               }
 
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: "Select default speaker or headphone sink."
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
+                elide: Text.ElideRight
               }
             }
 
@@ -574,15 +611,18 @@ Item {
           }
 
           // Devices list pills
-          RowLayout {
+          GridLayout {
             Layout.fillWidth: true
-            spacing: 8
+            columns: (root.sinks.length > 1 && sinkCard.width >= 460) ? 2 : 1
+            rowSpacing: 6
+            columnSpacing: 8
 
             Repeater {
               model: root.sinks
 
               delegate: Rectangle {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 Layout.preferredHeight: 36
                 radius: 6
                 color: modelData.isDefault ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
@@ -612,6 +652,7 @@ Item {
 
                   Text {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     text: modelData.name
                     font.family: Style.font.family
                     font.pixelSize: 11
@@ -648,7 +689,8 @@ Item {
       Rectangle {
         id: inputVolCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 112
+        implicitHeight: Math.max(116, inputVolColLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 3
         color: inputVolCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
@@ -657,11 +699,12 @@ Item {
 
         MouseArea {
           anchors.fill: parent
-          z: -1
+          cursorShape: Qt.PointingHandCursor
           onClicked: root.focusedRow = 3
         }
 
         ColumnLayout {
+          id: inputVolColLayout
           anchors.fill: parent
           anchors.margins: 14
           spacing: 10
@@ -679,9 +722,12 @@ Item {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 2
 
               RowLayout {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 8
                 Text {
                   text: "Microphone Input Volume"
@@ -692,18 +738,24 @@ Item {
                 }
                 Text {
                   visible: inputVolCard.isFocused
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to adjust ±5%"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
+                  elide: Text.ElideRight
                 }
               }
 
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: "Microphone input gain and recording volume level."
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
+                elide: Text.ElideRight
               }
             }
 
@@ -759,7 +811,8 @@ Item {
       Rectangle {
         id: inputMuteCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 74
+        implicitHeight: Math.max(74, inputMuteRowLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 4
         color: inputMuteCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
@@ -776,6 +829,7 @@ Item {
         }
 
         RowLayout {
+          id: inputMuteRowLayout
           anchors.fill: parent
           anchors.margins: 14
           spacing: 14
@@ -797,9 +851,12 @@ Item {
 
           ColumnLayout {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             spacing: 2
 
             RowLayout {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 8
               Text {
                 text: "Mute Microphone"
@@ -810,18 +867,24 @@ Item {
               }
               Text {
                 visible: inputMuteCard.isFocused
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: "• Press [Enter/Space or m] to toggle"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.accent
+                elide: Text.ElideRight
               }
             }
 
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
               text: root.inputMuted ? "Microphone is muted (no audio input)" : "Microphone is active and unmuted"
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11
               color: Color.muted
+              elide: Text.ElideRight
             }
           }
 
@@ -849,7 +912,8 @@ Item {
       Rectangle {
         id: sourceCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 120
+        implicitHeight: Math.max(124, sourceColLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 5
         color: sourceCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
@@ -858,14 +922,15 @@ Item {
 
         MouseArea {
           anchors.fill: parent
-          z: -1
+          cursorShape: Qt.PointingHandCursor
           onClicked: root.focusedRow = 5
         }
 
         ColumnLayout {
+          id: sourceColLayout
           anchors.fill: parent
           anchors.margins: 14
-          spacing: 10
+          spacing: 12
 
           RowLayout {
             Layout.fillWidth: true
@@ -880,9 +945,12 @@ Item {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 2
 
               RowLayout {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 8
                 Text {
                   text: "Microphone Input Device"
@@ -893,18 +961,24 @@ Item {
                 }
                 Text {
                   visible: sourceCard.isFocused
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to cycle"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
+                  elide: Text.ElideRight
                 }
               }
 
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: "Select default audio input device and recording source."
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
+                elide: Text.ElideRight
               }
             }
 
@@ -937,15 +1011,18 @@ Item {
           }
 
           // Sources list pills
-          RowLayout {
+          GridLayout {
             Layout.fillWidth: true
-            spacing: 8
+            columns: (root.sources.length > 1 && sourceCard.width >= 460) ? 2 : 1
+            rowSpacing: 6
+            columnSpacing: 8
 
             Repeater {
               model: root.sources
 
               delegate: Rectangle {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 Layout.preferredHeight: 36
                 radius: 6
                 color: modelData.isDefault ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
@@ -975,6 +1052,7 @@ Item {
 
                   Text {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     text: modelData.name
                     font.family: Style.font.family
                     font.pixelSize: 11

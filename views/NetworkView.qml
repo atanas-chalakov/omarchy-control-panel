@@ -8,6 +8,7 @@ import qs.Ui
 
 Item {
   id: root
+  anchors.fill: parent
 
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
@@ -165,11 +166,14 @@ Item {
   }
 
   ScrollView {
+    id: scrollArea
     anchors.fill: parent
     clip: true
+    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+    ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
     ColumnLayout {
-      width: parent.width - 24
+      width: Math.max(200, scrollArea.availableWidth - 12)
       spacing: 14
 
       // Status Notification Toast
@@ -278,7 +282,8 @@ Item {
       Rectangle {
         id: wifiToggleCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 74
+        implicitHeight: Math.max(74, wifiToggleRowLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 0
         color: wifiToggleCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
@@ -295,6 +300,7 @@ Item {
         }
 
         RowLayout {
+          id: wifiToggleRowLayout
           anchors.fill: parent
           anchors.margins: 14
           spacing: 14
@@ -316,9 +322,12 @@ Item {
 
           ColumnLayout {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             spacing: 2
 
             RowLayout {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 8
               Text {
                 text: "Wi-Fi Interface"
@@ -329,18 +338,24 @@ Item {
               }
               Text {
                 visible: wifiToggleCard.isFocused
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: "• Press [Enter/Space or w] to toggle"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.accent
+                elide: Text.ElideRight
               }
             }
 
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
               text: root.wifiEnabled ? "Wireless network interface is active and scanning." : "Wireless radio is switched off."
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11
               color: Color.muted
+              elide: Text.ElideRight
             }
           }
 
@@ -400,7 +415,8 @@ Item {
           delegate: Rectangle {
             id: delegateCard
             Layout.fillWidth: true
-            Layout.preferredHeight: 52
+            implicitHeight: Math.max(52, delegateRowLayout.implicitHeight + 16)
+            Layout.preferredHeight: implicitHeight
             radius: Style.cornerRadius || 6
             readonly property bool isFocused: root.activeFocusSection && root.focusedRow === (index + 1)
             color: delegateCard.isFocused
@@ -419,6 +435,7 @@ Item {
             }
 
             RowLayout {
+              id: delegateRowLayout
               anchors.fill: parent
               anchors.leftMargin: 14
               anchors.rightMargin: 14
@@ -441,11 +458,16 @@ Item {
               // Network Info
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 2
 
                 RowLayout {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   spacing: 6
                   Text {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     text: modelData.ssid
                     font.family: Style.font.family
                     font.pixelSize: Style.font.body || 13

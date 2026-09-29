@@ -346,7 +346,6 @@ Item {
 
             MouseArea {
               anchors.fill: parent
-              z: -1
               onPressed: root.focusSection = "content"
             }
 
@@ -385,6 +384,10 @@ Item {
                 }
 
                 onLoaded: {
+                  if (item) {
+                    item.width = Qt.binding(function() { return categoryLoader.width })
+                    item.height = Qt.binding(function() { return categoryLoader.height })
+                  }
                   if (item && "pluginPath" in item) {
                     item.pluginPath = root.pluginPath
                   }
