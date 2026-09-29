@@ -21,7 +21,9 @@ Item {
     { id: "power", label: "Power & Battery", icon: "󰂄", key: "2" },
     { id: "appearance", label: "Appearance", icon: "", key: "3" },
     { id: "sound", label: "Sound", icon: "󰕾", key: "4" },
-    { id: "about", label: "About System", icon: "", key: "5" }
+    { id: "network", label: "Network & Wi-Fi", icon: "󰤨", key: "5" },
+    { id: "bluetooth", label: "Bluetooth", icon: "󰂯", key: "6" },
+    { id: "about", label: "About System", icon: "", key: "7" }
   ]
 
   function open(payloadJson) {
@@ -117,7 +119,9 @@ Item {
         else if (key === "2") { root.currentCategory = "power"; root.focusSection = "sidebar" }
         else if (key === "3") { root.currentCategory = "appearance"; root.focusSection = "sidebar" }
         else if (key === "4") { root.currentCategory = "sound"; root.focusSection = "sidebar" }
-        else if (key === "5") { root.currentCategory = "about"; root.focusSection = "sidebar" }
+        else if (key === "5") { root.currentCategory = "network"; root.focusSection = "sidebar" }
+        else if (key === "6") { root.currentCategory = "bluetooth"; root.focusSection = "sidebar" }
+        else if (key === "7") { root.currentCategory = "about"; root.focusSection = "sidebar" }
         else if (root.focusSection === "content" && categoryLoader.item && typeof categoryLoader.item.handleTextKey === "function") {
           categoryLoader.item.handleTextKey(key)
         }
@@ -374,6 +378,8 @@ Item {
                   if (root.currentCategory === "power") return "views/PowerView.qml"
                   if (root.currentCategory === "appearance") return "views/AppearanceView.qml"
                   if (root.currentCategory === "sound") return "views/SoundView.qml"
+                  if (root.currentCategory === "network") return "views/NetworkView.qml"
+                  if (root.currentCategory === "bluetooth") return "views/BluetoothView.qml"
                   if (root.currentCategory === "about") return "views/AboutView.qml"
                   return ""
                 }
@@ -422,7 +428,7 @@ Item {
           spacing: 12
 
           Text {
-            text: "⌨ Shortcuts: [Tab] Switch Panels  •  [↑/↓ or j/k] Select Setting  •  [←/→ or h/l] Adjust Value  •  [Enter/Space] Activate  •  [1-5] Categories  •  [Esc] Close"
+            text: "⌨ Shortcuts: [Tab] Switch Panels  •  [↑/↓ or j/k] Select Setting  •  [←/→ or h/l] Adjust Value  •  [Enter/Space] Activate  •  [1-7] Categories  •  [Esc] Close"
             font.family: Style.font.family
             font.pixelSize: 11
             color: Color.muted
