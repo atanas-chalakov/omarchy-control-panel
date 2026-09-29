@@ -9,7 +9,8 @@ import qs.Ui
 Item {
   id: root
 
-  property string pluginPath: ""
+  property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
+  onPluginPathChanged: refresh()
   property int volume: 50
   property bool muted: false
   property var sinks: []

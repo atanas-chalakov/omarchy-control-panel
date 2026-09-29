@@ -9,7 +9,8 @@ import qs.Ui
 Item {
   id: root
 
-  property string pluginPath: ""
+  property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
+  onPluginPathChanged: refresh()
   property string currentProfile: "balanced"
   property int batteryCapacity: 100
   property string batteryStatus: "Unknown"

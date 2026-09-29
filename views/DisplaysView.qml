@@ -9,7 +9,8 @@ import qs.Ui
 Item {
   id: root
 
-  property string pluginPath: ""
+  property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
+  onPluginPathChanged: refresh()
   property int brightness: 100
   property var monitors: []
   property var activeMonitor: monitors.length > 0 ? monitors[0] : null

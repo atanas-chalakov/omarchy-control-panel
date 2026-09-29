@@ -34,6 +34,9 @@ Item {
         }
       } catch (e) {}
     }
+    if (categoryLoader.item && typeof categoryLoader.item.refresh === "function") {
+      categoryLoader.item.refresh()
+    }
   }
 
   function close() {
@@ -275,6 +278,9 @@ Item {
                 onLoaded: {
                   if (item && "pluginPath" in item) {
                     item.pluginPath = root.pluginPath
+                  }
+                  if (item && typeof item.refresh === "function") {
+                    item.refresh()
                   }
                 }
 

@@ -39,6 +39,18 @@ case "$cmd" in
       lock=$(jq -r '.idle.lock // 300' "$shell_json" 2>/dev/null || echo 300)
     fi
 
+    # If screensaver-off toggle is active, report 0 (Never)
+    if omarchy-toggle-enabled screensaver-off 2>/dev/null; then
+      screensaver=0
+    elif (( screensaver == 0 )); then
+      screensaver=0
+    fi
+
+    # Lock >= 86400 is treated as Never (0)
+    if (( lock >= 86400 || lock == 0 )); then
+      lock=0
+    fi
+
     jq -n \
       --arg profile "$profile" \
       --argjson bat_present "$bat_present" \
@@ -73,9 +85,27 @@ case "$cmd" in
     screensaver="${2:-}"
     lock="${3:-}"
     shell_json="$HOME/.config/omarchy/shell.json"
-    if [[ -f "$shell_json" && -n "$screensaver" && -n "$lock" ]]; then
+
+    # 1. Screensaver handling (0 = Never -> screensaver-off toggle)
+    if [[ "$screensaver" == "0" ]]; then
+      mkdir -p "$HOME/.local/state/omarchy/toggles"
+      touch "$HOME/.local/state/omarchy/toggles/screensaver-off"
+      actual_screensaver=150
+    else
+      rm -f "$HOME/.local/state/omarchy/toggles/screensaver-off"
+      actual_screensaver="$screensaver"
+    fi
+
+    # 2. Lock handling (0 = Never -> 86400s)
+    if [[ "$lock" == "0" ]]; then
+      actual_lock=86400
+    else
+      actual_lock="$lock"
+    fi
+
+    if [[ -f "$shell_json" && -n "$actual_screensaver" && -n "$actual_lock" ]]; then
       tmp_file="${shell_json}.tmp.$$"
-      jq --argjson s "$screensaver" --argjson l "$lock" \
+      jq --argjson s "$actual_screensaver" --argjson l "$actual_lock" \
         '.idle.screensaver = $s | .idle.lock = $l' "$shell_json" > "$tmp_file" && mv "$tmp_file" "$shell_json"
     fi
     ;;

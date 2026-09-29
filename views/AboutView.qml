@@ -9,7 +9,8 @@ import qs.Ui
 Item {
   id: root
 
-  property string pluginPath: ""
+  property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
+  onPluginPathChanged: refresh()
   property string osName: "Omarchy"
   property string osVersion: "4.0.3"
   property string kernel: ""
