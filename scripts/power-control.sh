@@ -51,6 +51,10 @@ case "$cmd" in
       lock=0
     fi
 
+    # 4. Stay Awake (Inhibit Idle / Sleep)
+    stay_awake=$(omarchy-toggle-idle status 2>/dev/null | jq -r '.enabled // false' 2>/dev/null || echo "false")
+    [[ "$stay_awake" == "true" ]] && stay_awake=true || stay_awake=false
+
     jq -n \
       --arg profile "$profile" \
       --argjson bat_present "$bat_present" \
@@ -59,8 +63,10 @@ case "$cmd" in
       --argjson ac_online "$ac_online" \
       --argjson screensaver "$screensaver" \
       --argjson lock "$lock" \
+      --argjson stay_awake "$stay_awake" \
       '{
         profile: $profile,
+        stayAwake: $stay_awake,
         battery: {
           present: $bat_present,
           capacity: $bat_cap,
@@ -72,6 +78,11 @@ case "$cmd" in
           lock: $lock
         }
       }'
+    ;;
+
+  set-stay-awake)
+    action="${2:-toggle}"
+    omarchy-toggle-idle "$action" >/dev/null 2>&1 || true
     ;;
 
   set-profile)

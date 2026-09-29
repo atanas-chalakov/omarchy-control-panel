@@ -50,14 +50,43 @@ case "$cmd" in
       }
     ' | jq -R 'split("\t") | {id: .[0], name: .[1], isDefault: (.[2] == "true")}' | jq -s .)
 
+    # 3. Input (Microphone) Volume & Mute
+    input_vol_raw=$(wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null || echo "Volume: 1.0")
+    input_vol_num=$(echo "$input_vol_raw" | awk '{print $2}')
+    input_is_muted=false
+    [[ "$input_vol_raw" =~ \[MUTED\] ]] && input_is_muted=true
+
+    input_vol_percent=$(awk -v v="$input_vol_num" 'BEGIN { printf "%d", (v * 100) + 0.5 }')
+    if (( input_vol_percent > 100 )); then input_vol_percent=100; fi
+    if (( input_vol_percent < 0 )); then input_vol_percent=0; fi
+
+    # 4. Input Sources (Microphones)
+    sources_json=$(wpctl status 2>/dev/null | awk '
+      /Sources:/,/Filters:/ {
+        if ($0 ~ /Sources:/) { in_sources=1; next }
+        if ($0 ~ /Filters:/ || $0 ~ /Streams:/) { in_sources=0 }
+        if (in_sources && match($0, /([0-9]+)\.[[:space:]]+(.*)[[:space:]]+\[vol:/, m)) {
+          is_default = ($0 ~ /\*/) ? "true" : "false"
+          gsub(/[[:space:]]+$/, "", m[2])
+          printf "%s\t%s\t%s\n", m[1], m[2], is_default
+        }
+      }
+    ' | jq -R 'split("\t") | {id: .[0], name: .[1], isDefault: (.[2] == "true")}' | jq -s .)
+
     jq -n \
       --argjson volume "$vol_percent" \
       --argjson muted "$is_muted" \
       --argjson sinks "$sinks_json" \
+      --argjson inputVolume "$input_vol_percent" \
+      --argjson inputMuted "$input_is_muted" \
+      --argjson sources "$sources_json" \
       '{
         volume: $volume,
         muted: $muted,
-        sinks: ($sinks // [])
+        sinks: ($sinks // []),
+        inputVolume: $inputVolume,
+        inputMuted: $inputMuted,
+        sources: ($sources // [])
       }'
     ;;
 
@@ -82,6 +111,29 @@ case "$cmd" in
     sink_id="${2:-}"
     if [[ -n "$sink_id" ]]; then
       wpctl set-default "$sink_id" >/dev/null 2>&1 || true
+    fi
+    ;;
+
+  audio-set-input-volume)
+    val="${2:-}"
+    if [[ -n "$val" ]]; then
+      num=$(printf '%.0f' "$val")
+      if (( num < 0 )); then num=0; fi
+      if (( num > 100 )); then num=100; fi
+      float_val=$(awk -v n="$num" 'BEGIN { printf "%.2f", n / 100 }')
+      wpctl set-volume @DEFAULT_AUDIO_SOURCE@ "$float_val" >/dev/null 2>&1 || true
+    fi
+    ;;
+
+  audio-set-input-mute)
+    action="${2:-toggle}"
+    wpctl set-mute @DEFAULT_AUDIO_SOURCE@ "$action" >/dev/null 2>&1 || true
+    ;;
+
+  audio-set-source)
+    source_id="${2:-}"
+    if [[ -n "$source_id" ]]; then
+      wpctl set-default "$source_id" >/dev/null 2>&1 || true
     fi
     ;;
 

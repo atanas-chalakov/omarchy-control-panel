@@ -18,6 +18,8 @@ Item {
   property bool acOnline: true
   property int screensaverTimeout: 150
   property int lockTimeout: 300
+  property bool stayAwake: false
+  property string statusMessage: ""
 
   readonly property var powerProfiles: [
     {
@@ -57,7 +59,7 @@ Item {
   ]
 
   property bool activeFocusSection: false
-  property int focusedRow: 0   // 0: Profiles, 1: Screen Off, 2: Lock Screen
+  property int focusedRow: 0   // 0: Profiles, 1: Stay Awake, 2: Screen Off, 3: Lock Screen
 
   function currentProfileIndex() {
     for (var i = 0; i < powerProfiles.length; i++) {
@@ -100,13 +102,14 @@ Item {
 
   function handleMove(dx, dy) {
     if (dy !== 0) {
-      focusedRow = Math.max(0, Math.min(2, focusedRow + dy))
+      focusedRow = Math.max(0, Math.min(3, focusedRow + dy))
       return true
     }
     if (dx !== 0) {
       if (focusedRow === 0) cycleProfile(dx)
-      else if (focusedRow === 1) cycleScreensaver(dx)
-      else if (focusedRow === 2) cycleLock(dx)
+      else if (focusedRow === 1) toggleStayAwake()
+      else if (focusedRow === 2) cycleScreensaver(dx)
+      else if (focusedRow === 3) cycleLock(dx)
       return true
     }
     return false
@@ -114,8 +117,9 @@ Item {
 
   function handleActivate() {
     if (focusedRow === 0) cycleProfile(1)
-    else if (focusedRow === 1) cycleScreensaver(1)
-    else if (focusedRow === 2) cycleLock(1)
+    else if (focusedRow === 1) toggleStayAwake()
+    else if (focusedRow === 2) cycleScreensaver(1)
+    else if (focusedRow === 3) cycleLock(1)
   }
 
   function handleTextKey(key) {
@@ -123,17 +127,20 @@ Item {
       refresh()
     } else if (key === "p" || key === "P") {
       focusedRow = 0
-    } else if (key === "s" || key === "S") {
+    } else if (key === "a" || key === "A") {
       focusedRow = 1
-    } else if (key === "l" || key === "L") {
+      toggleStayAwake()
+    } else if (key === "s" || key === "S") {
       focusedRow = 2
+    } else if (key === "l" || key === "L") {
+      focusedRow = 3
     } else if (key >= "1" && key <= "5") {
       var n = parseInt(key) - 1
       if (focusedRow === 0 && n < powerProfiles.length) {
         setProfile(powerProfiles[n].id)
-      } else if (focusedRow === 1 && n < screensaverOptions.length) {
+      } else if (focusedRow === 2 && n < screensaverOptions.length) {
         setIdle(screensaverOptions[n].seconds, root.lockTimeout)
-      } else if (focusedRow === 2 && n < lockOptions.length) {
+      } else if (focusedRow === 3 && n < lockOptions.length) {
         setIdle(root.screensaverTimeout, lockOptions[n].seconds)
       }
     }
@@ -146,10 +153,18 @@ Item {
     }
   }
 
+  function toggleStayAwake() {
+    root.stayAwake = !root.stayAwake
+    setStayAwakeProcess.command = [pluginPath + "/scripts/power-control.sh", "set-stay-awake", "toggle"]
+    setStayAwakeProcess.running = true
+    notifyStatus(root.stayAwake ? "Stay Awake Enabled (Idle Inhibited)" : "Stay Awake Disabled")
+  }
+
   function setProfile(profileId) {
     root.currentProfile = profileId
     setProfileProcess.command = [pluginPath + "/scripts/power-control.sh", "set-profile", profileId]
     setProfileProcess.running = true
+    notifyStatus("Power Profile: " + profileId)
   }
 
   function setIdle(newScreensaver, newLock) {
@@ -162,6 +177,19 @@ Item {
       String(newLock)
     ]
     setIdleProcess.running = true
+    notifyStatus("Idle timers updated")
+  }
+
+  function notifyStatus(msg) {
+    statusMessage = msg
+    statusClearTimer.restart()
+  }
+
+  Timer {
+    id: statusClearTimer
+    interval: 3000
+    repeat: false
+    onTriggered: root.statusMessage = ""
   }
 
   Component.onCompleted: refresh()
@@ -175,6 +203,7 @@ Item {
         try {
           var data = JSON.parse(text)
           if (data.profile) root.currentProfile = data.profile
+          if (data.stayAwake !== undefined) root.stayAwake = (data.stayAwake === true)
           if (data.battery) {
             root.batteryPresent = data.battery.present === true
             root.batteryCapacity = (data.battery.capacity !== undefined && data.battery.capacity !== null) ? Number(data.battery.capacity) : 100
@@ -206,6 +235,12 @@ Item {
     onRunningChanged: if (!running) root.refresh()
   }
 
+  // Set Stay Awake Process
+  Process {
+    id: setStayAwakeProcess
+    onRunningChanged: if (!running) root.refresh()
+  }
+
   // Set Idle Process
   Process {
     id: setIdleProcess
@@ -219,6 +254,31 @@ Item {
     ColumnLayout {
       width: parent.width - 24
       spacing: 14
+
+      // Status Notification Toast
+      Rectangle {
+        Layout.fillWidth: true
+        Layout.preferredHeight: 32
+        visible: root.statusMessage.length > 0
+        radius: 6
+        color: Color.pickAlpha("accent.subtle", "#1f3b30")
+        border.color: Color.accent
+        border.width: 1
+
+        RowLayout {
+          anchors.fill: parent
+          anchors.leftMargin: 12
+          anchors.rightMargin: 12
+
+          Text {
+            text: "✓  " + root.statusMessage
+            font.family: Style.font.family
+            font.pixelSize: 12
+            font.bold: true
+            color: Color.accent
+          }
+        }
+      }
 
       // Power/Battery Hero Card
       Rectangle {
@@ -445,13 +505,103 @@ Item {
         }
       }
 
-      // Setting Row 1: Screen Off Timeout
+      // Setting Row 1: Stay Awake (Inhibit Idle / Sleep) Toggle Card
+      Rectangle {
+        id: stayAwakeCard
+        Layout.fillWidth: true
+        Layout.preferredHeight: 74
+        radius: Style.cornerRadius || 8
+        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 1
+        color: stayAwakeCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
+        border.color: stayAwakeCard.isFocused ? Color.accent : "transparent"
+        border.width: stayAwakeCard.isFocused ? 2 : 1
+
+        MouseArea {
+          anchors.fill: parent
+          cursorShape: Qt.PointingHandCursor
+          onClicked: {
+            root.focusedRow = 1
+            root.toggleStayAwake()
+          }
+        }
+
+        RowLayout {
+          anchors.fill: parent
+          anchors.margins: 14
+          spacing: 14
+
+          Rectangle {
+            width: 44
+            height: 44
+            radius: 8
+            color: root.stayAwake ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#20252b")
+
+            Text {
+              anchors.centerIn: parent
+              text: root.stayAwake ? "󰌵" : "󰒲"
+              font.family: Style.font.family
+              font.pixelSize: 20
+              color: root.stayAwake ? Color.accent : Color.foreground
+            }
+          }
+
+          ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 2
+
+            RowLayout {
+              spacing: 8
+              Text {
+                text: "Stay Awake (Inhibit Sleep)"
+                font.family: Style.font.family
+                font.pixelSize: Style.font.subtitle || 14
+                font.bold: true
+                color: Color.foreground
+              }
+              Text {
+                visible: stayAwakeCard.isFocused
+                text: "• Press [Enter/Space or a] to toggle"
+                font.family: Style.font.family
+                font.pixelSize: 11
+                color: Color.accent
+              }
+            }
+
+            Text {
+              text: root.stayAwake ? "Idle inhibition active: screen will remain on and will not lock." : "Standard power-saving idle timers and automatic locking are enabled."
+              font.family: Style.font.family
+              font.pixelSize: Style.font.subtext || 11
+              color: Color.muted
+            }
+          }
+
+          Rectangle {
+            width: 90
+            height: 32
+            radius: 16
+            color: root.stayAwake ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
+            border.color: stayAwakeCard.isFocused ? Color.accent : "transparent"
+            border.width: stayAwakeCard.isFocused ? 2 : 0
+
+            Text {
+              anchors.centerIn: parent
+              text: root.stayAwake ? "AWAKE" : "NORMAL"
+              font.family: Style.font.family
+              font.pixelSize: 11
+              font.bold: true
+              color: root.stayAwake ? "#000000" : Color.muted
+            }
+          }
+        }
+      }
+
+      // Setting Row 2: Screen Off Timeout
       Rectangle {
         id: screensaverCard
         Layout.fillWidth: true
         Layout.preferredHeight: 112
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 1
+        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 2
         color: screensaverCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
         border.color: screensaverCard.isFocused ? Color.accent : "transparent"
         border.width: screensaverCard.isFocused ? 2 : 1
@@ -459,7 +609,7 @@ Item {
         MouseArea {
           anchors.fill: parent
           z: -1
-          onClicked: root.focusedRow = 1
+          onClicked: root.focusedRow = 2
         }
 
         ColumnLayout {
@@ -518,7 +668,7 @@ Item {
                 implicitHeight: 32
                 bordered: true
                 onClicked: {
-                  root.focusedRow = 1
+                  root.focusedRow = 2
                   root.cycleScreensaver(-1)
                 }
               }
@@ -529,7 +679,7 @@ Item {
                 implicitHeight: 32
                 bordered: true
                 onClicked: {
-                  root.focusedRow = 1
+                  root.focusedRow = 2
                   root.cycleScreensaver(1)
                 }
               }
@@ -557,7 +707,7 @@ Item {
                   anchors.fill: parent
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
-                    root.focusedRow = 1
+                    root.focusedRow = 2
                     root.setIdle(modelData.seconds, root.lockTimeout)
                   }
                 }
@@ -576,13 +726,13 @@ Item {
         }
       }
 
-      // Setting Row 2: Lock Screen Timeout
+      // Setting Row 3: Lock Screen Timeout
       Rectangle {
         id: lockCard
         Layout.fillWidth: true
         Layout.preferredHeight: 112
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 2
+        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 3
         color: lockCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
         border.color: lockCard.isFocused ? Color.accent : "transparent"
         border.width: lockCard.isFocused ? 2 : 1
@@ -590,7 +740,7 @@ Item {
         MouseArea {
           anchors.fill: parent
           z: -1
-          onClicked: root.focusedRow = 2
+          onClicked: root.focusedRow = 3
         }
 
         ColumnLayout {
@@ -649,7 +799,7 @@ Item {
                 implicitHeight: 32
                 bordered: true
                 onClicked: {
-                  root.focusedRow = 2
+                  root.focusedRow = 3
                   root.cycleLock(-1)
                 }
               }
@@ -660,7 +810,7 @@ Item {
                 implicitHeight: 32
                 bordered: true
                 onClicked: {
-                  root.focusedRow = 2
+                  root.focusedRow = 3
                   root.cycleLock(1)
                 }
               }
@@ -688,7 +838,7 @@ Item {
                   anchors.fill: parent
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
-                    root.focusedRow = 2
+                    root.focusedRow = 3
                     root.setIdle(root.screensaverTimeout, modelData.seconds)
                   }
                 }

@@ -15,6 +15,8 @@ Item {
   property var monitors: []
   property var activeMonitor: monitors.length > 0 ? monitors[0] : null
   property real currentScale: activeMonitor ? Number(activeMonitor.scale) : 1.0
+  property bool nightlightEnabled: false
+  property int nightlightTemp: 4000
   property string statusMessage: ""
 
   readonly property var scaleOptions: [
@@ -25,6 +27,14 @@ Item {
     { label: "200%", value: "2" }
   ]
 
+  readonly property var nightlightOptions: [
+    { label: "3500K (Warmest)", temp: 3500 },
+    { label: "4000K (Warm)", temp: 4000 },
+    { label: "4500K (Mild)", temp: 4500 },
+    { label: "5000K (Normal)", temp: 5000 },
+    { label: "6000K (Cool)", temp: 6000 }
+  ]
+
   readonly property var commonModes: [
     { label: "1920 × 1080 (FHD)", mode: "1920x1080@60.008" },
     { label: "1600 × 900", mode: "1600x900@60" },
@@ -33,7 +43,7 @@ Item {
   ]
 
   property bool activeFocusSection: false
-  property int focusedRow: 0   // 0: Brightness, 1: Scale, 2: Resolution
+  property int focusedRow: 0   // 0: Brightness, 1: Night Light Toggle, 2: Warmth, 3: Scale, 4: Resolution
 
   function currentScaleIndex() {
     var best = 0
@@ -54,6 +64,16 @@ Item {
     return 0
   }
 
+  function currentNightlightIndex() {
+    var best = 1
+    var minDiff = 99999
+    for (var i = 0; i < nightlightOptions.length; i++) {
+      var diff = Math.abs(root.nightlightTemp - nightlightOptions[i].temp)
+      if (diff < minDiff) { minDiff = diff; best = i }
+    }
+    return best
+  }
+
   function cycleScale(delta) {
     var idx = currentScaleIndex()
     var next = Math.max(0, Math.min(scaleOptions.length - 1, idx + delta))
@@ -66,6 +86,12 @@ Item {
     setMode(commonModes[next].mode)
   }
 
+  function cycleNightlightTemp(delta) {
+    var idx = currentNightlightIndex()
+    var next = Math.max(0, Math.min(nightlightOptions.length - 1, idx + delta))
+    setNightlightTemp(nightlightOptions[next].temp)
+  }
+
   function adjustBrightness(delta) {
     var val = Math.max(5, Math.min(100, root.brightness + delta))
     setBrightness(val)
@@ -73,13 +99,15 @@ Item {
 
   function handleMove(dx, dy) {
     if (dy !== 0) {
-      focusedRow = Math.max(0, Math.min(2, focusedRow + dy))
+      focusedRow = Math.max(0, Math.min(4, focusedRow + dy))
       return true
     }
     if (dx !== 0) {
       if (focusedRow === 0) adjustBrightness(dx * 5)
-      else if (focusedRow === 1) cycleScale(dx)
-      else if (focusedRow === 2) cycleMode(dx)
+      else if (focusedRow === 1) toggleNightlight()
+      else if (focusedRow === 2) cycleNightlightTemp(dx)
+      else if (focusedRow === 3) cycleScale(dx)
+      else if (focusedRow === 4) cycleMode(dx)
       return true
     }
     return false
@@ -87,8 +115,10 @@ Item {
 
   function handleActivate() {
     if (focusedRow === 0) adjustBrightness(5)
-    else if (focusedRow === 1) cycleScale(1)
-    else if (focusedRow === 2) cycleMode(1)
+    else if (focusedRow === 1) toggleNightlight()
+    else if (focusedRow === 2) cycleNightlightTemp(1)
+    else if (focusedRow === 3) cycleScale(1)
+    else if (focusedRow === 4) cycleMode(1)
   }
 
   function handleTextKey(key) {
@@ -96,14 +126,27 @@ Item {
       refresh()
     } else if (key === "b" || key === "B") {
       focusedRow = 0
-    } else if (key === "s" || key === "S") {
+    } else if (key === "n" || key === "N") {
       focusedRow = 1
-    } else if (key === "m" || key === "M") {
+      toggleNightlight()
+    } else if (key === "w" || key === "W") {
       focusedRow = 2
+    } else if (key === "s" || key === "S") {
+      focusedRow = 3
+    } else if (key === "m" || key === "M") {
+      focusedRow = 4
     } else if (key === "h" || key === "H") {
-      adjustBrightness(-5)
+      if (focusedRow === 0) adjustBrightness(-5)
+      else if (focusedRow === 1) toggleNightlight()
+      else if (focusedRow === 2) cycleNightlightTemp(-1)
+      else if (focusedRow === 3) cycleScale(-1)
+      else if (focusedRow === 4) cycleMode(-1)
     } else if (key === "l" || key === "L") {
-      adjustBrightness(5)
+      if (focusedRow === 0) adjustBrightness(5)
+      else if (focusedRow === 1) toggleNightlight()
+      else if (focusedRow === 2) cycleNightlightTemp(1)
+      else if (focusedRow === 3) cycleScale(1)
+      else if (focusedRow === 4) cycleMode(1)
     }
   }
 
@@ -120,6 +163,20 @@ Item {
     setBrightnessProcess.command = [pluginPath + "/scripts/display-control.sh", "set-brightness", String(p)]
     setBrightnessProcess.running = true
     notifyStatus("Brightness: " + p + "%")
+  }
+
+  function toggleNightlight() {
+    root.nightlightEnabled = !root.nightlightEnabled
+    setNightlightToggleProcess.command = [pluginPath + "/scripts/display-control.sh", "set-nightlight-toggle"]
+    setNightlightToggleProcess.running = true
+    notifyStatus(root.nightlightEnabled ? "Night Light Enabled" : "Night Light Disabled")
+  }
+
+  function setNightlightTemp(temp) {
+    root.nightlightTemp = temp
+    setNightlightTempProcess.command = [pluginPath + "/scripts/display-control.sh", "set-nightlight-temp", String(temp)]
+    setNightlightTempProcess.running = true
+    notifyStatus("Warmth: " + temp + "K")
   }
 
   function setScale(scaleVal) {
@@ -165,6 +222,12 @@ Item {
           var data = JSON.parse(text)
           if (data.brightness !== undefined) root.brightness = data.brightness
           if (Array.isArray(data.monitors)) root.monitors = data.monitors
+          if (data.nightlight) {
+            root.nightlightEnabled = data.nightlight.enabled === true
+            if (data.nightlight.temperature !== undefined && data.nightlight.temperature !== null) {
+              root.nightlightTemp = Number(data.nightlight.temperature)
+            }
+          }
         } catch (e) {
           console.warn("DisplaysView: JSON parse error", e)
         }
@@ -175,6 +238,18 @@ Item {
   // Set Brightness Process
   Process {
     id: setBrightnessProcess
+  }
+
+  // Set Nightlight Toggle Process
+  Process {
+    id: setNightlightToggleProcess
+    onRunningChanged: if (!running) root.refresh()
+  }
+
+  // Set Nightlight Temp Process
+  Process {
+    id: setNightlightTempProcess
+    onRunningChanged: if (!running) root.refresh()
   }
 
   // Set Scale Process
@@ -407,13 +482,234 @@ Item {
         }
       }
 
-      // Setting Row 1: Display Scaling Stepper Card
+      // Setting Row 1: Night Light Toggle Card
+      Rectangle {
+        id: nightlightToggleCard
+        Layout.fillWidth: true
+        Layout.preferredHeight: 74
+        radius: Style.cornerRadius || 8
+        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 1
+        color: nightlightToggleCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
+        border.color: nightlightToggleCard.isFocused ? Color.accent : "transparent"
+        border.width: nightlightToggleCard.isFocused ? 2 : 1
+
+        MouseArea {
+          anchors.fill: parent
+          cursorShape: Qt.PointingHandCursor
+          onClicked: {
+            root.focusedRow = 1
+            root.toggleNightlight()
+          }
+        }
+
+        RowLayout {
+          anchors.fill: parent
+          anchors.margins: 14
+          spacing: 14
+
+          Rectangle {
+            width: 44
+            height: 44
+            radius: 8
+            color: root.nightlightEnabled ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#20252b")
+
+            Text {
+              anchors.centerIn: parent
+              text: "󰖔"
+              font.family: Style.font.family
+              font.pixelSize: 20
+              color: root.nightlightEnabled ? Color.accent : Color.foreground
+            }
+          }
+
+          ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 2
+
+            RowLayout {
+              spacing: 8
+              Text {
+                text: "Night Light (Blue Light Filter)"
+                font.family: Style.font.family
+                font.pixelSize: Style.font.subtitle || 14
+                font.bold: true
+                color: Color.foreground
+              }
+              Text {
+                visible: nightlightToggleCard.isFocused
+                text: "• Press [Enter/Space or n] to toggle"
+                font.family: Style.font.family
+                font.pixelSize: 11
+                color: Color.accent
+              }
+            }
+
+            Text {
+              text: root.nightlightEnabled ? "Warmer colors active to reduce eye strain and assist sleep." : "Standard daytime color spectrum is currently active."
+              font.family: Style.font.family
+              font.pixelSize: Style.font.subtext || 11
+              color: Color.muted
+            }
+          }
+
+          Rectangle {
+            width: 90
+            height: 32
+            radius: 16
+            color: root.nightlightEnabled ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
+            border.color: nightlightToggleCard.isFocused ? Color.accent : "transparent"
+            border.width: nightlightToggleCard.isFocused ? 2 : 0
+
+            Text {
+              anchors.centerIn: parent
+              text: root.nightlightEnabled ? "ACTIVE" : "OFF"
+              font.family: Style.font.family
+              font.pixelSize: 11
+              font.bold: true
+              color: root.nightlightEnabled ? "#000000" : Color.muted
+            }
+          }
+        }
+      }
+
+      // Setting Row 2: Night Light Warmth Stepper Card
+      Rectangle {
+        id: nightlightTempCard
+        Layout.fillWidth: true
+        Layout.preferredHeight: 112
+        radius: Style.cornerRadius || 8
+        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 2
+        color: nightlightTempCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
+        border.color: nightlightTempCard.isFocused ? Color.accent : "transparent"
+        border.width: nightlightTempCard.isFocused ? 2 : 1
+
+        MouseArea {
+          anchors.fill: parent
+          z: -1
+          onClicked: root.focusedRow = 2
+        }
+
+        ColumnLayout {
+          anchors.fill: parent
+          anchors.margins: 14
+          spacing: 10
+
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+
+            Text {
+              text: "󰃟"
+              font.family: Style.font.family
+              font.pixelSize: 18
+              color: nightlightTempCard.isFocused ? Color.accent : Color.foreground
+            }
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 2
+
+              RowLayout {
+                spacing: 8
+                Text {
+                  text: "Color Warmth (Temperature)"
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.subtitle || 14
+                  font.bold: true
+                  color: Color.foreground
+                }
+                Text {
+                  visible: nightlightTempCard.isFocused
+                  text: "• Use [←/→ or h/l] to cycle"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: Color.accent
+                }
+              }
+
+              Text {
+                text: "Target color warmth in Kelvin when Night Light is enabled."
+                font.family: Style.font.family
+                font.pixelSize: Style.font.subtext || 11
+                color: Color.muted
+              }
+            }
+
+            // Stepper buttons
+            RowLayout {
+              spacing: 6
+
+              Button {
+                text: "◀"
+                implicitWidth: 32
+                implicitHeight: 32
+                bordered: true
+                onClicked: {
+                  root.focusedRow = 2
+                  root.cycleNightlightTemp(-1)
+                }
+              }
+
+              Button {
+                text: "▶"
+                implicitWidth: 32
+                implicitHeight: 32
+                bordered: true
+                onClicked: {
+                  root.focusedRow = 2
+                  root.cycleNightlightTemp(1)
+                }
+              }
+            }
+          }
+
+          // Visual segmented option cards
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Repeater {
+              model: root.nightlightOptions
+
+              delegate: Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 34
+                radius: 6
+                readonly property bool isSelected: Math.abs(root.nightlightTemp - modelData.temp) < 200
+                color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
+                border.color: isSelected ? Color.accent : "transparent"
+                border.width: isSelected ? 1 : 0
+
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    root.focusedRow = 2
+                    root.setNightlightTemp(modelData.temp)
+                  }
+                }
+
+                Text {
+                  anchors.centerIn: parent
+                  text: modelData.label
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: isSelected
+                  color: isSelected ? Color.accent : Color.foreground
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Setting Row 3: Display Scaling Stepper Card
       Rectangle {
         id: scaleCard
         Layout.fillWidth: true
         Layout.preferredHeight: 112
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 1
+        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 3
         color: scaleCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
         border.color: scaleCard.isFocused ? Color.accent : "transparent"
         border.width: scaleCard.isFocused ? 2 : 1
@@ -421,7 +717,7 @@ Item {
         MouseArea {
           anchors.fill: parent
           z: -1
-          onClicked: root.focusedRow = 1
+          onClicked: root.focusedRow = 3
         }
 
         ColumnLayout {
@@ -480,7 +776,7 @@ Item {
                 implicitHeight: 32
                 bordered: true
                 onClicked: {
-                  root.focusedRow = 1
+                  root.focusedRow = 3
                   root.cycleScale(-1)
                 }
               }
@@ -491,7 +787,7 @@ Item {
                 implicitHeight: 32
                 bordered: true
                 onClicked: {
-                  root.focusedRow = 1
+                  root.focusedRow = 3
                   root.cycleScale(1)
                 }
               }
@@ -519,7 +815,7 @@ Item {
                   anchors.fill: parent
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
-                    root.focusedRow = 1
+                    root.focusedRow = 3
                     root.setScale(modelData.value)
                   }
                 }
@@ -538,13 +834,13 @@ Item {
         }
       }
 
-      // Setting Row 2: Resolution Stepper Card
+      // Setting Row 4: Resolution Stepper Card
       Rectangle {
         id: modeCard
         Layout.fillWidth: true
         Layout.preferredHeight: 112
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 2
+        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 4
         color: modeCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
         border.color: modeCard.isFocused ? Color.accent : "transparent"
         border.width: modeCard.isFocused ? 2 : 1
@@ -552,7 +848,7 @@ Item {
         MouseArea {
           anchors.fill: parent
           z: -1
-          onClicked: root.focusedRow = 2
+          onClicked: root.focusedRow = 4
         }
 
         ColumnLayout {
@@ -611,7 +907,7 @@ Item {
                 implicitHeight: 32
                 bordered: true
                 onClicked: {
-                  root.focusedRow = 2
+                  root.focusedRow = 4
                   root.cycleMode(-1)
                 }
               }
@@ -622,7 +918,7 @@ Item {
                 implicitHeight: 32
                 bordered: true
                 onClicked: {
-                  root.focusedRow = 2
+                  root.focusedRow = 4
                   root.cycleMode(1)
                 }
               }
@@ -654,7 +950,7 @@ Item {
                   anchors.fill: parent
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
-                    root.focusedRow = 2
+                    root.focusedRow = 4
                     root.setMode(modelData.mode)
                   }
                 }

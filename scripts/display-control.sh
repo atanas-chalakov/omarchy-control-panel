@@ -11,12 +11,15 @@ case "$cmd" in
     fi
 
     monitors=$(hyprctl monitors all -j 2>/dev/null || echo "[]")
-    
+    nightlight=$(omarchy-toggle-nightlight --status 2>/dev/null || echo '{"enabled":false,"temperature":6500}')
+
     jq -n \
       --argjson brightness "$brightness" \
       --argjson monitors "$monitors" \
+      --argjson nightlight "$nightlight" \
       '{
         brightness: ($brightness | tonumber),
+        nightlight: $nightlight,
         monitors: [
           $monitors[] | {
             id: .id,
@@ -33,6 +36,24 @@ case "$cmd" in
           }
         ]
       }'
+    ;;
+
+  set-nightlight-toggle)
+    omarchy-toggle-nightlight >/dev/null 2>&1 || true
+    ;;
+
+  set-nightlight-temp)
+    temp="${2:-4000}"
+    if ! pgrep -x hyprsunset >/dev/null; then
+      setsid uwsm-app -- hyprsunset &
+    fi
+    for _ in {1..5}; do
+      hyprctl hyprsunset temperature "$temp" >/dev/null 2>&1 || true
+      sleep 0.1
+      curr=$(hyprctl hyprsunset temperature 2>/dev/null | grep -oE '[0-9]+' | head -n1 || echo "")
+      [[ "$curr" == "$temp" ]] && break
+    done
+    omarchy-shell -q nightlight refresh >/dev/null 2>&1 || true
     ;;
 
   set-brightness)
