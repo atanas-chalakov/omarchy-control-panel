@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "ac.control-panel",
+  "name": "Control Panel",
+  "version": "0.1.0",
+  "author": "Atanas Chalakov",
+  "description": "Graphical settings and control panel for Omarchy desktop",
+  "kinds": [
+    "panel"
+  ],
+  "entryPoints": {
+    "panel": "ControlPanel.qml"
+  }
+}
