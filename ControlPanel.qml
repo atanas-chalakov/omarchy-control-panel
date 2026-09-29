@@ -185,6 +185,9 @@ Item {
                 source: {
                   if (root.currentCategory === "displays") return "views/DisplaysView.qml"
                   if (root.currentCategory === "power") return "views/PowerView.qml"
+                  if (root.currentCategory === "appearance") return "views/AppearanceView.qml"
+                  if (root.currentCategory === "sound") return "views/SoundView.qml"
+                  if (root.currentCategory === "about") return "views/AboutView.qml"
                   return ""
                 }
 
