@@ -30,6 +30,7 @@ Item {
     { id: "notifications", label: "Notifications", icon: "󰂚", key: "N" },
     { id: "shortcuts", label: "Shortcuts & Keys", icon: "󰌌", key: "K" },
     { id: "agents", label: "AI & Agents", icon: "󰚩", key: "A" },
+    { id: "region", label: "Time & Language", icon: "󰅐", key: "L" },
     { id: "about", label: "About System", icon: "", key: "0" }
   ]
 
@@ -144,6 +145,7 @@ Item {
         else if (root.focusSection === "sidebar" && (key === "n" || key === "N")) { root.currentCategory = "notifications"; root.focusSection = "sidebar" }
         else if (root.focusSection === "sidebar" && (key === "k" || key === "K")) { root.currentCategory = "shortcuts"; root.focusSection = "sidebar" }
         else if (root.focusSection === "sidebar" && (key === "a" || key === "A")) { root.currentCategory = "agents"; root.focusSection = "sidebar" }
+        else if (root.focusSection === "sidebar" && (key === "l" || key === "L")) { root.currentCategory = "region"; root.focusSection = "sidebar" }
         else if (key === "0") { root.currentCategory = "about"; root.focusSection = "sidebar" }
         else if (root.focusSection === "content" && categoryLoader.item && typeof categoryLoader.item.handleTextKey === "function") {
           categoryLoader.item.handleTextKey(key)
@@ -259,7 +261,10 @@ Item {
 
         // Main content area: Sidebar + Details View
         RowLayout {
+          id: mainRow
           Layout.fillWidth: true
+          Layout.preferredWidth: 0
+          Layout.maximumWidth: parent.width
           Layout.fillHeight: true
           spacing: 16
 
@@ -366,8 +371,11 @@ Item {
 
           // Right Panel View
           Rectangle {
+            id: rightPanelView
             Layout.fillWidth: true
+            Layout.preferredWidth: 0
             Layout.fillHeight: true
+            clip: true
             color: "transparent"
 
             DragHandler {
@@ -435,6 +443,7 @@ Item {
               Loader {
                 id: categoryLoader
                 Layout.fillWidth: true
+                Layout.preferredWidth: 0
                 Layout.fillHeight: true
 
                 source: {
@@ -451,6 +460,7 @@ Item {
                   if (root.currentCategory === "notifications") return "views/NotificationsView.qml"
                   if (root.currentCategory === "shortcuts") return "views/ShortcutsView.qml"
                   if (root.currentCategory === "agents") return "views/AgentsView.qml"
+                  if (root.currentCategory === "region") return "views/TimeLanguageView.qml"
                   if (root.currentCategory === "about") return "views/AboutView.qml"
                   return ""
                 }
@@ -506,7 +516,7 @@ Item {
           spacing: 12
 
           Text {
-            text: "⌨ Shortcuts: [Tab] Switch Panels  •  [↑/↓ or j/k] Select Setting  •  [←/→ or h/l] Adjust Value  •  [Enter/Space] Activate  •  [0-9/U/N/K/A] Categories  •  [Esc] Close"
+            text: "⌨ Shortcuts: [Tab] Switch Panels  •  [↑/↓ or j/k] Select Setting  •  [←/→ or h/l] Adjust Value  •  [Enter/Space] Activate  •  [0-9/U/N/K/A/L] Categories  •  [Esc] Close"
             font.family: Style.font.family
             font.pixelSize: 11
             color: Color.muted
