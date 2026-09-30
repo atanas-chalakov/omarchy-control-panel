@@ -19,6 +19,8 @@ Item {
   property string ram: ""
   property string uptime: ""
   property string hostname: ""
+  property string timezone: ""
+  property string ntp: ""
   property bool activeFocusSection: false
 
   function handleMove(dx, dy) {
@@ -32,7 +34,14 @@ Item {
   function handleTextKey(key) {
     if (key === "r" || key === "R") {
       refresh()
+    } else if (key === "t" || key === "T") {
+      openTimezonePicker()
     }
+  }
+
+  function openTimezonePicker() {
+    actionProcess.command = [pluginPath + "/scripts/system-control.sh", "about-set-timezone"]
+    actionProcess.running = true
   }
 
   function refresh() {
@@ -43,6 +52,11 @@ Item {
   }
 
   Component.onCompleted: refresh()
+
+  // Action Process
+  Process {
+    id: actionProcess
+  }
 
   // State Process
   Process {
@@ -59,6 +73,8 @@ Item {
           if (data.ram) root.ram = data.ram
           if (data.uptime) root.uptime = data.uptime
           if (data.hostname) root.hostname = data.hostname
+          if (data.timezone) root.timezone = data.timezone
+          if (data.ntp) root.ntp = data.ntp
         } catch (e) {
           console.warn("AboutView: JSON parse error", e)
         }
@@ -256,6 +272,88 @@ Item {
               font.family: Style.font.family
               font.pixelSize: Style.font.body || 13
               font.bold: true
+            }
+          }
+        }
+      }
+
+      // Time & Region Card
+      Rectangle {
+        Layout.fillWidth: true
+        implicitHeight: Math.max(76, tzColLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
+        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        radius: Style.cornerRadius || 8
+
+        ColumnLayout {
+          id: tzColLayout
+          anchors.fill: parent
+          anchors.margins: 16
+          spacing: 12
+
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+
+            Rectangle {
+              width: 38
+              height: 38
+              radius: 8
+              color: Color.pickAlpha("accent.subtle", "#203a30")
+
+              Text {
+                anchors.centerIn: parent
+                text: "󰃭"
+                font.family: Style.font.family
+                font.pixelSize: 18
+                color: Color.accent
+              }
+            }
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 2
+
+              RowLayout {
+                spacing: 8
+                Text {
+                  text: "Timezone & Network Time"
+                  font.family: Style.font.family
+                  font.pixelSize: 13
+                  font.bold: true
+                  color: Color.foreground
+                }
+
+                Rectangle {
+                  visible: root.ntp.length > 0
+                  Layout.preferredHeight: 18
+                  Layout.preferredWidth: ntpText.implicitWidth + 10
+                  radius: 4
+                  color: (root.ntp === "active") ? Color.pickAlpha("accent.subtle", "#203a30") : Color.pickAlpha("surface.hover", "#22272c")
+
+                  Text {
+                    id: ntpText
+                    anchors.centerIn: parent
+                    text: "NTP: " + root.ntp.toUpperCase()
+                    font.family: Style.font.family
+                    font.pixelSize: 10
+                    font.bold: true
+                    color: (root.ntp === "active") ? Color.accent : Color.muted
+                  }
+                }
+              }
+
+              Text {
+                text: root.timezone.length > 0 ? root.timezone : "Loading timezone..."
+                font.family: Style.font.family
+                font.pixelSize: 12
+                color: Color.muted
+              }
+            }
+
+            Button {
+              text: "󰃭 Change Timezone [T]"
+              onClicked: root.openTimezonePicker()
             }
           }
         }

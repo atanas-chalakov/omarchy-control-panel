@@ -175,6 +175,8 @@ case "$cmd" in
     ram=$(free -h 2>/dev/null | awk '/^Mem:/ {print $3 " used / " $2 " total"}')
     uptime_str=$(uptime -p 2>/dev/null | sed 's/^up //' || echo "")
     host_name=$(hostname 2>/dev/null || echo "")
+    tz_str=$(timedatectl status 2>/dev/null | grep "Time zone:" | sed -e 's/^[[:space:]]*Time zone:[[:space:]]*//' || echo "")
+    ntp_str=$(timedatectl status 2>/dev/null | grep "NTP service:" | awk '{print $3}' || echo "unknown")
 
     jq -n \
       --arg os "$os_name" \
@@ -184,6 +186,8 @@ case "$cmd" in
       --arg ram "$ram" \
       --arg uptime "$uptime_str" \
       --arg hostname "$host_name" \
+      --arg timezone "$tz_str" \
+      --arg ntp "$ntp_str" \
       '{
         os: $os,
         version: $ver,
@@ -191,8 +195,17 @@ case "$cmd" in
         cpu: $cpu,
         ram: $ram,
         uptime: $uptime,
-        hostname: $hostname
+        hostname: $hostname,
+        timezone: $timezone,
+        ntp: $ntp
       }'
+    ;;
+
+  about-set-timezone)
+    if command -v omarchy-menu-timezone >/dev/null 2>&1; then
+      omarchy-menu-timezone &
+    fi
+    echo '{"status":"timezone-picker-launched"}'
     ;;
 
   agents-get)
