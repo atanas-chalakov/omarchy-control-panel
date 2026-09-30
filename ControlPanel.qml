@@ -12,11 +12,12 @@ Item {
   property var shell: null
   property var manifest: null
   property bool closingFromHost: false
-  property string currentCategory: "displays"
-  property string focusSection: "sidebar" // "sidebar" or "content"
+  property string currentCategory: "search"
+  property string focusSection: "content" // "sidebar" or "content"
   readonly property string pluginPath: manifest && manifest.__sourceDir ? manifest.__sourceDir : "/home/ac/.config/omarchy/plugins/ac.control-panel"
 
   readonly property var categories: [
+    { id: "search", label: "Search & Overview", icon: "", key: "S" },
     { id: "displays", label: "Displays", icon: "󰍹", key: "1" },
     { id: "power", label: "Power & Battery", icon: "󰂄", key: "2" },
     { id: "appearance", label: "Appearance", icon: "", key: "3" },
@@ -42,14 +43,22 @@ Item {
         var parsed = JSON.parse(String(payloadJson))
         if (parsed && typeof parsed.category === "string") {
           currentCategory = parsed.category
+          focusSection = (parsed.category === "search") ? "content" : "sidebar"
         }
       } catch (e) {}
+    } else {
+      currentCategory = "search"
+      focusSection = "content"
     }
     if (categoryLoader.item && typeof categoryLoader.item.refresh === "function") {
       categoryLoader.item.refresh()
     }
     Qt.callLater(function() {
-      if (keyCatcher) keyCatcher.forceActiveFocus()
+      if (root.focusSection === "sidebar" && keyCatcher) {
+        keyCatcher.forceActiveFocus()
+      } else if (root.focusSection === "content" && categoryLoader.item && categoryLoader.item.searchField) {
+        categoryLoader.item.searchField.forceActiveFocus()
+      }
     })
   }
 
@@ -73,6 +82,41 @@ Item {
     if (idx < 0) idx = 0
     var nextIdx = (idx + delta + ids.length) % ids.length
     currentCategory = ids[nextIdx]
+    ensureSidebarCategoryVisible(nextIdx)
+  }
+
+  function ensureSidebarCategoryVisible(index) {
+    if (!sidebarScroll || !sidebarScroll.contentItem) return
+    var itemY = index * 50
+    var flick = sidebarScroll.contentItem
+    if (itemY < flick.contentY) {
+      flick.contentY = Math.max(0, itemY)
+    } else if (itemY + 44 > flick.contentY + sidebarScroll.height) {
+      flick.contentY = Math.max(0, itemY + 44 - sidebarScroll.height)
+    }
+  }
+
+  onCurrentCategoryChanged: {
+    var ids = categories.map(function(c) { return c.id })
+    var idx = ids.indexOf(currentCategory)
+    if (idx >= 0) ensureSidebarCategoryVisible(idx)
+  }
+
+  function navigateToSetting(categoryId, cardIndex) {
+    currentCategory = categoryId
+    focusSection = "content"
+    Qt.callLater(function() {
+      if (categoryLoader.item) {
+        if ("focusedCard" in categoryLoader.item) {
+          categoryLoader.item.focusedCard = cardIndex
+        } else if ("focusedRow" in categoryLoader.item) {
+          categoryLoader.item.focusedRow = cardIndex
+        }
+        if (typeof categoryLoader.item.ensureCardVisible === "function") {
+          categoryLoader.item.ensureCardVisible(cardIndex)
+        }
+      }
+    })
   }
 
   function returnFocusToKeyCatcher() {
@@ -90,7 +134,11 @@ Item {
     onVisibleChanged: {
       if (visible) {
         Qt.callLater(function() {
-          if (keyCatcher) keyCatcher.forceActiveFocus()
+          if (root.focusSection === "sidebar" && keyCatcher) {
+            keyCatcher.forceActiveFocus()
+          } else if (root.focusSection === "content" && categoryLoader.item && categoryLoader.item.searchField) {
+            categoryLoader.item.searchField.forceActiveFocus()
+          }
         })
       } else if (!root.closingFromHost && root.shell && typeof root.shell.hide === "function") {
         root.shell.hide((root.manifest && root.manifest.id) || "ac.control-panel")
@@ -132,7 +180,8 @@ Item {
           if (handled === true) return
         }
 
-        if (key === "1") { root.currentCategory = "displays"; root.focusSection = "sidebar" }
+        if (root.focusSection === "sidebar" && (key === "s" || key === "S" || key === "/")) { root.currentCategory = "search"; root.focusSection = "content" }
+        else if (key === "1") { root.currentCategory = "displays"; root.focusSection = "sidebar" }
         else if (key === "2") { root.currentCategory = "power"; root.focusSection = "sidebar" }
         else if (key === "3") { root.currentCategory = "appearance"; root.focusSection = "sidebar" }
         else if (key === "4") { root.currentCategory = "sound"; root.focusSection = "sidebar" }
@@ -427,6 +476,7 @@ Item {
                   Layout.preferredHeight: 22
                   Layout.preferredWidth: navHintText.implicitWidth + 12
                   radius: 4
+                  visible: root.currentCategory !== "search" && rightPanelView.width > 300
                   color: Color.pickAlpha("surface.subtle", "#181b1d")
 
                   Text {
@@ -447,6 +497,7 @@ Item {
                 Layout.fillHeight: true
 
                 source: {
+                  if (root.currentCategory === "search") return "views/SearchView.qml"
                   if (root.currentCategory === "displays") return "views/DisplaysView.qml"
                   if (root.currentCategory === "power") return "views/PowerView.qml"
                   if (root.currentCategory === "appearance") return "views/AppearanceView.qml"
@@ -516,7 +567,7 @@ Item {
           spacing: 12
 
           Text {
-            text: "⌨ Shortcuts: [Tab] Switch Panels  •  [↑/↓ or j/k] Select Setting  •  [←/→ or h/l] Adjust Value  •  [Enter/Space] Activate  •  [0-9/U/N/K/A/L] Categories  •  [Esc] Close"
+            text: "⌨ Shortcuts: [Tab] Switch Panels  •  [↑/↓ or j/k] Select Setting  •  [Enter/Space] Activate  •  [S or /] Search  •  [0-9/U/N/K/A/L] Categories  •  [Esc] Close"
             font.family: Style.font.family
             font.pixelSize: 11
             color: Color.muted
