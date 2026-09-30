@@ -12,11 +12,23 @@ Item {
 
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
+  property var panelRoot: null
   property string currentTheme: "Tokyo Night"
   property var themes: []
   property bool activeFocusSection: false
   property int focusedIndex: 0
+  property string focusTarget: "search" // "search" or "list"
   readonly property bool hasActiveInput: searchField.activeFocus
+
+  onActiveFocusSectionChanged: {
+    if (activeFocusSection) {
+      if (focusTarget === "search") {
+        searchField.forceActiveFocus()
+      }
+    } else {
+      searchField.focus = false
+    }
+  }
 
   readonly property var filteredThemes: {
     var query = searchField.text.trim().toLowerCase()
@@ -33,25 +45,60 @@ Item {
   }
 
   function handleMove(dx, dy) {
-    if (filteredThemes.length === 0) return false
-    if (dy !== 0) {
-      focusedIndex = Math.max(0, Math.min(filteredThemes.length - 1, focusedIndex + dy))
+    if (dx < 0) {
+      if (panelRoot) panelRoot.focusSection = "sidebar"
       return true
+    }
+    if (dy !== 0) {
+      if (dy < 0 && focusedIndex === 0) {
+        focusTarget = "search"
+        searchField.forceActiveFocus()
+        return true
+      }
+      if (filteredThemes.length > 0) {
+        focusedIndex = Math.max(0, Math.min(filteredThemes.length - 1, focusedIndex + dy))
+        ensureVisible(focusedIndex)
+        return true
+      }
     }
     return false
   }
 
   function handleActivate() {
-    if (focusedIndex >= 0 && focusedIndex < filteredThemes.length) {
+    if (focusTarget === "search") {
+      if (filteredThemes.length > 0) {
+        setTheme(filteredThemes[0])
+      }
+    } else if (focusedIndex >= 0 && focusedIndex < filteredThemes.length) {
       setTheme(filteredThemes[focusedIndex])
     }
   }
 
   function handleTextKey(key) {
-    if (key === "/" || key === "f") {
+    if (key === "\b") {
+      focusTarget = "search"
       searchField.forceActiveFocus()
-    } else if (key === "r" || key === "R") {
-      refresh()
+      if (searchField.text.length > 0) {
+        searchField.text = searchField.text.slice(0, -1)
+      }
+      return
+    }
+    if (key.length === 1 && key >= " ") {
+      focusTarget = "search"
+      searchField.forceActiveFocus()
+      searchField.text = searchField.text + key
+      searchField.cursorPosition = searchField.text.length
+    }
+  }
+
+  function ensureVisible(index) {
+    if (!themesScroll || !themesScroll.contentItem) return
+    var itemY = index * 46
+    var flick = themesScroll.contentItem
+    if (itemY < flick.contentY) {
+      flick.contentY = Math.max(0, itemY)
+    } else if (itemY + 46 > flick.contentY + themesScroll.height) {
+      flick.contentY = Math.max(0, itemY + 46 - themesScroll.height)
     }
   }
 
@@ -196,8 +243,17 @@ Item {
       Layout.preferredHeight: 42
       color: Color.pickAlpha("surface.subtle", "#181b1d")
       radius: Style.cornerRadius || 6
-      border.color: searchField.activeFocus ? Color.accent : "transparent"
-      border.width: searchField.activeFocus ? 2 : 1
+      border.color: (root.activeFocusSection && (searchField.activeFocus || root.focusTarget === "search")) ? Color.accent : "transparent"
+      border.width: (root.activeFocusSection && (searchField.activeFocus || root.focusTarget === "search")) ? 2 : 1
+
+      MouseArea {
+        anchors.fill: parent
+        cursorShape: Qt.IBeamCursor
+        onClicked: {
+          root.focusTarget = "search"
+          searchField.forceActiveFocus()
+        }
+      }
 
       RowLayout {
         anchors.fill: parent
@@ -208,37 +264,77 @@ Item {
           text: "  "
           font.family: Style.font.family
           font.pixelSize: 13
-          color: searchField.activeFocus ? Color.accent : Color.muted
+          color: (root.activeFocusSection && (searchField.activeFocus || root.focusTarget === "search")) ? Color.accent : Color.muted
         }
 
         TextField {
           id: searchField
           Layout.fillWidth: true
           Layout.fillHeight: true
-          placeholderText: "Type to filter themes... (Press '/' to search, [↑/↓] to select, [Enter] to apply)"
+          placeholderText: "Type to filter themes directly... ([↓] to browse list, [Enter] to apply)"
           background: null
           color: Color.foreground
           font.family: Style.font.family
           font.pixelSize: Style.font.body || 13
 
-          Keys.onEscapePressed: {
+          onPressed: {
+            root.focusTarget = "search"
+          }
+
+          Keys.onEscapePressed: function(event) {
             if (text.length > 0) {
               text = ""
+              event.accepted = true
             } else {
-              focus = false
+              searchField.focus = false
+              if (root.panelRoot) root.panelRoot.focusSection = "sidebar"
+              if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                root.panelRoot.returnFocusToKeyCatcher()
+              }
+              event.accepted = true
             }
           }
 
-          Keys.onDownPressed: {
-            root.handleMove(0, 1)
+          Keys.onDownPressed: function(event) {
+            if (root.filteredThemes.length > 0) {
+              root.focusTarget = "list"
+              searchField.focus = false
+              if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                root.panelRoot.returnFocusToKeyCatcher()
+              }
+              root.ensureVisible(root.focusedIndex)
+              event.accepted = true
+            }
           }
 
-          Keys.onUpPressed: {
-            root.handleMove(0, -1)
+          Keys.onLeftPressed: function(event) {
+            if (cursorPosition === 0 && selectionStart === selectionEnd) {
+              searchField.focus = false
+              if (root.panelRoot) root.panelRoot.focusSection = "sidebar"
+              if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                root.panelRoot.returnFocusToKeyCatcher()
+              }
+              event.accepted = true
+            } else {
+              event.accepted = false
+            }
           }
 
-          Keys.onReturnPressed: {
+          Keys.onTabPressed: function(event) {
+            if (root.filteredThemes.length > 0) {
+              root.focusTarget = "list"
+              searchField.focus = false
+              if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                root.panelRoot.returnFocusToKeyCatcher()
+              }
+              root.ensureVisible(root.focusedIndex)
+              event.accepted = true
+            }
+          }
+
+          Keys.onReturnPressed: function(event) {
             root.handleActivate()
+            event.accepted = true
           }
         }
 
@@ -257,6 +353,7 @@ Item {
           implicitHeight: 26
           onClicked: {
             searchField.text = ""
+            root.focusTarget = "search"
             searchField.forceActiveFocus()
           }
         }
@@ -290,7 +387,7 @@ Item {
               Layout.preferredHeight: 40
               radius: 6
               readonly property bool isCurrent: root.currentTheme.toLowerCase() === modelData.toLowerCase()
-              readonly property bool isCursorTarget: root.activeFocusSection && root.focusedIndex === index
+              readonly property bool isCursorTarget: root.activeFocusSection && root.focusTarget === "list" && root.focusedIndex === index
               color: isCursorTarget
                 ? Color.pickAlpha("surface.selected", "#2a3036")
                 : (isCurrent
@@ -308,6 +405,7 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                   root.focusedIndex = index
+                  root.focusTarget = "list"
                   root.setTheme(modelData)
                 }
               }

@@ -69,6 +69,10 @@ Item {
     currentCategory = ids[nextIdx]
   }
 
+  function returnFocusToKeyCatcher() {
+    if (keyCatcher) keyCatcher.forceActiveFocus()
+  }
+
   FloatingWindow {
     id: window
     title: "Control Panel"
@@ -441,6 +445,9 @@ Item {
                   }
                   if (item && "activeFocusSection" in item) {
                     item.activeFocusSection = Qt.binding(function() { return root.focusSection === "content" })
+                  }
+                  if (item && "panelRoot" in item) {
+                    item.panelRoot = root
                   }
                   if (item && typeof item.refresh === "function") {
                     item.refresh()
