@@ -23,8 +23,9 @@ Item {
     { id: "sound", label: "Sound", icon: "󰕾", key: "4" },
     { id: "network", label: "Network & Wi-Fi", icon: "󰤨", key: "5" },
     { id: "bluetooth", label: "Bluetooth", icon: "󰂯", key: "6" },
-    { id: "agents", label: "AI & Agents", icon: "󰚩", key: "7" },
-    { id: "about", label: "About System", icon: "", key: "8" }
+    { id: "input", label: "Touch & Input", icon: "󰆽", key: "7" },
+    { id: "agents", label: "AI & Agents", icon: "󰚩", key: "8" },
+    { id: "about", label: "About System", icon: "", key: "9" }
   ]
 
   function open(payloadJson) {
@@ -122,8 +123,9 @@ Item {
         else if (key === "4") { root.currentCategory = "sound"; root.focusSection = "sidebar" }
         else if (key === "5") { root.currentCategory = "network"; root.focusSection = "sidebar" }
         else if (key === "6") { root.currentCategory = "bluetooth"; root.focusSection = "sidebar" }
-        else if (key === "7") { root.currentCategory = "agents"; root.focusSection = "sidebar" }
-        else if (key === "8") { root.currentCategory = "about"; root.focusSection = "sidebar" }
+        else if (key === "7") { root.currentCategory = "input"; root.focusSection = "sidebar" }
+        else if (key === "8") { root.currentCategory = "agents"; root.focusSection = "sidebar" }
+        else if (key === "9") { root.currentCategory = "about"; root.focusSection = "sidebar" }
         else if (root.focusSection === "content" && categoryLoader.item && typeof categoryLoader.item.handleTextKey === "function") {
           categoryLoader.item.handleTextKey(key)
         }
@@ -242,14 +244,17 @@ Item {
           Layout.fillHeight: true
           spacing: 16
 
-          // Left Sidebar
-          Rectangle {
+          // Left Sidebar (Touch-scrollable)
+          ScrollView {
+            id: sidebarScroll
             Layout.preferredWidth: 220
             Layout.fillHeight: true
-            color: "transparent"
+            clip: true
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+            ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
             ColumnLayout {
-              anchors.fill: parent
+              width: Math.max(200, sidebarScroll.availableWidth - 8)
               spacing: 6
 
               Repeater {
@@ -346,6 +351,23 @@ Item {
             Layout.fillHeight: true
             color: "transparent"
 
+            DragHandler {
+              id: touchSwipeHandler
+              target: null
+              xAxis.enabled: true
+              yAxis.enabled: false
+              dragThreshold: 50
+              onActiveChanged: {
+                if (!active) {
+                  if (translation.x < -dragThreshold) {
+                    root.cycleCategory(1)
+                  } else if (translation.x > dragThreshold) {
+                    root.cycleCategory(-1)
+                  }
+                }
+              }
+            }
+
             MouseArea {
               anchors.fill: parent
               onPressed: root.focusSection = "content"
@@ -355,18 +377,40 @@ Item {
               anchors.fill: parent
               spacing: 12
 
-              Text {
-                text: {
-                  for (var i = 0; i < root.categories.length; i++) {
-                    if (root.categories[i].id === root.currentCategory)
-                      return root.categories[i].label
+              RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Text {
+                  Layout.fillWidth: true
+                  text: {
+                    for (var i = 0; i < root.categories.length; i++) {
+                      if (root.categories[i].id === root.currentCategory)
+                        return root.categories[i].label
+                    }
+                    return "Settings"
                   }
-                  return "Settings"
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.subtitle || 16
+                  font.bold: true
+                  color: Color.foreground
                 }
-                font.family: Style.font.family
-                font.pixelSize: Style.font.subtitle || 16
-                font.bold: true
-                color: Color.foreground
+
+                Rectangle {
+                  Layout.preferredHeight: 22
+                  Layout.preferredWidth: navHintText.implicitWidth + 12
+                  radius: 4
+                  color: Color.pickAlpha("surface.subtle", "#181b1d")
+
+                  Text {
+                    id: navHintText
+                    anchors.centerIn: parent
+                    text: "◄ Swipe tabs ►"
+                    font.family: Style.font.family
+                    font.pixelSize: 10
+                    color: Color.muted
+                  }
+                }
               }
 
               Loader {
@@ -381,6 +425,7 @@ Item {
                   if (root.currentCategory === "sound") return "views/SoundView.qml"
                   if (root.currentCategory === "network") return "views/NetworkView.qml"
                   if (root.currentCategory === "bluetooth") return "views/BluetoothView.qml"
+                  if (root.currentCategory === "input") return "views/TouchInputView.qml"
                   if (root.currentCategory === "agents") return "views/AgentsView.qml"
                   if (root.currentCategory === "about") return "views/AboutView.qml"
                   return ""
