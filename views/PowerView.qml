@@ -195,6 +195,15 @@ Item {
 
   Component.onCompleted: refresh()
 
+  // Reactive inotify watcher for stay-awake indicator changes
+  FileView {
+    id: stayAwakeWatcher
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/indicators/stay-awake"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: root.refresh()
+  }
+
   // State Process
   Process {
     id: stateProcess

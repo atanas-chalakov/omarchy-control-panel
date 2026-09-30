@@ -165,6 +165,76 @@ case "$cmd" in
       }'
     ;;
 
+  agents-get)
+    python3 -c '
+import os, json, glob, shutil
+
+default_file = os.path.expanduser("~/.config/omarchy/defaults/agent")
+default_agent = ""
+if os.path.exists(default_file):
+    with open(default_file) as f:
+        default_agent = f.read().strip()
+if not default_agent:
+    default_agent = "agy"
+
+known_agents = [
+    {"id": "agy", "name": "Antigravity", "cmd": "agy", "desc": "Google DeepMind Advanced Agentic Assistant"},
+    {"id": "claude", "name": "Claude Code", "cmd": "claude", "desc": "Anthropic Claude Code CLI"},
+    {"id": "codex", "name": "Codex", "cmd": "codex", "desc": "OpenAI Codex CLI"},
+    {"id": "copilot", "name": "GitHub Copilot", "cmd": "copilot", "desc": "GitHub Copilot CLI"},
+    {"id": "opencode", "name": "OpenCode", "cmd": "opencode", "desc": "OpenCode AI Coding Agent"},
+    {"id": "pi", "name": "Pi", "cmd": "pi", "desc": "Inflection Pi Coding Assistant"},
+    {"id": "hermes", "name": "Hermes", "cmd": "hermes", "desc": "Hermes Autonomous Agent"}
+]
+
+for a in known_agents:
+    a["installed"] = shutil.which(a["cmd"]) is not None
+    a["isDefault"] = (a["id"] == default_agent)
+
+usage_dir = os.path.expanduser("~/.local/state/omarchy/agents/usage")
+usage_records = []
+if os.path.isdir(usage_dir):
+    for fpath in sorted(glob.glob(os.path.join(usage_dir, "*.json"))):
+        try:
+            with open(fpath) as f:
+                data = json.load(f)
+                usage_records.append(data)
+        except Exception:
+            pass
+
+print(json.dumps({
+    "defaultAgent": default_agent,
+    "agents": known_agents,
+    "usage": usage_records
+}))
+'
+    ;;
+
+  agent-set-default)
+    target="${2:-}"
+    if [[ -n "$target" ]]; then
+      mkdir -p "$HOME/.config/omarchy/defaults"
+      printf '%s\n' "$target" > "$HOME/.config/omarchy/defaults/agent"
+    fi
+    ;;
+
+  agent-launch)
+    target="${2:-}"
+    if [[ -n "$target" ]]; then
+      mkdir -p "$HOME/.config/omarchy/defaults"
+      printf '%s\n' "$target" > "$HOME/.config/omarchy/defaults/agent"
+    fi
+    if command -v omarchy-launch-floating-terminal-with-presentation >/dev/null 2>&1; then
+      omarchy-launch-floating-terminal-with-presentation omarchy-agent >/dev/null 2>&1 &
+    elif command -v omarchy-agent >/dev/null 2>&1; then
+      omarchy-agent >/dev/null 2>&1 &
+    fi
+    ;;
+
+  agent-refresh-usage)
+    omarchy-agent-usage-update >/dev/null 2>&1 || true
+    ;;
+
   *)
     echo "Unknown command: $cmd" >&2
     exit 1

@@ -70,6 +70,15 @@ Item {
 
   Component.onCompleted: refresh()
 
+  // Reactive inotify watcher for theme changes
+  FileView {
+    id: themeWatcher
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/current/theme.name"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: root.refresh()
+  }
+
   // State Process
   Process {
     id: stateProcess

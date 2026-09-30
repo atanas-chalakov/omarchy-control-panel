@@ -23,7 +23,8 @@ Item {
     { id: "sound", label: "Sound", icon: "󰕾", key: "4" },
     { id: "network", label: "Network & Wi-Fi", icon: "󰤨", key: "5" },
     { id: "bluetooth", label: "Bluetooth", icon: "󰂯", key: "6" },
-    { id: "about", label: "About System", icon: "", key: "7" }
+    { id: "about", label: "About System", icon: "", key: "7" },
+    { id: "agents", label: "AI & Agents", icon: "󰚩", key: "8" }
   ]
 
   function open(payloadJson) {
@@ -122,6 +123,7 @@ Item {
         else if (key === "5") { root.currentCategory = "network"; root.focusSection = "sidebar" }
         else if (key === "6") { root.currentCategory = "bluetooth"; root.focusSection = "sidebar" }
         else if (key === "7") { root.currentCategory = "about"; root.focusSection = "sidebar" }
+        else if (key === "8") { root.currentCategory = "agents"; root.focusSection = "sidebar" }
         else if (root.focusSection === "content" && categoryLoader.item && typeof categoryLoader.item.handleTextKey === "function") {
           categoryLoader.item.handleTextKey(key)
         }
@@ -380,6 +382,7 @@ Item {
                   if (root.currentCategory === "network") return "views/NetworkView.qml"
                   if (root.currentCategory === "bluetooth") return "views/BluetoothView.qml"
                   if (root.currentCategory === "about") return "views/AboutView.qml"
+                  if (root.currentCategory === "agents") return "views/AgentsView.qml"
                   return ""
                 }
 
