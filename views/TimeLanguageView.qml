@@ -344,7 +344,7 @@ Item {
 
   function cycleLayoutPreset(delta) {
     var idx = currentPresetIndex()
-    if (idx < 0) idx = 0
+    if (idx < 0) idx = (delta > 0 ? -1 : 0)
     var next = (idx + delta + layoutPresets.length) % layoutPresets.length
     applyLayoutPreset(layoutPresets[next])
   }
@@ -373,10 +373,6 @@ Item {
 
   // Keyboard navigation interface for PanelKeyCatcher
   function handleMove(dx, dy) {
-    if (dx < 0 && root.focusedCard !== 4 && root.focusedCard !== 8) {
-      if (panelRoot) panelRoot.focusSection = "sidebar"
-      return true
-    }
     if (dy !== 0) {
       focusedCard = Math.max(0, Math.min(9, focusedCard + dy))
       ensureCardVisible(focusedCard)
