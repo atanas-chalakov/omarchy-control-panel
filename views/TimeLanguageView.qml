@@ -831,14 +831,18 @@ Item {
       Rectangle {
         id: tzCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 110
+        implicitHeight: Math.max(104, tzColLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && root.focusedCard === 2) ? Color.accent : "transparent"
         border.width: (root.activeFocusSection && root.focusedCard === 2) ? 2 : 0
 
         ColumnLayout {
-          anchors.fill: parent
+          id: tzColLayout
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 10
 
@@ -917,8 +921,9 @@ Item {
           }
 
           // Quick Timezone Presets
-          RowLayout {
+          Flow {
             Layout.fillWidth: true
+            width: parent.width
             spacing: 6
 
             Text {
@@ -926,13 +931,14 @@ Item {
               font.family: Style.font.family
               font.pixelSize: 11
               color: Color.muted
+              topPadding: 3
             }
 
             Repeater {
               model: root.timezonePresets
               delegate: Rectangle {
-                Layout.preferredHeight: 24
-                Layout.preferredWidth: presetText.implicitWidth + 14
+                height: 24
+                width: presetText.implicitWidth + 14
                 radius: 4
                 color: (root.currentTimezone === modelData.tz) ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.selected", "#2a3036")
                 border.color: (root.currentTimezone === modelData.tz) ? Color.accent : "transparent"
@@ -1093,20 +1099,18 @@ Item {
       Rectangle {
         id: cityInputCard
         Layout.fillWidth: true
-        Layout.preferredHeight: {
-          if (cityField && cityField.activeFocus && root.matchingCities.length > 0) {
-            return 46 + (root.matchingCities.length * 36) + 16
-          }
-          return 86
-        }
+        implicitHeight: Math.max(86, cityColLayout.implicitHeight + 20)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && (root.focusedCard === 4 || (cityField && cityField.activeFocus))) ? Color.accent : "transparent"
         border.width: (root.activeFocusSection && (root.focusedCard === 4 || (cityField && cityField.activeFocus))) ? 2 : 0
-        clip: true
 
         ColumnLayout {
-          anchors.fill: parent
+          id: cityColLayout
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 10
           spacing: 6
 
@@ -1351,9 +1355,9 @@ Item {
           }
 
           // Row 2B: Quick Suggestion Chips (Visible when not actively browsing autocomplete)
-          RowLayout {
+          Flow {
             Layout.fillWidth: true
-            Layout.preferredHeight: 26
+            width: parent.width
             visible: !(cityField && cityField.activeFocus && root.matchingCities.length > 0)
             spacing: 6
 
@@ -1363,11 +1367,8 @@ Item {
               font.pixelSize: 10
               font.bold: true
               color: Color.muted
+              topPadding: 4
             }
-
-            Flow {
-              Layout.fillWidth: true
-              spacing: 6
 
               Repeater {
                 model: [
@@ -1407,7 +1408,6 @@ Item {
                   }
                 }
               }
-            }
           }
         }
       }
@@ -1541,14 +1541,18 @@ Item {
       Rectangle {
         id: kbPresetsCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 116
+        implicitHeight: Math.max(90, kbPresetsCol.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && root.focusedCard === 6) ? Color.accent : "transparent"
         border.width: (root.activeFocusSection && root.focusedCard === 6) ? 2 : 0
 
         ColumnLayout {
-          anchors.fill: parent
+          id: kbPresetsCol
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 8
 
@@ -1574,6 +1578,7 @@ Item {
 
           Flow {
             Layout.fillWidth: true
+            width: parent.width
             spacing: 6
 
             Repeater {
@@ -1614,14 +1619,18 @@ Item {
       Rectangle {
         id: kbShortcutCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 84
+        implicitHeight: Math.max(84, kbShortcutCol.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && root.focusedCard === 7) ? Color.accent : "transparent"
         border.width: (root.activeFocusSection && root.focusedCard === 7) ? 2 : 0
 
         ColumnLayout {
-          anchors.fill: parent
+          id: kbShortcutCol
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 8
 
@@ -1647,6 +1656,7 @@ Item {
 
           Flow {
             Layout.fillWidth: true
+            width: parent.width
             spacing: 6
 
             Repeater {
@@ -1687,15 +1697,18 @@ Item {
       Rectangle {
         id: customLayoutCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 86
+        implicitHeight: Math.max(86, customLayoutCol.implicitHeight + 20)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && (root.focusedCard === 8 || (customLayoutField && customLayoutField.activeFocus))) ? Color.accent : "transparent"
         border.width: (root.activeFocusSection && (root.focusedCard === 8 || (customLayoutField && customLayoutField.activeFocus))) ? 2 : 0
-        clip: true
 
         ColumnLayout {
-          anchors.fill: parent
+          id: customLayoutCol
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 10
           spacing: 6
 
@@ -1809,9 +1822,9 @@ Item {
           }
 
           // Row 2: Quick Suggestions Chips
-          RowLayout {
+          Flow {
             Layout.fillWidth: true
-            Layout.preferredHeight: 26
+            width: parent.width
             spacing: 6
 
             Text {
@@ -1820,48 +1833,44 @@ Item {
               font.pixelSize: 10
               font.bold: true
               color: Color.muted
+              topPadding: 4
             }
 
-            Flow {
-              Layout.fillWidth: true
-              spacing: 6
+            Repeater {
+              model: [
+                { label: "us", val: "us", variant: "" },
+                { label: "us,bg(phonetic)", val: "us,bg", variant: ",phonetic" },
+                { label: "us,de", val: "us,de", variant: "" },
+                { label: "us,fr", val: "us,fr", variant: "" },
+                { label: "us,es", val: "us,es", variant: "" },
+                { label: "us,it", val: "us,it", variant: "" }
+              ]
 
-              Repeater {
-                model: [
-                  { label: "us", val: "us", variant: "" },
-                  { label: "us,bg(phonetic)", val: "us,bg", variant: ",phonetic" },
-                  { label: "us,de", val: "us,de", variant: "" },
-                  { label: "us,fr", val: "us,fr", variant: "" },
-                  { label: "us,es", val: "us,es", variant: "" },
-                  { label: "us,it", val: "us,it", variant: "" }
-                ]
+              delegate: Rectangle {
+                height: 24
+                width: kbChipText.implicitWidth + 14
+                radius: 4
+                color: (root.kbLayout === modelData.val) ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.selected", "#22272c")
+                border.color: (root.kbLayout === modelData.val) ? Color.accent : "transparent"
+                border.width: 1
 
-                delegate: Rectangle {
-                  height: 24
-                  width: kbChipText.implicitWidth + 14
-                  radius: 4
-                  color: (root.kbLayout === modelData.val) ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.selected", "#22272c")
-                  border.color: (root.kbLayout === modelData.val) ? Color.accent : "transparent"
-                  border.width: 1
-
-                  MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                      customLayoutField.text = modelData.val
-                      root.setCustomKeyboardConfig(modelData.val, modelData.variant)
-                    }
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    customLayoutField.text = modelData.val
+                    root.setCustomKeyboardConfig(modelData.val, modelData.variant)
                   }
+                }
 
-                  Text {
-                    id: kbChipText
-                    anchors.centerIn: parent
-                    text: (root.kbLayout === modelData.val ? "✓ " : "") + modelData.label
-                    font.family: Style.font.family
-                    font.pixelSize: 10
-                    font.bold: root.kbLayout === modelData.val
-                    color: (root.kbLayout === modelData.val) ? Color.accent : Color.foreground
-                  }
+                Text {
+                  id: kbChipText
+                  anchors.centerIn: parent
+                  text: (root.kbLayout === modelData.val ? "✓ " : "") + modelData.label
+                  font.family: Style.font.family
+                  font.pixelSize: 10
+                  font.bold: root.kbLayout === modelData.val
+                  color: (root.kbLayout === modelData.val) ? Color.accent : Color.foreground
                 }
               }
             }
@@ -1885,14 +1894,18 @@ Item {
       Rectangle {
         id: langCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 118
+        implicitHeight: Math.max(104, langColLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && root.focusedCard === 9) ? Color.accent : "transparent"
         border.width: (root.activeFocusSection && root.focusedCard === 9) ? 2 : 0
 
         ColumnLayout {
-          anchors.fill: parent
+          id: langColLayout
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 10
 
@@ -1994,6 +2007,7 @@ Item {
           // Locale info row
           Flow {
             Layout.fillWidth: true
+            width: parent.width
             spacing: 6
 
             Text {
