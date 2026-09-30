@@ -25,7 +25,8 @@ Item {
     { id: "bluetooth", label: "Bluetooth", icon: "󰂯", key: "6" },
     { id: "input", label: "Touch & Input", icon: "󰆽", key: "7" },
     { id: "windows", label: "Window Manager", icon: "", key: "8" },
-    { id: "agents", label: "AI & Agents", icon: "󰚩", key: "9" },
+    { id: "defaults", label: "Default Apps", icon: "󰌢", key: "9" },
+    { id: "agents", label: "AI & Agents", icon: "󰚩", key: "A" },
     { id: "about", label: "About System", icon: "", key: "0" }
   ]
 
@@ -130,7 +131,8 @@ Item {
         else if (key === "6") { root.currentCategory = "bluetooth"; root.focusSection = "sidebar" }
         else if (key === "7") { root.currentCategory = "input"; root.focusSection = "sidebar" }
         else if (key === "8") { root.currentCategory = "windows"; root.focusSection = "sidebar" }
-        else if (key === "9") { root.currentCategory = "agents"; root.focusSection = "sidebar" }
+        else if (key === "9") { root.currentCategory = "defaults"; root.focusSection = "sidebar" }
+        else if (key === "a" || key === "A") { root.currentCategory = "agents"; root.focusSection = "sidebar" }
         else if (key === "0") { root.currentCategory = "about"; root.focusSection = "sidebar" }
         else if (root.focusSection === "content" && categoryLoader.item && typeof categoryLoader.item.handleTextKey === "function") {
           categoryLoader.item.handleTextKey(key)
@@ -433,6 +435,7 @@ Item {
                   if (root.currentCategory === "bluetooth") return "views/BluetoothView.qml"
                   if (root.currentCategory === "input") return "views/TouchInputView.qml"
                   if (root.currentCategory === "windows") return "views/WindowManagerView.qml"
+                  if (root.currentCategory === "defaults") return "views/DefaultsView.qml"
                   if (root.currentCategory === "agents") return "views/AgentsView.qml"
                   if (root.currentCategory === "about") return "views/AboutView.qml"
                   return ""
@@ -489,7 +492,7 @@ Item {
           spacing: 12
 
           Text {
-            text: "⌨ Shortcuts: [Tab] Switch Panels  •  [↑/↓ or j/k] Select Setting  •  [←/→ or h/l] Adjust Value  •  [Enter/Space] Activate  •  [1-7] Categories  •  [Esc] Close"
+            text: "⌨ Shortcuts: [Tab] Switch Panels  •  [↑/↓ or j/k] Select Setting  •  [←/→ or h/l] Adjust Value  •  [Enter/Space] Activate  •  [0-9/A] Categories  •  [Esc] Close"
             font.family: Style.font.family
             font.pixelSize: 11
             color: Color.muted
