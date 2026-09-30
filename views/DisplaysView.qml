@@ -125,30 +125,39 @@ Item {
   function handleTextKey(key) {
     if (key === "r" || key === "R") {
       refresh()
+      return true
     } else if (key === "b" || key === "B") {
       focusedRow = 0
+      return true
     } else if (key === "n" || key === "N") {
       focusedRow = 1
       toggleNightlight()
+      return true
     } else if (key === "w" || key === "W") {
       focusedRow = 2
+      return true
     } else if (key === "s" || key === "S") {
       focusedRow = 3
+      return true
     } else if (key === "m" || key === "M") {
       focusedRow = 4
+      return true
     } else if (key === "h" || key === "H") {
       if (focusedRow === 0) adjustBrightness(-5)
       else if (focusedRow === 1) toggleNightlight()
       else if (focusedRow === 2) cycleNightlightTemp(-1)
       else if (focusedRow === 3) cycleScale(-1)
       else if (focusedRow === 4) cycleMode(-1)
+      return true
     } else if (key === "l" || key === "L") {
       if (focusedRow === 0) adjustBrightness(5)
       else if (focusedRow === 1) toggleNightlight()
       else if (focusedRow === 2) cycleNightlightTemp(1)
       else if (focusedRow === 3) cycleScale(1)
       else if (focusedRow === 4) cycleMode(1)
+      return true
     }
+    return false
   }
 
   function refresh() {

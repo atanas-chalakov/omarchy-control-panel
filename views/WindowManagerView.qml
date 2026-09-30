@@ -14,7 +14,26 @@ Item {
   onPluginPathChanged: refresh()
 
   property bool activeFocusSection: false
-  property int focusedCard: 0
+  property int focusedCard: 0   // 0: Animations, 1: Gaps, 2: Single Window Aspect, 3: Rounding, 4: Border, 5: Opacity, 6: Blur, 7: Bar Hidden, 8: Bar Position, 9: Bar Transparency, 10: Workspace Layout
+  onFocusedCardChanged: ensureCardVisible(focusedCard)
+
+  function ensureCardVisible(index) {
+    if (!scrollArea || !scrollArea.contentItem) return
+    var targets = [animCard, gapsRow, aspectRow, roundingRow, borderRow, opacityRow, blurRow, barRow, barPosRow, barTransRow, layoutRow]
+    if (index >= 0 && index < targets.length) {
+      var item = targets[index]
+      if (item && item.visible) {
+        var pos = item.mapToItem(scrollArea.contentItem, 0, 0)
+        var flick = scrollArea.contentItem
+        if (pos.y < flick.contentY) {
+          flick.contentY = Math.max(0, pos.y - 12)
+        } else if (pos.y + item.height > flick.contentY + scrollArea.height) {
+          flick.contentY = Math.max(0, pos.y + item.height - scrollArea.height + 12)
+        }
+      }
+    }
+  }
+
   property string statusMessage: ""
 
   // State properties
@@ -214,7 +233,8 @@ Item {
 
   function handleMove(dx, dy) {
     if (dy !== 0) {
-      focusedCard = Math.max(0, Math.min(8, focusedCard + dy))
+      focusedCard = Math.max(0, Math.min(10, focusedCard + dy))
+      ensureCardVisible(focusedCard)
     } else if (dx !== 0) {
       if (focusedCard === 0) toggleAnimations()
       else if (focusedCard === 1) cycleGaps(dx)
@@ -224,7 +244,9 @@ Item {
       else if (focusedCard === 5) cycleOpacity(dx)
       else if (focusedCard === 6) toggleBlur()
       else if (focusedCard === 7) toggleBar()
-      else if (focusedCard === 8) toggleWorkspaceLayout()
+      else if (focusedCard === 8) cycleBarPosition()
+      else if (focusedCard === 9) toggleBarTransparent()
+      else if (focusedCard === 10) toggleWorkspaceLayout()
     }
   }
 
@@ -237,7 +259,9 @@ Item {
     else if (focusedCard === 5) cycleOpacity(1)
     else if (focusedCard === 6) toggleBlur()
     else if (focusedCard === 7) toggleBar()
-    else if (focusedCard === 8) toggleWorkspaceLayout()
+    else if (focusedCard === 8) cycleBarPosition()
+    else if (focusedCard === 9) toggleBarTransparent()
+    else if (focusedCard === 10) toggleWorkspaceLayout()
   }
 
   function handleTextKey(key) {
@@ -245,37 +269,52 @@ Item {
     if (k === "a") {
       focusedCard = 0
       toggleAnimations()
+      return true
     } else if (k === "g") {
       focusedCard = 1
       cycleGaps(1)
+      return true
     } else if (k === "s") {
       focusedCard = 2
       toggleSingleWindowAspect()
+      return true
     } else if (k === "r") {
       focusedCard = 3
       cycleRounding(1)
+      return true
     } else if (k === "b") {
       focusedCard = 4
       cycleBorder(1)
+      return true
     } else if (k === "d") {
       focusedCard = 5
       cycleOpacity(1)
+      return true
     } else if (k === "l") {
       focusedCard = 6
       toggleBlur()
+      return true
     } else if (k === "t") {
       focusedCard = 7
       toggleBar()
+      return true
     } else if (k === "p") {
+      focusedCard = 8
       cycleBarPosition()
+      return true
     } else if (k === "e") {
+      focusedCard = 9
       toggleBarTransparent()
+      return true
     } else if (k === "c") {
       toggleBatteryPercentage()
+      return true
     } else if (k === "w") {
-      focusedCard = 8
+      focusedCard = 10
       toggleWorkspaceLayout()
+      return true
     }
+    return false
   }
 
   Component.onCompleted: refresh()
@@ -377,7 +416,7 @@ Item {
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && root.focusedCard === 0) ? Color.accent : "transparent"
-        border.width: (root.activeFocusSection && root.focusedCard === 0) ? 1 : 0
+        border.width: (root.activeFocusSection && root.focusedCard === 0) ? 2 : 0
 
         MouseArea {
           anchors.fill: parent
@@ -481,24 +520,33 @@ Item {
 
       // Card 2: Window Spacing & Layout
       Rectangle {
+        id: spacingCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 126
+        Layout.preferredHeight: spacingCol.implicitHeight + 24
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
         ColumnLayout {
+          id: spacingCol
           anchors.fill: parent
           anchors.margins: 12
           spacing: 10
 
           // Row 1: Gaps Stepper
           Rectangle {
+            id: gapsRow
             Layout.fillWidth: true
-            Layout.preferredHeight: 44
+            Layout.preferredHeight: 46
             radius: 6
-            color: (root.activeFocusSection && root.focusedCard === 1) ? Color.pickAlpha("surface.hover", "#22272c") : "transparent"
+            color: (root.activeFocusSection && root.focusedCard === 1) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 1) ? Color.accent : "transparent"
-            border.width: (root.activeFocusSection && root.focusedCard === 1) ? 1 : 0
+            border.width: (root.activeFocusSection && root.focusedCard === 1) ? 2 : 0
+
+            MouseArea {
+              anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.focusedCard = 1
+            }
 
             RowLayout {
               anchors.fill: parent
@@ -596,12 +644,22 @@ Item {
 
           // Row 2: Single Window Aspect Ratio
           Rectangle {
+            id: aspectRow
             Layout.fillWidth: true
-            Layout.preferredHeight: 44
+            Layout.preferredHeight: 46
             radius: 6
-            color: (root.activeFocusSection && root.focusedCard === 2) ? Color.pickAlpha("surface.hover", "#22272c") : "transparent"
+            color: (root.activeFocusSection && root.focusedCard === 2) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 2) ? Color.accent : "transparent"
-            border.width: (root.activeFocusSection && root.focusedCard === 2) ? 1 : 0
+            border.width: (root.activeFocusSection && root.focusedCard === 2) ? 2 : 0
+
+            MouseArea {
+              anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
+              onClicked: {
+                root.focusedCard = 2
+                root.toggleSingleWindowAspect()
+              }
+            }
 
             RowLayout {
               anchors.fill: parent
@@ -670,12 +728,14 @@ Item {
 
       // Card 3: Window Decoration & Styling
       Rectangle {
+        id: card3
         Layout.fillWidth: true
-        Layout.preferredHeight: 184
+        Layout.preferredHeight: card3Col.implicitHeight + 24
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
         ColumnLayout {
+          id: card3Col
           anchors.fill: parent
           anchors.margins: 12
           spacing: 8
@@ -709,310 +769,385 @@ Item {
           }
 
           // Corner Rounding
-          RowLayout {
+          Rectangle {
+            id: roundingRow
             Layout.fillWidth: true
-            spacing: 10
+            Layout.preferredHeight: 46
+            radius: 6
+            color: (root.activeFocusSection && root.focusedCard === 3) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
+            border.color: (root.activeFocusSection && root.focusedCard === 3) ? Color.accent : "transparent"
+            border.width: (root.activeFocusSection && root.focusedCard === 3) ? 2 : 0
 
-            ColumnLayout {
-              Layout.fillWidth: true
-              spacing: 1
-
-              RowLayout {
-                spacing: 6
-                Text {
-                  text: "Corner Rounding"
-                  font.family: Style.font.family
-                  font.pixelSize: 12
-                  font.bold: true
-                  color: Color.foreground
-                }
-
-                Rectangle {
-                  width: 16
-                  height: 16
-                  radius: 3
-                  color: Color.pickAlpha("surface.selected", "#2a3036")
-                  Text {
-                    anchors.centerIn: parent
-                    text: "R"
-                    font.family: Style.font.family
-                    font.pixelSize: 9
-                    color: Color.muted
-                  }
-                }
-              }
-
-              Text {
-                text: "Border corner radius on tiled and floating application windows"
-                font.family: Style.font.family
-                font.pixelSize: 10
-                color: Color.muted
-              }
+            MouseArea {
+              anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.focusedCard = 3
             }
 
             RowLayout {
-              spacing: 4
+              anchors.fill: parent
+              anchors.leftMargin: 8
+              anchors.rightMargin: 8
+              spacing: 10
 
-              Button {
-                text: "◀"
-                implicitWidth: 28
-                implicitHeight: 26
-                bordered: true
-                onClicked: {
-                  root.focusedCard = 3
-                  root.cycleRounding(-1)
+              ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+
+                RowLayout {
+                  spacing: 6
+                  Text {
+                    text: "Corner Rounding"
+                    font.family: Style.font.family
+                    font.pixelSize: 12
+                    font.bold: true
+                    color: Color.foreground
+                  }
+
+                  Rectangle {
+                    width: 16
+                    height: 16
+                    radius: 3
+                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    Text {
+                      anchors.centerIn: parent
+                      text: "R"
+                      font.family: Style.font.family
+                      font.pixelSize: 9
+                      color: Color.muted
+                    }
+                  }
                 }
-              }
-
-              Rectangle {
-                implicitWidth: 64
-                implicitHeight: 26
-                radius: 4
-                color: Color.pickAlpha("surface.selected", "#2a3036")
 
                 Text {
-                  anchors.centerIn: parent
-                  text: root.rounding === 0 ? "Sharp (0)" : (root.rounding + "px")
+                  text: "Border corner radius on tiled and floating application windows"
                   font.family: Style.font.family
-                  font.pixelSize: 11
-                  font.bold: true
-                  color: Color.foreground
+                  font.pixelSize: 10
+                  color: Color.muted
                 }
               }
 
-              Button {
-                text: "▶"
-                implicitWidth: 28
-                implicitHeight: 26
-                bordered: true
-                onClicked: {
-                  root.focusedCard = 3
-                  root.cycleRounding(1)
+              RowLayout {
+                spacing: 4
+
+                Button {
+                  text: "◀"
+                  implicitWidth: 28
+                  implicitHeight: 26
+                  bordered: true
+                  onClicked: {
+                    root.focusedCard = 3
+                    root.cycleRounding(-1)
+                  }
+                }
+
+                Rectangle {
+                  implicitWidth: 64
+                  implicitHeight: 26
+                  radius: 4
+                  color: Color.pickAlpha("surface.selected", "#2a3036")
+
+                  Text {
+                    anchors.centerIn: parent
+                    text: root.rounding === 0 ? "Sharp (0)" : (root.rounding + "px")
+                    font.family: Style.font.family
+                    font.pixelSize: 11
+                    font.bold: true
+                    color: Color.foreground
+                  }
+                }
+
+                Button {
+                  text: "▶"
+                  implicitWidth: 28
+                  implicitHeight: 26
+                  bordered: true
+                  onClicked: {
+                    root.focusedCard = 3
+                    root.cycleRounding(1)
+                  }
                 }
               }
             }
           }
 
           // Border Thickness
-          RowLayout {
+          Rectangle {
+            id: borderRow
             Layout.fillWidth: true
-            spacing: 10
+            Layout.preferredHeight: 46
+            radius: 6
+            color: (root.activeFocusSection && root.focusedCard === 4) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
+            border.color: (root.activeFocusSection && root.focusedCard === 4) ? Color.accent : "transparent"
+            border.width: (root.activeFocusSection && root.focusedCard === 4) ? 2 : 0
 
-            ColumnLayout {
-              Layout.fillWidth: true
-              spacing: 1
-
-              RowLayout {
-                spacing: 6
-                Text {
-                  text: "Border Thickness"
-                  font.family: Style.font.family
-                  font.pixelSize: 12
-                  font.bold: true
-                  color: Color.foreground
-                }
-
-                Rectangle {
-                  width: 16
-                  height: 16
-                  radius: 3
-                  color: Color.pickAlpha("surface.selected", "#2a3036")
-                  Text {
-                    anchors.centerIn: parent
-                    text: "B"
-                    font.family: Style.font.family
-                    font.pixelSize: 9
-                    color: Color.muted
-                  }
-                }
-              }
-
-              Text {
-                text: "Active and inactive window outline border width"
-                font.family: Style.font.family
-                font.pixelSize: 10
-                color: Color.muted
-              }
+            MouseArea {
+              anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.focusedCard = 4
             }
 
             RowLayout {
-              spacing: 4
+              anchors.fill: parent
+              anchors.leftMargin: 8
+              anchors.rightMargin: 8
+              spacing: 10
 
-              Button {
-                text: "◀"
-                implicitWidth: 28
-                implicitHeight: 26
-                bordered: true
-                onClicked: {
-                  root.focusedCard = 4
-                  root.cycleBorder(-1)
+              ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+
+                RowLayout {
+                  spacing: 6
+                  Text {
+                    text: "Border Thickness"
+                    font.family: Style.font.family
+                    font.pixelSize: 12
+                    font.bold: true
+                    color: Color.foreground
+                  }
+
+                  Rectangle {
+                    width: 16
+                    height: 16
+                    radius: 3
+                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    Text {
+                      anchors.centerIn: parent
+                      text: "B"
+                      font.family: Style.font.family
+                      font.pixelSize: 9
+                      color: Color.muted
+                    }
+                  }
                 }
-              }
-
-              Rectangle {
-                implicitWidth: 64
-                implicitHeight: 26
-                radius: 4
-                color: Color.pickAlpha("surface.selected", "#2a3036")
 
                 Text {
-                  anchors.centerIn: parent
-                  text: root.borderSize === 0 ? "None (0)" : (root.borderSize + "px")
+                  text: "Active and inactive window outline border width"
                   font.family: Style.font.family
-                  font.pixelSize: 11
-                  font.bold: true
-                  color: Color.foreground
+                  font.pixelSize: 10
+                  color: Color.muted
                 }
               }
 
-              Button {
-                text: "▶"
-                implicitWidth: 28
-                implicitHeight: 26
-                bordered: true
-                onClicked: {
-                  root.focusedCard = 4
-                  root.cycleBorder(1)
+              RowLayout {
+                spacing: 4
+
+                Button {
+                  text: "◀"
+                  implicitWidth: 28
+                  implicitHeight: 26
+                  bordered: true
+                  onClicked: {
+                    root.focusedCard = 4
+                    root.cycleBorder(-1)
+                  }
+                }
+
+                Rectangle {
+                  implicitWidth: 64
+                  implicitHeight: 26
+                  radius: 4
+                  color: Color.pickAlpha("surface.selected", "#2a3036")
+
+                  Text {
+                    anchors.centerIn: parent
+                    text: root.borderSize === 0 ? "None (0)" : (root.borderSize + "px")
+                    font.family: Style.font.family
+                    font.pixelSize: 11
+                    font.bold: true
+                    color: Color.foreground
+                  }
+                }
+
+                Button {
+                  text: "▶"
+                  implicitWidth: 28
+                  implicitHeight: 26
+                  bordered: true
+                  onClicked: {
+                    root.focusedCard = 4
+                    root.cycleBorder(1)
+                  }
                 }
               }
             }
           }
 
           // Inactive Dimming & Blur
-          RowLayout {
+          Rectangle {
+            id: opacityRow
             Layout.fillWidth: true
-            spacing: 10
+            Layout.preferredHeight: 46
+            radius: 6
+            color: (root.activeFocusSection && root.focusedCard === 5) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
+            border.color: (root.activeFocusSection && root.focusedCard === 5) ? Color.accent : "transparent"
+            border.width: (root.activeFocusSection && root.focusedCard === 5) ? 2 : 0
 
-            ColumnLayout {
-              Layout.fillWidth: true
-              spacing: 1
-
-              RowLayout {
-                spacing: 6
-                Text {
-                  text: "Inactive Window Opacity"
-                  font.family: Style.font.family
-                  font.pixelSize: 12
-                  font.bold: true
-                  color: Color.foreground
-                }
-
-                Rectangle {
-                  width: 16
-                  height: 16
-                  radius: 3
-                  color: Color.pickAlpha("surface.selected", "#2a3036")
-                  Text {
-                    anchors.centerIn: parent
-                    text: "D"
-                    font.family: Style.font.family
-                    font.pixelSize: 9
-                    color: Color.muted
-                  }
-                }
-              }
-
-              Text {
-                text: "Subtly dim unfocused windows to direct focus to active application"
-                font.family: Style.font.family
-                font.pixelSize: 10
-                color: Color.muted
-              }
+            MouseArea {
+              anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.focusedCard = 5
             }
 
             RowLayout {
-              spacing: 4
+              anchors.fill: parent
+              anchors.leftMargin: 8
+              anchors.rightMargin: 8
+              spacing: 10
 
-              Button {
-                text: "◀"
-                implicitWidth: 28
-                implicitHeight: 26
-                bordered: true
-                onClicked: {
-                  root.focusedCard = 5
-                  root.cycleOpacity(-1)
+              ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+
+                RowLayout {
+                  spacing: 6
+                  Text {
+                    text: "Inactive Window Opacity"
+                    font.family: Style.font.family
+                    font.pixelSize: 12
+                    font.bold: true
+                    color: Color.foreground
+                  }
+
+                  Rectangle {
+                    width: 16
+                    height: 16
+                    radius: 3
+                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    Text {
+                      anchors.centerIn: parent
+                      text: "D"
+                      font.family: Style.font.family
+                      font.pixelSize: 9
+                      color: Color.muted
+                    }
+                  }
                 }
-              }
-
-              Rectangle {
-                implicitWidth: 64
-                implicitHeight: 26
-                radius: 4
-                color: Color.pickAlpha("surface.selected", "#2a3036")
 
                 Text {
-                  anchors.centerIn: parent
-                  text: Math.round(root.inactiveOpacity * 100) + "%"
+                  text: "Subtly dim unfocused windows to direct focus to active application"
                   font.family: Style.font.family
-                  font.pixelSize: 11
-                  font.bold: true
-                  color: Color.foreground
+                  font.pixelSize: 10
+                  color: Color.muted
                 }
               }
 
-              Button {
-                text: "▶"
-                implicitWidth: 28
-                implicitHeight: 26
-                bordered: true
-                onClicked: {
-                  root.focusedCard = 5
-                  root.cycleOpacity(1)
+              RowLayout {
+                spacing: 4
+
+                Button {
+                  text: "◀"
+                  implicitWidth: 28
+                  implicitHeight: 26
+                  bordered: true
+                  onClicked: {
+                    root.focusedCard = 5
+                    root.cycleOpacity(-1)
+                  }
+                }
+
+                Rectangle {
+                  implicitWidth: 64
+                  implicitHeight: 26
+                  radius: 4
+                  color: Color.pickAlpha("surface.selected", "#2a3036")
+
+                  Text {
+                    anchors.centerIn: parent
+                    text: Math.round(root.inactiveOpacity * 100) + "%"
+                    font.family: Style.font.family
+                    font.pixelSize: 11
+                    font.bold: true
+                    color: Color.foreground
+                  }
+                }
+
+                Button {
+                  text: "▶"
+                  implicitWidth: 28
+                  implicitHeight: 26
+                  bordered: true
+                  onClicked: {
+                    root.focusedCard = 5
+                    root.cycleOpacity(1)
+                  }
                 }
               }
             }
           }
 
           // Blur Toggle
-          RowLayout {
+          Rectangle {
+            id: blurRow
             Layout.fillWidth: true
-            spacing: 10
+            Layout.preferredHeight: 46
+            radius: 6
+            color: (root.activeFocusSection && root.focusedCard === 6) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
+            border.color: (root.activeFocusSection && root.focusedCard === 6) ? Color.accent : "transparent"
+            border.width: (root.activeFocusSection && root.focusedCard === 6) ? 2 : 0
 
-            ColumnLayout {
-              Layout.fillWidth: true
-              spacing: 1
-
-              RowLayout {
-                spacing: 6
-                Text {
-                  text: "Background Blur"
-                  font.family: Style.font.family
-                  font.pixelSize: 12
-                  font.bold: true
-                  color: Color.foreground
-                }
-
-                Rectangle {
-                  width: 16
-                  height: 16
-                  radius: 3
-                  color: Color.pickAlpha("surface.selected", "#2a3036")
-                  Text {
-                    anchors.centerIn: parent
-                    text: "L"
-                    font.family: Style.font.family
-                    font.pixelSize: 9
-                    color: Color.muted
-                  }
-                }
-              }
-
-              Text {
-                text: "Dual-kawase backdrop blur behind translucent shell windows"
-                font.family: Style.font.family
-                font.pixelSize: 10
-                color: Color.muted
-              }
-            }
-
-            Button {
-              text: root.blur ? "ON" : "OFF"
-              implicitWidth: 60
-              implicitHeight: 26
-              bordered: true
+            MouseArea {
+              anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
               onClicked: {
                 root.focusedCard = 6
                 root.toggleBlur()
+              }
+            }
+
+            RowLayout {
+              anchors.fill: parent
+              anchors.leftMargin: 8
+              anchors.rightMargin: 8
+              spacing: 10
+
+              ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+
+                RowLayout {
+                  spacing: 6
+                  Text {
+                    text: "Background Blur"
+                    font.family: Style.font.family
+                    font.pixelSize: 12
+                    font.bold: true
+                    color: Color.foreground
+                  }
+
+                  Rectangle {
+                    width: 16
+                    height: 16
+                    radius: 3
+                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    Text {
+                      anchors.centerIn: parent
+                      text: "L"
+                      font.family: Style.font.family
+                      font.pixelSize: 9
+                      color: Color.muted
+                    }
+                  }
+                }
+
+                Text {
+                  text: "Dual-kawase backdrop blur behind translucent shell windows"
+                  font.family: Style.font.family
+                  font.pixelSize: 10
+                  color: Color.muted
+                }
+              }
+
+              Button {
+                text: root.blur ? "ON" : "OFF"
+                implicitWidth: 60
+                implicitHeight: 26
+                bordered: true
+                onClicked: {
+                  root.focusedCard = 6
+                  root.toggleBlur()
+                }
               }
             }
           }
@@ -1021,12 +1156,14 @@ Item {
 
       // Card 4: Menu Bar & Workspace Tiling
       Rectangle {
+        id: card4
         Layout.fillWidth: true
-        Layout.preferredHeight: 184
+        Layout.preferredHeight: card4Col.implicitHeight + 24
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
         ColumnLayout {
+          id: card4Col
           anchors.fill: parent
           anchors.margins: 12
           spacing: 8
@@ -1060,211 +1197,301 @@ Item {
           }
 
           // Top Bar Visibility
-          RowLayout {
+          Rectangle {
+            id: barRow
             Layout.fillWidth: true
-            spacing: 10
+            Layout.preferredHeight: 46
+            radius: 6
+            color: (root.activeFocusSection && root.focusedCard === 7) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
+            border.color: (root.activeFocusSection && root.focusedCard === 7) ? Color.accent : "transparent"
+            border.width: (root.activeFocusSection && root.focusedCard === 7) ? 2 : 0
 
-            ColumnLayout {
-              Layout.fillWidth: true
-              spacing: 1
-
-              RowLayout {
-                spacing: 6
-                Text {
-                  text: "Menu Bar Visibility"
-                  font.family: Style.font.family
-                  font.pixelSize: 12
-                  font.bold: true
-                  color: Color.foreground
-                }
-
-                Rectangle {
-                  width: 16
-                  height: 16
-                  radius: 3
-                  color: Color.pickAlpha("surface.selected", "#2a3036")
-                  Text {
-                    anchors.centerIn: parent
-                    text: "T"
-                    font.family: Style.font.family
-                    font.pixelSize: 9
-                    color: Color.muted
-                  }
-                }
-              }
-
-              Text {
-                text: "Toggle status bar visibility without stopping the Omarchy shell"
-                font.family: Style.font.family
-                font.pixelSize: 10
-                color: Color.muted
-              }
-            }
-
-            Button {
-              text: root.barHidden ? "HIDDEN" : "VISIBLE"
-              implicitWidth: 78
-              implicitHeight: 26
-              bordered: true
+            MouseArea {
+              anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
               onClicked: {
                 root.focusedCard = 7
                 root.toggleBar()
               }
             }
+
+            RowLayout {
+              anchors.fill: parent
+              anchors.leftMargin: 8
+              anchors.rightMargin: 8
+              spacing: 10
+
+              ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+
+                RowLayout {
+                  spacing: 6
+                  Text {
+                    text: "Menu Bar Visibility"
+                    font.family: Style.font.family
+                    font.pixelSize: 12
+                    font.bold: true
+                    color: Color.foreground
+                  }
+
+                  Rectangle {
+                    width: 16
+                    height: 16
+                    radius: 3
+                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    Text {
+                      anchors.centerIn: parent
+                      text: "T"
+                      font.family: Style.font.family
+                      font.pixelSize: 9
+                      color: Color.muted
+                    }
+                  }
+                }
+
+                Text {
+                  text: "Toggle status bar visibility without stopping the Omarchy shell"
+                  font.family: Style.font.family
+                  font.pixelSize: 10
+                  color: Color.muted
+                }
+              }
+
+              Button {
+                text: root.barHidden ? "HIDDEN" : "VISIBLE"
+                implicitWidth: 78
+                implicitHeight: 26
+                bordered: true
+                onClicked: {
+                  root.focusedCard = 7
+                  root.toggleBar()
+                }
+              }
+            }
           }
 
           // Bar Edge Position
-          RowLayout {
+          Rectangle {
+            id: barPosRow
             Layout.fillWidth: true
-            spacing: 10
+            Layout.preferredHeight: 46
+            radius: 6
+            color: (root.activeFocusSection && root.focusedCard === 8) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
+            border.color: (root.activeFocusSection && root.focusedCard === 8) ? Color.accent : "transparent"
+            border.width: (root.activeFocusSection && root.focusedCard === 8) ? 2 : 0
 
-            ColumnLayout {
-              Layout.fillWidth: true
-              spacing: 1
-
-              RowLayout {
-                spacing: 6
-                Text {
-                  text: "Bar Edge Position"
-                  font.family: Style.font.family
-                  font.pixelSize: 12
-                  font.bold: true
-                  color: Color.foreground
-                }
-
-                Rectangle {
-                  width: 16
-                  height: 16
-                  radius: 3
-                  color: Color.pickAlpha("surface.selected", "#2a3036")
-                  Text {
-                    anchors.centerIn: parent
-                    text: "P"
-                    font.family: Style.font.family
-                    font.pixelSize: 9
-                    color: Color.muted
-                  }
-                }
-              }
-
-              Text {
-                text: "Dock the menu bar to top or bottom screen edge"
-                font.family: Style.font.family
-                font.pixelSize: 10
-                color: Color.muted
+            MouseArea {
+              anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
+              onClicked: {
+                root.focusedCard = 8
+                root.cycleBarPosition()
               }
             }
 
-            Button {
-              text: root.barPosition.toUpperCase()
-              implicitWidth: 78
-              implicitHeight: 26
-              bordered: true
-              onClicked: root.cycleBarPosition()
+            RowLayout {
+              anchors.fill: parent
+              anchors.leftMargin: 8
+              anchors.rightMargin: 8
+              spacing: 10
+
+              ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+
+                RowLayout {
+                  spacing: 6
+                  Text {
+                    text: "Bar Edge Position"
+                    font.family: Style.font.family
+                    font.pixelSize: 12
+                    font.bold: true
+                    color: Color.foreground
+                  }
+
+                  Rectangle {
+                    width: 16
+                    height: 16
+                    radius: 3
+                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    Text {
+                      anchors.centerIn: parent
+                      text: "P"
+                      font.family: Style.font.family
+                      font.pixelSize: 9
+                      color: Color.muted
+                    }
+                  }
+                }
+
+                Text {
+                  text: "Dock the menu bar to top or bottom screen edge"
+                  font.family: Style.font.family
+                  font.pixelSize: 10
+                  color: Color.muted
+                }
+              }
+
+              Button {
+                text: root.barPosition.toUpperCase()
+                implicitWidth: 78
+                implicitHeight: 26
+                bordered: true
+                onClicked: {
+                  root.focusedCard = 8
+                  root.cycleBarPosition()
+                }
+              }
             }
           }
 
           // Bar Transparency
-          RowLayout {
+          Rectangle {
+            id: barTransRow
             Layout.fillWidth: true
-            spacing: 10
+            Layout.preferredHeight: 46
+            radius: 6
+            color: (root.activeFocusSection && root.focusedCard === 9) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
+            border.color: (root.activeFocusSection && root.focusedCard === 9) ? Color.accent : "transparent"
+            border.width: (root.activeFocusSection && root.focusedCard === 9) ? 2 : 0
 
-            ColumnLayout {
-              Layout.fillWidth: true
-              spacing: 1
-
-              RowLayout {
-                spacing: 6
-                Text {
-                  text: "Bar Transparency"
-                  font.family: Style.font.family
-                  font.pixelSize: 12
-                  font.bold: true
-                  color: Color.foreground
-                }
-
-                Rectangle {
-                  width: 16
-                  height: 16
-                  radius: 3
-                  color: Color.pickAlpha("surface.selected", "#2a3036")
-                  Text {
-                    anchors.centerIn: parent
-                    text: "E"
-                    font.family: Style.font.family
-                    font.pixelSize: 9
-                    color: Color.muted
-                  }
-                }
-              }
-
-              Text {
-                text: "Transparent floating island vs solid edge bar style"
-                font.family: Style.font.family
-                font.pixelSize: 10
-                color: Color.muted
+            MouseArea {
+              anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
+              onClicked: {
+                root.focusedCard = 9
+                root.toggleBarTransparent()
               }
             }
 
-            Button {
-              text: root.barTransparent ? "TRANSPARENT" : "SOLID"
-              implicitWidth: 96
-              implicitHeight: 26
-              bordered: true
-              onClicked: root.toggleBarTransparent()
+            RowLayout {
+              anchors.fill: parent
+              anchors.leftMargin: 8
+              anchors.rightMargin: 8
+              spacing: 10
+
+              ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+
+                RowLayout {
+                  spacing: 6
+                  Text {
+                    text: "Bar Transparency"
+                    font.family: Style.font.family
+                    font.pixelSize: 12
+                    font.bold: true
+                    color: Color.foreground
+                  }
+
+                  Rectangle {
+                    width: 16
+                    height: 16
+                    radius: 3
+                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    Text {
+                      anchors.centerIn: parent
+                      text: "E"
+                      font.family: Style.font.family
+                      font.pixelSize: 9
+                      color: Color.muted
+                    }
+                  }
+                }
+
+                Text {
+                  text: "Transparent floating island vs solid edge bar style"
+                  font.family: Style.font.family
+                  font.pixelSize: 10
+                  color: Color.muted
+                }
+              }
+
+              Button {
+                text: root.barTransparent ? "TRANSPARENT" : "SOLID"
+                implicitWidth: 96
+                implicitHeight: 26
+                bordered: true
+                onClicked: {
+                  root.focusedCard = 9
+                  root.toggleBarTransparent()
+                }
+              }
             }
           }
 
           // Workspace Tiling Layout
-          RowLayout {
+          Rectangle {
+            id: layoutRow
             Layout.fillWidth: true
-            spacing: 10
+            Layout.preferredHeight: 46
+            radius: 6
+            color: (root.activeFocusSection && root.focusedCard === 10) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
+            border.color: (root.activeFocusSection && root.focusedCard === 10) ? Color.accent : "transparent"
+            border.width: (root.activeFocusSection && root.focusedCard === 10) ? 2 : 0
 
-            ColumnLayout {
-              Layout.fillWidth: true
-              spacing: 1
-
-              RowLayout {
-                spacing: 6
-                Text {
-                  text: "Workspace Tiling Layout"
-                  font.family: Style.font.family
-                  font.pixelSize: 12
-                  font.bold: true
-                  color: Color.foreground
-                }
-
-                Rectangle {
-                  width: 16
-                  height: 16
-                  radius: 3
-                  color: Color.pickAlpha("surface.selected", "#2a3036")
-                  Text {
-                    anchors.centerIn: parent
-                    text: "W"
-                    font.family: Style.font.family
-                    font.pixelSize: 9
-                    color: Color.muted
-                  }
-                }
-              }
-
-              Text {
-                text: "Tiling algorithm on active workspace (Dwindle spiral vs horizontal scrolling)"
-                font.family: Style.font.family
-                font.pixelSize: 10
-                color: Color.muted
+            MouseArea {
+              anchors.fill: parent
+              cursorShape: Qt.PointingHandCursor
+              onClicked: {
+                root.focusedCard = 10
+                root.toggleWorkspaceLayout()
               }
             }
 
-            Button {
-              text: root.workspaceLayout === "dwindle" ? "DWINDLE" : "SCROLLING"
-              implicitWidth: 96
-              implicitHeight: 26
-              bordered: true
-              onClicked: {
-                root.focusedCard = 8
-                root.toggleWorkspaceLayout()
+            RowLayout {
+              anchors.fill: parent
+              anchors.leftMargin: 8
+              anchors.rightMargin: 8
+              spacing: 10
+
+              ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+
+                RowLayout {
+                  spacing: 6
+                  Text {
+                    text: "Workspace Tiling Layout"
+                    font.family: Style.font.family
+                    font.pixelSize: 12
+                    font.bold: true
+                    color: Color.foreground
+                  }
+
+                  Rectangle {
+                    width: 16
+                    height: 16
+                    radius: 3
+                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    Text {
+                      anchors.centerIn: parent
+                      text: "W"
+                      font.family: Style.font.family
+                      font.pixelSize: 9
+                      color: Color.muted
+                    }
+                  }
+                }
+
+                Text {
+                  text: "Tiling algorithm on active workspace (Dwindle spiral vs horizontal scrolling)"
+                  font.family: Style.font.family
+                  font.pixelSize: 10
+                  color: Color.muted
+                }
+              }
+
+              Button {
+                text: root.workspaceLayout === "dwindle" ? "DWINDLE" : "SCROLLING"
+                implicitWidth: 96
+                implicitHeight: 26
+                bordered: true
+                onClicked: {
+                  root.focusedCard = 10
+                  root.toggleWorkspaceLayout()
+                }
               }
             }
           }

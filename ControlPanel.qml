@@ -126,6 +126,11 @@ Item {
       }
 
       onTextKey: function(key) {
+        if (root.focusSection === "content" && categoryLoader.item && typeof categoryLoader.item.handleTextKey === "function") {
+          var handled = categoryLoader.item.handleTextKey(key)
+          if (handled === true) return
+        }
+
         if (key === "1") { root.currentCategory = "displays"; root.focusSection = "sidebar" }
         else if (key === "2") { root.currentCategory = "power"; root.focusSection = "sidebar" }
         else if (key === "3") { root.currentCategory = "appearance"; root.focusSection = "sidebar" }
@@ -135,10 +140,10 @@ Item {
         else if (key === "7") { root.currentCategory = "input"; root.focusSection = "sidebar" }
         else if (key === "8") { root.currentCategory = "windows"; root.focusSection = "sidebar" }
         else if (key === "9") { root.currentCategory = "defaults"; root.focusSection = "sidebar" }
-        else if (key === "u" || key === "U") { root.currentCategory = "updates"; root.focusSection = "sidebar" }
-        else if (key === "n" || key === "N") { root.currentCategory = "notifications"; root.focusSection = "sidebar" }
-        else if (key === "k" || key === "K") { root.currentCategory = "shortcuts"; root.focusSection = "sidebar" }
-        else if (key === "a" || key === "A") { root.currentCategory = "agents"; root.focusSection = "sidebar" }
+        else if (root.focusSection === "sidebar" && (key === "u" || key === "U")) { root.currentCategory = "updates"; root.focusSection = "sidebar" }
+        else if (root.focusSection === "sidebar" && (key === "n" || key === "N")) { root.currentCategory = "notifications"; root.focusSection = "sidebar" }
+        else if (root.focusSection === "sidebar" && (key === "k" || key === "K")) { root.currentCategory = "shortcuts"; root.focusSection = "sidebar" }
+        else if (root.focusSection === "sidebar" && (key === "a" || key === "A")) { root.currentCategory = "agents"; root.focusSection = "sidebar" }
         else if (key === "0") { root.currentCategory = "about"; root.focusSection = "sidebar" }
         else if (root.focusSection === "content" && categoryLoader.item && typeof categoryLoader.item.handleTextKey === "function") {
           categoryLoader.item.handleTextKey(key)
