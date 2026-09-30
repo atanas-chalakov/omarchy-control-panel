@@ -350,6 +350,80 @@ Item {
       }
     }
 
+    // Quick Search Suggestion Chips (When search is empty)
+    RowLayout {
+      Layout.fillWidth: true
+      visible: searchField.text.trim().length === 0
+      spacing: 6
+
+      Text {
+        text: "Quick Suggestions:"
+        font.family: Style.font.family
+        font.pixelSize: 10
+        font.bold: true
+        color: Color.muted
+      }
+
+      Flow {
+        Layout.fillWidth: true
+        spacing: 6
+
+        Repeater {
+          model: [
+            { icon: "󰤨", label: "Wi-Fi", query: "wifi" },
+            { icon: "󰂯", label: "Bluetooth", query: "bluetooth" },
+            { icon: "󰕾", label: "Volume", query: "volume" },
+            { icon: "󰍹", label: "Brightness", query: "brightness" },
+            { icon: "󰆽", label: "Touchpad", query: "touchpad" },
+            { icon: "󰅐", label: "Clock", query: "clock" },
+            { icon: "", label: "Theme", query: "theme" },
+            { icon: "󰚰", label: "Updates", query: "updates" }
+          ]
+
+          delegate: Rectangle {
+            height: 24
+            width: chipContent.implicitWidth + 14
+            radius: 4
+            color: Color.pickAlpha("surface.subtle", "#181b1d")
+            border.color: chipMouse.containsMouse ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
+            border.width: 1
+
+            MouseArea {
+              id: chipMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: {
+                searchField.text = modelData.query
+                searchField.cursorPosition = searchField.text.length
+                searchField.forceActiveFocus()
+              }
+            }
+
+            RowLayout {
+              id: chipContent
+              anchors.centerIn: parent
+              spacing: 4
+
+              Text {
+                text: modelData.icon
+                font.family: Style.font.family
+                font.pixelSize: 11
+                color: Color.accent
+              }
+
+              Text {
+                text: modelData.label
+                font.family: Style.font.family
+                font.pixelSize: 10
+                color: Color.foreground
+              }
+            }
+          }
+        }
+      }
+    }
+
     // Results Header Badge (When searching)
     RowLayout {
       Layout.fillWidth: true

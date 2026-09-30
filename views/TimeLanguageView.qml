@@ -80,6 +80,123 @@ Item {
     { label: "UTC", tz: "UTC" }
   ]
 
+  // Curated database for instant city suggestions & autocomplete
+  readonly property var cityDatabase: [
+    // Bulgaria & Balkans
+    { name: "Sofia", country: "Bulgaria", tag: "BG" },
+    { name: "Plovdiv", country: "Bulgaria", tag: "BG" },
+    { name: "Varna", country: "Bulgaria", tag: "BG" },
+    { name: "Burgas", country: "Bulgaria", tag: "BG" },
+    { name: "Ruse", country: "Bulgaria", tag: "BG" },
+    { name: "Stara Zagora", country: "Bulgaria", tag: "BG" },
+    { name: "Pleven", country: "Bulgaria", tag: "BG" },
+    { name: "Veliko Tarnovo", country: "Bulgaria", tag: "BG" },
+    { name: "Blagoevgrad", country: "Bulgaria", tag: "BG" },
+    { name: "Bucharest", country: "Romania", tag: "RO" },
+    { name: "Belgrade", country: "Serbia", tag: "RS" },
+    { name: "Athens", country: "Greece", tag: "GR" },
+    { name: "Thessaloniki", country: "Greece", tag: "GR" },
+    { name: "Skopje", country: "North Macedonia", tag: "MK" },
+    { name: "Zagreb", country: "Croatia", tag: "HR" },
+    { name: "Sarajevo", country: "Bosnia", tag: "BA" },
+    { name: "Istanbul", country: "Turkey", tag: "TR" },
+
+    // Western & Central Europe
+    { name: "London", country: "United Kingdom", tag: "UK" },
+    { name: "Manchester", country: "United Kingdom", tag: "UK" },
+    { name: "Edinburgh", country: "United Kingdom", tag: "UK" },
+    { name: "Paris", country: "France", tag: "FR" },
+    { name: "Lyon", country: "France", tag: "FR" },
+    { name: "Marseille", country: "France", tag: "FR" },
+    { name: "Berlin", country: "Germany", tag: "DE" },
+    { name: "Munich", country: "Germany", tag: "DE" },
+    { name: "Frankfurt", country: "Germany", tag: "DE" },
+    { name: "Hamburg", country: "Germany", tag: "DE" },
+    { name: "Cologne", country: "Germany", tag: "DE" },
+    { name: "Amsterdam", country: "Netherlands", tag: "NL" },
+    { name: "Rotterdam", country: "Netherlands", tag: "NL" },
+    { name: "Brussels", country: "Belgium", tag: "BE" },
+    { name: "Vienna", country: "Austria", tag: "AT" },
+    { name: "Zurich", country: "Switzerland", tag: "CH" },
+    { name: "Geneva", country: "Switzerland", tag: "CH" },
+    { name: "Madrid", country: "Spain", tag: "ES" },
+    { name: "Barcelona", country: "Spain", tag: "ES" },
+    { name: "Valencia", country: "Spain", tag: "ES" },
+    { name: "Rome", country: "Italy", tag: "IT" },
+    { name: "Milan", country: "Italy", tag: "IT" },
+    { name: "Naples", country: "Italy", tag: "IT" },
+    { name: "Prague", country: "Czechia", tag: "CZ" },
+    { name: "Warsaw", country: "Poland", tag: "PL" },
+    { name: "Krakow", country: "Poland", tag: "PL" },
+    { name: "Budapest", country: "Hungary", tag: "HU" },
+    { name: "Dublin", country: "Ireland", tag: "IE" },
+    { name: "Lisbon", country: "Portugal", tag: "PT" },
+    { name: "Porto", country: "Portugal", tag: "PT" },
+
+    // Northern Europe
+    { name: "Stockholm", country: "Sweden", tag: "SE" },
+    { name: "Oslo", country: "Norway", tag: "NO" },
+    { name: "Copenhagen", country: "Denmark", tag: "DK" },
+    { name: "Helsinki", country: "Finland", tag: "FI" },
+    { name: "Reykjavik", country: "Iceland", tag: "IS" },
+
+    // North America
+    { name: "New York", country: "United States", tag: "US" },
+    { name: "Los Angeles", country: "United States", tag: "US" },
+    { name: "Chicago", country: "United States", tag: "US" },
+    { name: "San Francisco", country: "United States", tag: "US" },
+    { name: "Seattle", country: "United States", tag: "US" },
+    { name: "Austin", country: "United States", tag: "US" },
+    { name: "Boston", country: "United States", tag: "US" },
+    { name: "Miami", country: "United States", tag: "US" },
+    { name: "Washington", country: "United States", tag: "US" },
+    { name: "Toronto", country: "Canada", tag: "CA" },
+    { name: "Vancouver", country: "Canada", tag: "CA" },
+    { name: "Montreal", country: "Canada", tag: "CA" },
+
+    // Asia, Pacific & Middle East
+    { name: "Tokyo", country: "Japan", tag: "JP" },
+    { name: "Kyoto", country: "Japan", tag: "JP" },
+    { name: "Osaka", country: "Japan", tag: "JP" },
+    { name: "Seoul", country: "South Korea", tag: "KR" },
+    { name: "Singapore", country: "Singapore", tag: "SG" },
+    { name: "Hong Kong", country: "China", tag: "HK" },
+    { name: "Taipei", country: "Taiwan", tag: "TW" },
+    { name: "Sydney", country: "Australia", tag: "AU" },
+    { name: "Melbourne", country: "Australia", tag: "AU" },
+    { name: "Auckland", country: "New Zealand", tag: "NZ" },
+    { name: "Bangkok", country: "Thailand", tag: "TH" },
+    { name: "Dubai", country: "United Arab Emirates", tag: "AE" },
+    { name: "Tel Aviv", country: "Israel", tag: "IL" },
+    { name: "Doha", country: "Qatar", tag: "QA" }
+  ]
+
+  // Filtered matching cities based on cityField input
+  property int selectedCitySuggestionIndex: 0
+
+  readonly property var matchingCities: {
+    var q = (cityField ? cityField.text.trim().toLowerCase() : "")
+    if (!q || q.length < 1) return []
+    return cityDatabase.filter(function(c) {
+      return c.name.toLowerCase().indexOf(q) !== -1 || c.country.toLowerCase().indexOf(q) !== -1
+    }).slice(0, 5)
+  }
+
+  onMatchingCitiesChanged: {
+    if (selectedCitySuggestionIndex >= matchingCities.length) {
+      selectedCitySuggestionIndex = Math.max(0, matchingCities.length - 1)
+    }
+  }
+
+  function selectCitySuggestion(cityName) {
+    if (cityField) cityField.text = cityName
+    root.setCustomLocation(cityName)
+    if (cityField) cityField.focus = false
+    if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+      root.panelRoot.returnFocusToKeyCatcher()
+    }
+  }
+
   function currentPresetIndex() {
     for (var i = 0; i < layoutPresets.length; i++) {
       if (layoutPresets[i].layouts === root.kbLayout) return i
@@ -971,152 +1088,324 @@ Item {
       }
 
       // Custom City Input Field (Index 4)
+      // Custom City Input Field with Autocomplete & Quick Suggestions (Index 4)
       Rectangle {
         id: cityInputCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 52
+        Layout.preferredHeight: {
+          if (cityField && cityField.activeFocus && root.matchingCities.length > 0) {
+            return 46 + (root.matchingCities.length * 36) + 16
+          }
+          return 86
+        }
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && (root.focusedCard === 4 || (cityField && cityField.activeFocus))) ? Color.accent : "transparent"
         border.width: (root.activeFocusSection && (root.focusedCard === 4 || (cityField && cityField.activeFocus))) ? 2 : 0
+        clip: true
 
-        RowLayout {
+        ColumnLayout {
           anchors.fill: parent
-          anchors.leftMargin: 12
-          anchors.rightMargin: 12
-          spacing: 8
+          anchors.margins: 10
+          spacing: 6
 
-          Text {
-            text: "󰍎 City [L]:"
-            font.family: Style.font.family
-            font.pixelSize: 12
-            font.bold: true
-            color: (cityField && cityField.activeFocus) ? Color.accent : Color.muted
-          }
-
-          TextField {
-            id: cityField
+          // Row 1: Input & Action Buttons
+          RowLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.minimumWidth: 80
-            placeholderText: "Type city (e.g. Sofia, London, Tokyo)... [Enter]"
-            text: root.customCity
-            background: null
-            color: Color.foreground
-            font.family: Style.font.family
-            font.pixelSize: Style.font.body || 13
-
-            onPressed: {
-              root.focusedCard = 4
-            }
-
-            onAccepted: {
-              root.setCustomLocation(cityField.text.trim())
-              cityField.focus = false
-              if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
-                root.panelRoot.returnFocusToKeyCatcher()
-              }
-            }
-
-            Keys.onEscapePressed: function(event) {
-              cityField.focus = false
-              if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
-                root.panelRoot.returnFocusToKeyCatcher()
-              }
-              event.accepted = true
-            }
-
-            Keys.onDownPressed: function(event) {
-              cityField.focus = false
-              root.focusedCard = 5
-              if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
-                root.panelRoot.returnFocusToKeyCatcher()
-              }
-              root.ensureCardVisible(5)
-              event.accepted = true
-            }
-
-            Keys.onUpPressed: function(event) {
-              cityField.focus = false
-              root.focusedCard = 3
-              if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
-                root.panelRoot.returnFocusToKeyCatcher()
-              }
-              root.ensureCardVisible(3)
-              event.accepted = true
-            }
-
-            Keys.onTabPressed: function(event) {
-              cityField.focus = false
-              root.focusedCard = 5
-              if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
-                root.panelRoot.returnFocusToKeyCatcher()
-              }
-              root.ensureCardVisible(5)
-              event.accepted = true
-            }
-          }
-
-          // Apply Button
-          Rectangle {
-            Layout.preferredHeight: 30
-            Layout.preferredWidth: 60
-            Layout.minimumWidth: 60
-            radius: 5
-            color: Color.pickAlpha("accent.subtle", "#1f3b30")
-            border.color: Color.accent
-            border.width: 1
-
-            MouseArea {
-              anchors.fill: parent
-              cursorShape: Qt.PointingHandCursor
-              onClicked: {
-                root.setCustomLocation(cityField.text.trim())
-                cityField.focus = false
-                if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
-                  root.panelRoot.returnFocusToKeyCatcher()
-                }
-              }
-            }
+            Layout.preferredHeight: 32
+            spacing: 8
 
             Text {
-              anchors.centerIn: parent
-              text: "Apply"
+              text: "󰍎 City [L]:"
               font.family: Style.font.family
-              font.pixelSize: 11
+              font.pixelSize: 12
               font.bold: true
-              color: Color.accent
+              color: (cityField && cityField.activeFocus) ? Color.accent : Color.muted
             }
-          }
 
-          // Clear Button
-          Rectangle {
-            Layout.preferredHeight: 30
-            Layout.preferredWidth: 60
-            Layout.minimumWidth: 60
-            radius: 5
-            visible: !root.isAutoLocation || root.customCity.length > 0
-            color: Color.pickAlpha("surface.selected", "#2a3036")
+            TextField {
+              id: cityField
+              Layout.fillWidth: true
+              Layout.fillHeight: true
+              Layout.minimumWidth: 80
+              placeholderText: "Type city (e.g. Sofia, London, Tokyo)... [Enter]"
+              text: root.customCity
+              background: null
+              color: Color.foreground
+              font.family: Style.font.family
+              font.pixelSize: Style.font.body || 13
 
-            MouseArea {
-              anchors.fill: parent
-              cursorShape: Qt.PointingHandCursor
-              onClicked: {
-                cityField.text = ""
-                root.clearCustomLocation()
+              onPressed: {
+                root.focusedCard = 4
+              }
+
+              onAccepted: {
+                if (root.matchingCities.length > 0 && root.selectedCitySuggestionIndex >= 0 && root.selectedCitySuggestionIndex < root.matchingCities.length) {
+                  root.selectCitySuggestion(root.matchingCities[root.selectedCitySuggestionIndex].name)
+                } else {
+                  root.selectCitySuggestion(cityField.text.trim())
+                }
+              }
+
+              Keys.onEscapePressed: function(event) {
                 cityField.focus = false
                 if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
                   root.panelRoot.returnFocusToKeyCatcher()
                 }
+                event.accepted = true
+              }
+
+              Keys.onDownPressed: function(event) {
+                if (root.matchingCities.length > 0) {
+                  root.selectedCitySuggestionIndex = (root.selectedCitySuggestionIndex + 1) % root.matchingCities.length
+                  event.accepted = true
+                } else {
+                  cityField.focus = false
+                  root.focusedCard = 5
+                  if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                    root.panelRoot.returnFocusToKeyCatcher()
+                  }
+                  root.ensureCardVisible(5)
+                  event.accepted = true
+                }
+              }
+
+              Keys.onUpPressed: function(event) {
+                if (root.matchingCities.length > 0) {
+                  root.selectedCitySuggestionIndex = (root.selectedCitySuggestionIndex - 1 + root.matchingCities.length) % root.matchingCities.length
+                  event.accepted = true
+                } else {
+                  cityField.focus = false
+                  root.focusedCard = 3
+                  if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                    root.panelRoot.returnFocusToKeyCatcher()
+                  }
+                  root.ensureCardVisible(3)
+                  event.accepted = true
+                }
+              }
+
+              Keys.onTabPressed: function(event) {
+                if (root.matchingCities.length > 0) {
+                  var item = root.matchingCities[root.selectedCitySuggestionIndex]
+                  if (item) {
+                    root.selectCitySuggestion(item.name)
+                    event.accepted = true
+                    return
+                  }
+                }
+                cityField.focus = false
+                root.focusedCard = 5
+                if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                  root.panelRoot.returnFocusToKeyCatcher()
+                }
+                root.ensureCardVisible(5)
+                event.accepted = true
               }
             }
 
+            // Apply Button
+            Rectangle {
+              Layout.preferredHeight: 28
+              Layout.preferredWidth: 54
+              Layout.minimumWidth: 54
+              radius: 5
+              color: Color.pickAlpha("accent.subtle", "#1f3b30")
+              border.color: Color.accent
+              border.width: 1
+
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  if (root.matchingCities.length > 0 && root.selectedCitySuggestionIndex >= 0 && root.selectedCitySuggestionIndex < root.matchingCities.length) {
+                    root.selectCitySuggestion(root.matchingCities[root.selectedCitySuggestionIndex].name)
+                  } else {
+                    root.selectCitySuggestion(cityField.text.trim())
+                  }
+                }
+              }
+
+              Text {
+                anchors.centerIn: parent
+                text: "Apply"
+                font.family: Style.font.family
+                font.pixelSize: 11
+                font.bold: true
+                color: Color.accent
+              }
+            }
+
+            // Clear Button
+            Rectangle {
+              Layout.preferredHeight: 28
+              Layout.preferredWidth: 54
+              Layout.minimumWidth: 54
+              radius: 5
+              visible: !root.isAutoLocation || root.customCity.length > 0
+              color: Color.pickAlpha("surface.selected", "#2a3036")
+
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  cityField.text = ""
+                  root.clearCustomLocation()
+                  cityField.focus = false
+                  if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                    root.panelRoot.returnFocusToKeyCatcher()
+                  }
+                }
+              }
+
+              Text {
+                anchors.centerIn: parent
+                text: "Reset"
+                font.family: Style.font.family
+                font.pixelSize: 11
+                color: Color.muted
+              }
+            }
+          }
+
+          // Row 2A: Live Autocomplete Suggestions (Visible when typing and matches found)
+          ColumnLayout {
+            Layout.fillWidth: true
+            visible: cityField && cityField.activeFocus && root.matchingCities.length > 0
+            spacing: 3
+
+            Rectangle {
+              Layout.fillWidth: true
+              height: 1
+              color: Color.pickAlpha("surface.selected", "#2a3036")
+            }
+
+            Repeater {
+              model: root.matchingCities
+
+              delegate: Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 32
+                radius: 5
+                color: (index === root.selectedCitySuggestionIndex) ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.selected", "#22272c")
+                border.color: (index === root.selectedCitySuggestionIndex) ? Color.accent : "transparent"
+                border.width: (index === root.selectedCitySuggestionIndex) ? 1 : 0
+
+                MouseArea {
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onEntered: root.selectedCitySuggestionIndex = index
+                  onClicked: root.selectCitySuggestion(modelData.name)
+                }
+
+                RowLayout {
+                  anchors.fill: parent
+                  anchors.leftMargin: 10
+                  anchors.rightMargin: 10
+                  spacing: 8
+
+                  Text {
+                    text: "󰍎"
+                    font.family: Style.font.family
+                    font.pixelSize: 13
+                    color: Color.accent
+                  }
+
+                  Text {
+                    text: modelData.name
+                    font.family: Style.font.family
+                    font.pixelSize: 12
+                    font.bold: true
+                    color: (index === root.selectedCitySuggestionIndex) ? Color.accent : Color.foreground
+                  }
+
+                  Rectangle {
+                    Layout.preferredHeight: 16
+                    Layout.preferredWidth: countryBadge.implicitWidth + 8
+                    radius: 3
+                    color: Color.pickAlpha("surface.subtle", "#16181a")
+
+                    Text {
+                      id: countryBadge
+                      anchors.centerIn: parent
+                      text: modelData.country
+                      font.family: Style.font.family
+                      font.pixelSize: 9
+                      color: Color.muted
+                    }
+                  }
+
+                  Item { Layout.fillWidth: true }
+
+                  Text {
+                    text: (index === root.selectedCitySuggestionIndex) ? "Press [Enter] or [Tab] to Select 󰅂" : "Click to select"
+                    font.family: Style.font.family
+                    font.pixelSize: 10
+                    color: (index === root.selectedCitySuggestionIndex) ? Color.accent : Color.muted
+                  }
+                }
+              }
+            }
+          }
+
+          // Row 2B: Quick Suggestion Chips (Visible when not actively browsing autocomplete)
+          RowLayout {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 26
+            visible: !(cityField && cityField.activeFocus && root.matchingCities.length > 0)
+            spacing: 6
+
             Text {
-              anchors.centerIn: parent
-              text: "Reset"
+              text: "Quick Cities:"
               font.family: Style.font.family
-              font.pixelSize: 11
+              font.pixelSize: 10
+              font.bold: true
               color: Color.muted
+            }
+
+            Flow {
+              Layout.fillWidth: true
+              spacing: 6
+
+              Repeater {
+                model: [
+                  { name: "Sofia", tag: "BG" },
+                  { name: "Plovdiv", tag: "BG" },
+                  { name: "Varna", tag: "BG" },
+                  { name: "Burgas", tag: "BG" },
+                  { name: "London", tag: "UK" },
+                  { name: "Berlin", tag: "DE" },
+                  { name: "Paris", tag: "FR" },
+                  { name: "New York", tag: "US" },
+                  { name: "Tokyo", tag: "JP" }
+                ]
+
+                delegate: Rectangle {
+                  height: 24
+                  width: chipLabel.implicitWidth + 14
+                  radius: 4
+                  color: (root.customCity === modelData.name) ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.selected", "#22272c")
+                  border.color: (root.customCity === modelData.name) ? Color.accent : "transparent"
+                  border.width: 1
+
+                  MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.selectCitySuggestion(modelData.name)
+                  }
+
+                  Text {
+                    id: chipLabel
+                    anchors.centerIn: parent
+                    text: (root.customCity === modelData.name ? "✓ " : "") + modelData.name
+                    font.family: Style.font.family
+                    font.pixelSize: 10
+                    font.bold: root.customCity === modelData.name
+                    color: (root.customCity === modelData.name) ? Color.accent : Color.foreground
+                  }
+                }
+              }
             }
           }
         }
@@ -1397,117 +1686,183 @@ Item {
       Rectangle {
         id: customLayoutCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 52
+        Layout.preferredHeight: 86
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && (root.focusedCard === 8 || (customLayoutField && customLayoutField.activeFocus))) ? Color.accent : "transparent"
         border.width: (root.activeFocusSection && (root.focusedCard === 8 || (customLayoutField && customLayoutField.activeFocus))) ? 2 : 0
+        clip: true
 
-        RowLayout {
+        ColumnLayout {
           anchors.fill: parent
-          anchors.leftMargin: 12
-          anchors.rightMargin: 12
-          spacing: 8
+          anchors.margins: 10
+          spacing: 6
 
-          Text {
-            text: "󰌌 Custom [C]:"
-            font.family: Style.font.family
-            font.pixelSize: 12
-            font.bold: true
-            color: (customLayoutField && customLayoutField.activeFocus) ? Color.accent : Color.muted
-          }
-
-          TextField {
-            id: customLayoutField
+          // Row 1: Custom Layout Input & Apply Button
+          RowLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.minimumWidth: 80
-            placeholderText: "Comma-separated layouts (e.g. us,bg,de)... [Enter]"
-            text: root.kbLayout
-            background: null
-            color: Color.foreground
-            font.family: Style.font.family
-            font.pixelSize: Style.font.body || 13
+            Layout.preferredHeight: 32
+            spacing: 8
 
-            onPressed: {
-              root.focusedCard = 8
+            Text {
+              text: "󰌌 Custom [C]:"
+              font.family: Style.font.family
+              font.pixelSize: 12
+              font.bold: true
+              color: (customLayoutField && customLayoutField.activeFocus) ? Color.accent : Color.muted
             }
 
-            onAccepted: {
-              root.setCustomKeyboardConfig(customLayoutField.text.trim(), "")
-              customLayoutField.focus = false
-              if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
-                root.panelRoot.returnFocusToKeyCatcher()
+            TextField {
+              id: customLayoutField
+              Layout.fillWidth: true
+              Layout.fillHeight: true
+              Layout.minimumWidth: 80
+              placeholderText: "Comma-separated layouts (e.g. us,bg,de)... [Enter]"
+              text: root.kbLayout
+              background: null
+              color: Color.foreground
+              font.family: Style.font.family
+              font.pixelSize: Style.font.body || 13
+
+              onPressed: {
+                root.focusedCard = 8
               }
-            }
 
-            Keys.onEscapePressed: function(event) {
-              customLayoutField.focus = false
-              if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
-                root.panelRoot.returnFocusToKeyCatcher()
-              }
-              event.accepted = true
-            }
-
-            Keys.onDownPressed: function(event) {
-              customLayoutField.focus = false
-              root.focusedCard = 9
-              if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
-                root.panelRoot.returnFocusToKeyCatcher()
-              }
-              root.ensureCardVisible(9)
-              event.accepted = true
-            }
-
-            Keys.onUpPressed: function(event) {
-              customLayoutField.focus = false
-              root.focusedCard = 7
-              if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
-                root.panelRoot.returnFocusToKeyCatcher()
-              }
-              root.ensureCardVisible(7)
-              event.accepted = true
-            }
-
-            Keys.onTabPressed: function(event) {
-              customLayoutField.focus = false
-              root.focusedCard = 9
-              if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
-                root.panelRoot.returnFocusToKeyCatcher()
-              }
-              root.ensureCardVisible(9)
-              event.accepted = true
-            }
-          }
-
-          Rectangle {
-            Layout.preferredHeight: 30
-            Layout.preferredWidth: 60
-            Layout.minimumWidth: 60
-            radius: 5
-            color: Color.pickAlpha("accent.subtle", "#1f3b30")
-            border.color: Color.accent
-            border.width: 1
-
-            MouseArea {
-              anchors.fill: parent
-              cursorShape: Qt.PointingHandCursor
-              onClicked: {
+              onAccepted: {
                 root.setCustomKeyboardConfig(customLayoutField.text.trim(), "")
                 customLayoutField.focus = false
                 if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
                   root.panelRoot.returnFocusToKeyCatcher()
                 }
               }
+
+              Keys.onEscapePressed: function(event) {
+                customLayoutField.focus = false
+                if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                  root.panelRoot.returnFocusToKeyCatcher()
+                }
+                event.accepted = true
+              }
+
+              Keys.onDownPressed: function(event) {
+                customLayoutField.focus = false
+                root.focusedCard = 9
+                if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                  root.panelRoot.returnFocusToKeyCatcher()
+                }
+                root.ensureCardVisible(9)
+                event.accepted = true
+              }
+
+              Keys.onUpPressed: function(event) {
+                customLayoutField.focus = false
+                root.focusedCard = 7
+                if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                  root.panelRoot.returnFocusToKeyCatcher()
+                }
+                root.ensureCardVisible(7)
+                event.accepted = true
+              }
+
+              Keys.onTabPressed: function(event) {
+                customLayoutField.focus = false
+                root.focusedCard = 9
+                if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                  root.panelRoot.returnFocusToKeyCatcher()
+                }
+                root.ensureCardVisible(9)
+                event.accepted = true
+              }
             }
 
+            Rectangle {
+              Layout.preferredHeight: 28
+              Layout.preferredWidth: 54
+              Layout.minimumWidth: 54
+              radius: 5
+              color: Color.pickAlpha("accent.subtle", "#1f3b30")
+              border.color: Color.accent
+              border.width: 1
+
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  root.setCustomKeyboardConfig(customLayoutField.text.trim(), "")
+                  customLayoutField.focus = false
+                  if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                    root.panelRoot.returnFocusToKeyCatcher()
+                  }
+                }
+              }
+
+              Text {
+                anchors.centerIn: parent
+                text: "Apply"
+                font.family: Style.font.family
+                font.pixelSize: 11
+                font.bold: true
+                color: Color.accent
+              }
+            }
+          }
+
+          // Row 2: Quick Suggestions Chips
+          RowLayout {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 26
+            spacing: 6
+
             Text {
-              anchors.centerIn: parent
-              text: "Apply"
+              text: "Quick Presets:"
               font.family: Style.font.family
-              font.pixelSize: 11
+              font.pixelSize: 10
               font.bold: true
-              color: Color.accent
+              color: Color.muted
+            }
+
+            Flow {
+              Layout.fillWidth: true
+              spacing: 6
+
+              Repeater {
+                model: [
+                  { label: "us", val: "us", variant: "" },
+                  { label: "us,bg(phonetic)", val: "us,bg", variant: ",phonetic" },
+                  { label: "us,de", val: "us,de", variant: "" },
+                  { label: "us,fr", val: "us,fr", variant: "" },
+                  { label: "us,es", val: "us,es", variant: "" },
+                  { label: "us,it", val: "us,it", variant: "" }
+                ]
+
+                delegate: Rectangle {
+                  height: 24
+                  width: kbChipText.implicitWidth + 14
+                  radius: 4
+                  color: (root.kbLayout === modelData.val) ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.selected", "#22272c")
+                  border.color: (root.kbLayout === modelData.val) ? Color.accent : "transparent"
+                  border.width: 1
+
+                  MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                      customLayoutField.text = modelData.val
+                      root.setCustomKeyboardConfig(modelData.val, modelData.variant)
+                    }
+                  }
+
+                  Text {
+                    id: kbChipText
+                    anchors.centerIn: parent
+                    text: (root.kbLayout === modelData.val ? "✓ " : "") + modelData.label
+                    font.family: Style.font.family
+                    font.pixelSize: 10
+                    font.bold: root.kbLayout === modelData.val
+                    color: (root.kbLayout === modelData.val) ? Color.accent : Color.foreground
+                  }
+                }
+              }
             }
           }
         }
