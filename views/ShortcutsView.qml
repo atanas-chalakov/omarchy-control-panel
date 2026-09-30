@@ -101,7 +101,14 @@ Item {
       return true
     }
 
-    if (dx !== 0) {
+    if (dy !== 0) {
+      if (shortcutsScroll && shortcutsScroll.contentItem) {
+        var flick = shortcutsScroll.contentItem
+        var maxScroll = Math.max(0, flick.contentHeight - flick.height)
+        flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + dy * 60))
+        return true
+      }
+    } else if (dx !== 0) {
       var ids = categoryList.map(function(c) { return c.id })
       var idx = ids.indexOf(activeCategory)
       if (idx < 0) idx = 0
@@ -408,6 +415,7 @@ Item {
 
     // Keybindings List
     ScrollView {
+      id: shortcutsScroll
       Layout.fillWidth: true
       Layout.fillHeight: true
       clip: true

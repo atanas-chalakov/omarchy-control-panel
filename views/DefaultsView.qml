@@ -15,6 +15,30 @@ Item {
 
   property bool activeFocusSection: false
   property int focusedCard: 0 // 0: Browser, 1: Editor, 2: Terminal, 3: File Manager
+  onFocusedCardChanged: ensureCardVisible(focusedCard)
+
+  function ensureCardVisible(index) {
+    if (!scrollArea || !scrollArea.contentItem) return
+    var targets = [browserCard, editorCard, terminalCard, fileManagerCard]
+    if (index >= 0 && index < targets.length) {
+      var item = targets[index]
+      if (item && item.visible) {
+        var flick = scrollArea.contentItem
+        var pos = item.mapToItem(scrollArea, 0, 0)
+        var maxScroll = Math.max(0, flick.contentHeight - flick.height)
+        if (pos.y < 12) {
+          flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + pos.y - 12))
+        } else if (pos.y + item.height > scrollArea.height - 12) {
+          if (item.height >= scrollArea.height) {
+            flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + pos.y - 12))
+          } else {
+            flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + (pos.y + item.height - scrollArea.height + 12)))
+          }
+        }
+      }
+    }
+  }
+
   property string statusMessage: ""
 
   // State properties
@@ -142,12 +166,16 @@ Item {
   function handleMove(dx, dy) {
     if (dy !== 0) {
       focusedCard = Math.max(0, Math.min(3, focusedCard + dy))
+      ensureCardVisible(focusedCard)
+      return true
     } else if (dx !== 0) {
       if (focusedCard === 0) cycleBrowser(dx)
       else if (focusedCard === 1) cycleEditor(dx)
       else if (focusedCard === 2) cycleTerminal(dx)
       else if (focusedCard === 3) cycleFileManager(dx)
+      return true
     }
+    return false
   }
 
   function handleActivate() {
@@ -264,6 +292,7 @@ Item {
 
       // Card 1: Default Web Browser
       Rectangle {
+        id: browserCard
         Layout.fillWidth: true
         Layout.preferredHeight: 124
         color: Color.pickAlpha("surface.subtle", "#181b1d")
@@ -388,6 +417,7 @@ Item {
 
       // Card 2: Default Code Editor
       Rectangle {
+        id: editorCard
         Layout.fillWidth: true
         Layout.preferredHeight: 124
         color: Color.pickAlpha("surface.subtle", "#181b1d")
@@ -512,6 +542,7 @@ Item {
 
       // Card 3: Default Terminal Emulator
       Rectangle {
+        id: terminalCard
         Layout.fillWidth: true
         Layout.preferredHeight: 124
         color: Color.pickAlpha("surface.subtle", "#181b1d")
@@ -636,6 +667,7 @@ Item {
 
       // Card 4: Default File Manager
       Rectangle {
+        id: fileManagerCard
         Layout.fillWidth: true
         Layout.preferredHeight: 124
         color: Color.pickAlpha("surface.subtle", "#181b1d")

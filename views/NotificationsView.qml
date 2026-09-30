@@ -15,6 +15,32 @@ Item {
 
   property bool activeFocusSection: false
   property int focusedRow: 0   // 0: DND Toggle, 1: Actions Row, 2+: History Items
+  onFocusedRowChanged: ensureRowVisible(focusedRow)
+
+  function ensureRowVisible(index) {
+    if (!scrollArea || !scrollArea.contentItem) return
+    var item = null
+    if (index === 0) item = dndCard
+    else if (index === 1) item = actionsCard
+    else if (index >= 2 && historyRepeater && index - 2 < historyRepeater.count) {
+      item = historyRepeater.itemAt(index - 2)
+    }
+    if (item && item.visible) {
+      var flick = scrollArea.contentItem
+      var pos = item.mapToItem(scrollArea, 0, 0)
+      var maxScroll = Math.max(0, flick.contentHeight - flick.height)
+      if (pos.y < 12) {
+        flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + pos.y - 12))
+      } else if (pos.y + item.height > scrollArea.height - 12) {
+        if (item.height >= scrollArea.height) {
+          flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + pos.y - 12))
+        } else {
+          flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + (pos.y + item.height - scrollArea.height + 12)))
+        }
+      }
+    }
+  }
+
   property string statusMessage: ""
 
   // State data
@@ -97,6 +123,7 @@ Item {
     if (dy !== 0) {
       var maxRow = 1 + (historyItems.length > 0 ? historyItems.length : 0)
       focusedRow = Math.max(0, Math.min(maxRow, focusedRow + dy))
+      ensureRowVisible(focusedRow)
       return true
     }
     if (dx !== 0) {
@@ -300,6 +327,7 @@ Item {
 
       // Quick Actions Row
       Rectangle {
+        id: actionsCard
         Layout.fillWidth: true
         Layout.preferredHeight: 52
         radius: Style.cornerRadius || 8
@@ -403,6 +431,7 @@ Item {
 
       // History Items List
       Repeater {
+        id: historyRepeater
         model: root.historyItems
 
         delegate: Rectangle {

@@ -145,9 +145,61 @@ Item {
       }
     }
 
+    Item {
+      id: scrollKeyHandler
+      Keys.onPressed: function(event) {
+        if (categoryLoader.item && categoryLoader.item.hasActiveInput === true) return
+
+        var targetScroll = null
+        if (root.focusSection === "sidebar") {
+          targetScroll = sidebarScroll
+        } else if (categoryLoader.item) {
+          if (categoryLoader.item.scrollArea) targetScroll = categoryLoader.item.scrollArea
+          else if (categoryLoader.item.themesScroll) targetScroll = categoryLoader.item.themesScroll
+          else if (categoryLoader.item.resultsScroll) targetScroll = categoryLoader.item.resultsScroll
+          else if (categoryLoader.item.shortcutsScroll) targetScroll = categoryLoader.item.shortcutsScroll
+          else if (categoryLoader.item.updatesScroll) targetScroll = categoryLoader.item.updatesScroll
+        }
+
+        if (!targetScroll || !targetScroll.contentItem) return
+        var flick = targetScroll.contentItem
+        var pageStep = Math.max(120, targetScroll.height * 0.7)
+        var maxScroll = Math.max(0, flick.contentHeight - flick.height)
+
+        if (event.key === Qt.Key_PageDown) {
+          flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + pageStep))
+          event.accepted = true
+        } else if (event.key === Qt.Key_PageUp) {
+          flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY - pageStep))
+          event.accepted = true
+        } else if (event.key === Qt.Key_Home && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier))) {
+          flick.contentY = 0
+          if (root.focusSection === "sidebar") {
+            root.cycleCategory(-100)
+          } else if (categoryLoader.item && "focusedCard" in categoryLoader.item) {
+            categoryLoader.item.focusedCard = 0
+          } else if (categoryLoader.item && "focusedRow" in categoryLoader.item) {
+            categoryLoader.item.focusedRow = 0
+          } else if (categoryLoader.item && "focusedIndex" in categoryLoader.item) {
+            categoryLoader.item.focusedIndex = 0
+          }
+          event.accepted = true
+        } else if (event.key === Qt.Key_End && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier))) {
+          flick.contentY = maxScroll
+          if (root.focusSection === "sidebar") {
+            root.cycleCategory(100)
+          } else if (categoryLoader.item && "focusedCard" in categoryLoader.item) {
+            categoryLoader.item.focusedCard = 999
+          }
+          event.accepted = true
+        }
+      }
+    }
+
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
+      Keys.forwardTo: [scrollKeyHandler]
       blocked: categoryLoader.item && categoryLoader.item.hasActiveInput === true
 
       onCloseRequested: root.dismiss()

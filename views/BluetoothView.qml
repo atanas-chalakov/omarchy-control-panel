@@ -20,11 +20,37 @@ Item {
 
   property bool activeFocusSection: false
   property int focusedRow: 0   // 0: Power Toggle, 1: Scan, 2..N: Device rows
+  onFocusedRowChanged: ensureRowVisible(focusedRow)
+
+  function ensureRowVisible(index) {
+    if (!scrollArea || !scrollArea.contentItem) return
+    var item = null
+    if (index === 0) item = btPowerCard
+    else if (index === 1) item = scanCard
+    else if (index >= 2 && devicesRepeater && index - 2 < devicesRepeater.count) {
+      item = devicesRepeater.itemAt(index - 2)
+    }
+    if (item && item.visible) {
+      var flick = scrollArea.contentItem
+      var pos = item.mapToItem(scrollArea, 0, 0)
+      var maxScroll = Math.max(0, flick.contentHeight - flick.height)
+      if (pos.y < 12) {
+        flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + pos.y - 12))
+      } else if (pos.y + item.height > scrollArea.height - 12) {
+        if (item.height >= scrollArea.height) {
+          flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + pos.y - 12))
+        } else {
+          flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + (pos.y + item.height - scrollArea.height + 12)))
+        }
+      }
+    }
+  }
 
   function handleMove(dx, dy) {
     var maxRow = 1 + root.devices.length
     if (dy !== 0) {
       focusedRow = Math.max(0, Math.min(maxRow, focusedRow + dy))
+      ensureRowVisible(focusedRow)
       return true
     }
     if (dx !== 0) {
@@ -527,6 +553,7 @@ Item {
         visible: root.powered
 
         Repeater {
+          id: devicesRepeater
           model: root.devices
 
           delegate: Rectangle {

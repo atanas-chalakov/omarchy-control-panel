@@ -61,6 +61,29 @@ Item {
 
   property bool activeFocusSection: false
   property int focusedRow: 0   // 0: Profiles, 1: Stay Awake, 2: Screen Off, 3: Lock Screen
+  onFocusedRowChanged: ensureRowVisible(focusedRow)
+
+  function ensureRowVisible(index) {
+    if (!scrollArea || !scrollArea.contentItem) return
+    var targets = [profileCard, stayAwakeCard, screensaverCard, lockCard]
+    if (index >= 0 && index < targets.length) {
+      var item = targets[index]
+      if (item && item.visible) {
+        var flick = scrollArea.contentItem
+        var pos = item.mapToItem(scrollArea, 0, 0)
+        var maxScroll = Math.max(0, flick.contentHeight - flick.height)
+        if (pos.y < 12) {
+          flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + pos.y - 12))
+        } else if (pos.y + item.height > scrollArea.height - 12) {
+          if (item.height >= scrollArea.height) {
+            flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + pos.y - 12))
+          } else {
+            flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + (pos.y + item.height - scrollArea.height + 12)))
+          }
+        }
+      }
+    }
+  }
 
   function currentProfileIndex() {
     for (var i = 0; i < powerProfiles.length; i++) {
@@ -104,6 +127,7 @@ Item {
   function handleMove(dx, dy) {
     if (dy !== 0) {
       focusedRow = Math.max(0, Math.min(3, focusedRow + dy))
+      ensureRowVisible(focusedRow)
       return true
     }
     if (dx !== 0) {

@@ -45,6 +45,29 @@ Item {
 
   property bool activeFocusSection: false
   property int focusedRow: 0   // 0: Brightness, 1: Night Light Toggle, 2: Warmth, 3: Scale, 4: Resolution
+  onFocusedRowChanged: ensureRowVisible(focusedRow)
+
+  function ensureRowVisible(index) {
+    if (!scrollArea || !scrollArea.contentItem) return
+    var targets = [brightnessCard, nightlightToggleCard, nightlightTempCard, scaleCard, modeCard]
+    if (index >= 0 && index < targets.length) {
+      var item = targets[index]
+      if (item && item.visible) {
+        var flick = scrollArea.contentItem
+        var pos = item.mapToItem(scrollArea, 0, 0)
+        var maxScroll = Math.max(0, flick.contentHeight - flick.height)
+        if (pos.y < 12) {
+          flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + pos.y - 12))
+        } else if (pos.y + item.height > scrollArea.height - 12) {
+          if (item.height >= scrollArea.height) {
+            flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + pos.y - 12))
+          } else {
+            flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + (pos.y + item.height - scrollArea.height + 12)))
+          }
+        }
+      }
+    }
+  }
 
   function currentScaleIndex() {
     var best = 0
@@ -101,6 +124,7 @@ Item {
   function handleMove(dx, dy) {
     if (dy !== 0) {
       focusedRow = Math.max(0, Math.min(4, focusedRow + dy))
+      ensureRowVisible(focusedRow)
       return true
     }
     if (dx !== 0) {

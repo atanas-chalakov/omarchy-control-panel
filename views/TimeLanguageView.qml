@@ -217,12 +217,17 @@ Item {
     if (index >= 0 && index < targets.length) {
       var item = targets[index]
       if (item && item.visible) {
-        var pos = item.mapToItem(scrollArea.contentItem, 0, 0)
         var flick = scrollArea.contentItem
-        if (pos.y < flick.contentY) {
-          flick.contentY = Math.max(0, pos.y - 12)
-        } else if (pos.y + item.height > flick.contentY + scrollArea.height) {
-          flick.contentY = Math.max(0, pos.y + item.height - scrollArea.height + 12)
+        var pos = item.mapToItem(scrollArea, 0, 0)
+        var maxScroll = Math.max(0, flick.contentHeight - flick.height)
+        if (pos.y < 12) {
+          flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + pos.y - 12))
+        } else if (pos.y + item.height > scrollArea.height - 12) {
+          if (item.height >= scrollArea.height) {
+            flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + pos.y - 12))
+          } else {
+            flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + (pos.y + item.height - scrollArea.height + 12)))
+          }
         }
       }
     }

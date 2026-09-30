@@ -19,11 +19,36 @@ Item {
 
   property bool activeFocusSection: false
   property int focusedRow: 0   // 0: Wi-Fi Toggle, 1..N: Network rows
+  onFocusedRowChanged: ensureRowVisible(focusedRow)
+
+  function ensureRowVisible(index) {
+    if (!scrollArea || !scrollArea.contentItem) return
+    var item = null
+    if (index === 0) item = wifiToggleCard
+    else if (index >= 1 && networksRepeater && index - 1 < networksRepeater.count) {
+      item = networksRepeater.itemAt(index - 1)
+    }
+    if (item && item.visible) {
+      var flick = scrollArea.contentItem
+      var pos = item.mapToItem(scrollArea, 0, 0)
+      var maxScroll = Math.max(0, flick.contentHeight - flick.height)
+      if (pos.y < 12) {
+        flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + pos.y - 12))
+      } else if (pos.y + item.height > scrollArea.height - 12) {
+        if (item.height >= scrollArea.height) {
+          flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + pos.y - 12))
+        } else {
+          flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + (pos.y + item.height - scrollArea.height + 12)))
+        }
+      }
+    }
+  }
 
   function handleMove(dx, dy) {
     var maxRow = root.networks.length
     if (dy !== 0) {
       focusedRow = Math.max(0, Math.min(maxRow, focusedRow + dy))
+      ensureRowVisible(focusedRow)
       return true
     }
     if (dx !== 0) {
@@ -410,6 +435,7 @@ Item {
         visible: root.wifiEnabled
 
         Repeater {
+          id: networksRepeater
           model: root.networks
 
           delegate: Rectangle {
