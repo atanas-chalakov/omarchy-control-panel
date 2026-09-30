@@ -24,8 +24,9 @@ Item {
     { id: "network", label: "Network & Wi-Fi", icon: "󰤨", key: "5" },
     { id: "bluetooth", label: "Bluetooth", icon: "󰂯", key: "6" },
     { id: "input", label: "Touch & Input", icon: "󰆽", key: "7" },
-    { id: "agents", label: "AI & Agents", icon: "󰚩", key: "8" },
-    { id: "about", label: "About System", icon: "", key: "9" }
+    { id: "windows", label: "Window Manager", icon: "", key: "8" },
+    { id: "agents", label: "AI & Agents", icon: "󰚩", key: "9" },
+    { id: "about", label: "About System", icon: "", key: "0" }
   ]
 
   function open(payloadJson) {
@@ -128,8 +129,9 @@ Item {
         else if (key === "5") { root.currentCategory = "network"; root.focusSection = "sidebar" }
         else if (key === "6") { root.currentCategory = "bluetooth"; root.focusSection = "sidebar" }
         else if (key === "7") { root.currentCategory = "input"; root.focusSection = "sidebar" }
-        else if (key === "8") { root.currentCategory = "agents"; root.focusSection = "sidebar" }
-        else if (key === "9") { root.currentCategory = "about"; root.focusSection = "sidebar" }
+        else if (key === "8") { root.currentCategory = "windows"; root.focusSection = "sidebar" }
+        else if (key === "9") { root.currentCategory = "agents"; root.focusSection = "sidebar" }
+        else if (key === "0") { root.currentCategory = "about"; root.focusSection = "sidebar" }
         else if (root.focusSection === "content" && categoryLoader.item && typeof categoryLoader.item.handleTextKey === "function") {
           categoryLoader.item.handleTextKey(key)
         }
@@ -430,6 +432,7 @@ Item {
                   if (root.currentCategory === "network") return "views/NetworkView.qml"
                   if (root.currentCategory === "bluetooth") return "views/BluetoothView.qml"
                   if (root.currentCategory === "input") return "views/TouchInputView.qml"
+                  if (root.currentCategory === "windows") return "views/WindowManagerView.qml"
                   if (root.currentCategory === "agents") return "views/AgentsView.qml"
                   if (root.currentCategory === "about") return "views/AboutView.qml"
                   return ""

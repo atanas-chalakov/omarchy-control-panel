@@ -1,0 +1,1277 @@
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import Quickshell
+import Quickshell.Io
+import qs.Commons
+import qs.Ui
+
+Item {
+  id: root
+  anchors.fill: parent
+
+  property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
+  onPluginPathChanged: refresh()
+
+  property bool activeFocusSection: false
+  property int focusedCard: 0
+  property string statusMessage: ""
+
+  // State properties
+  property bool animations: true
+  property int gapsIn: 5
+  property int gapsOut: 10
+  property int borderSize: 2
+  property int rounding: 0
+  property real inactiveOpacity: 1.0
+  property bool blur: false
+  property bool barHidden: false
+  property string barPosition: "top"
+  property bool barTransparent: false
+  property bool showPercentage: true
+  property bool singleWindowAspect: false
+  property string workspaceLayout: "dwindle"
+
+  readonly property var gapPresets: [
+    { label: "None (0px)", inGap: 0, outGap: 0 },
+    { label: "Compact (4px)", inGap: 3, outGap: 6 },
+    { label: "Default (8px)", inGap: 5, outGap: 10 },
+    { label: "Spacious (14px)", inGap: 8, outGap: 14 },
+    { label: "Expansive (20px)", inGap: 12, outGap: 20 }
+  ]
+
+  readonly property var roundingOptions: [0, 4, 8, 12, 16]
+  readonly property var borderOptions: [0, 1, 2, 3, 4]
+  readonly property var opacityOptions: [1.0, 0.95, 0.90, 0.85, 0.80]
+
+  function currentGapIndex() {
+    var best = 2
+    var minDiff = 999
+    for (var i = 0; i < gapPresets.length; i++) {
+      var diff = Math.abs(gapPresets[i].inGap - root.gapsIn)
+      if (diff < minDiff) {
+        minDiff = diff
+        best = i
+      }
+    }
+    return best
+  }
+
+  function currentRoundingIndex() {
+    var best = 0
+    var minDiff = 999
+    for (var i = 0; i < roundingOptions.length; i++) {
+      var diff = Math.abs(roundingOptions[i] - root.rounding)
+      if (diff < minDiff) {
+        minDiff = diff
+        best = i
+      }
+    }
+    return best
+  }
+
+  function currentBorderIndex() {
+    for (var i = 0; i < borderOptions.length; i++) {
+      if (borderOptions[i] === root.borderSize) return i
+    }
+    return 2
+  }
+
+  function currentOpacityIndex() {
+    var best = 0
+    var minDiff = 999
+    for (var i = 0; i < opacityOptions.length; i++) {
+      var diff = Math.abs(opacityOptions[i] - root.inactiveOpacity)
+      if (diff < minDiff) {
+        minDiff = diff
+        best = i
+      }
+    }
+    return best
+  }
+
+  function cycleGaps(delta) {
+    var idx = currentGapIndex()
+    var next = Math.max(0, Math.min(gapPresets.length - 1, idx + delta))
+    setGaps(gapPresets[next].inGap, gapPresets[next].outGap)
+  }
+
+  function cycleRounding(delta) {
+    var idx = currentRoundingIndex()
+    var next = Math.max(0, Math.min(roundingOptions.length - 1, idx + delta))
+    setRounding(roundingOptions[next])
+  }
+
+  function cycleBorder(delta) {
+    var idx = currentBorderIndex()
+    var next = Math.max(0, Math.min(borderOptions.length - 1, idx + delta))
+    setBorderSize(borderOptions[next])
+  }
+
+  function cycleOpacity(delta) {
+    var idx = currentOpacityIndex()
+    var next = Math.max(0, Math.min(opacityOptions.length - 1, idx + delta))
+    setInactiveOpacity(opacityOptions[next])
+  }
+
+  function cycleBarPosition() {
+    var target = (root.barPosition === "bottom") ? "top" : "bottom"
+    setBarPosition(target)
+  }
+
+  function refresh() {
+    if (!stateProcess.running && pluginPath.length > 0) {
+      stateProcess.command = [pluginPath + "/scripts/wm-control.sh", "get-state"]
+      stateProcess.running = true
+    }
+  }
+
+  function toggleAnimations() {
+    var target = !root.animations
+    actionProcess.command = [pluginPath + "/scripts/wm-control.sh", "set-animations", target ? "true" : "false"]
+    actionProcess.running = true
+    notifyStatus(target ? "Window Animations Enabled" : "Window Animations Disabled (Instant)")
+  }
+
+  function setGaps(gin, gout) {
+    actionProcess.command = [pluginPath + "/scripts/wm-control.sh", "set-gaps", String(gin), String(gout)]
+    actionProcess.running = true
+    notifyStatus("Window Gaps: " + gin + "px / " + gout + "px")
+  }
+
+  function setRounding(rad) {
+    actionProcess.command = [pluginPath + "/scripts/wm-control.sh", "set-rounding", String(rad)]
+    actionProcess.running = true
+    notifyStatus("Corner Rounding: " + rad + "px")
+  }
+
+  function setBorderSize(bsize) {
+    actionProcess.command = [pluginPath + "/scripts/wm-control.sh", "set-border-size", String(bsize)]
+    actionProcess.running = true
+    notifyStatus("Border Thickness: " + bsize + "px")
+  }
+
+  function setInactiveOpacity(op) {
+    actionProcess.command = [pluginPath + "/scripts/wm-control.sh", "set-inactive-opacity", String(op)]
+    actionProcess.running = true
+    notifyStatus("Inactive Window Opacity: " + Math.round(op * 100) + "%")
+  }
+
+  function toggleBlur() {
+    var target = !root.blur
+    actionProcess.command = [pluginPath + "/scripts/wm-control.sh", "set-blur", target ? "true" : "false"]
+    actionProcess.running = true
+    notifyStatus(target ? "Window Background Blur Enabled" : "Window Background Blur Disabled")
+  }
+
+  function toggleBar() {
+    actionProcess.command = [pluginPath + "/scripts/wm-control.sh", "toggle-bar"]
+    actionProcess.running = true
+    notifyStatus(root.barHidden ? "Menu Bar Visible" : "Menu Bar Hidden")
+  }
+
+  function setBarPosition(pos) {
+    actionProcess.command = [pluginPath + "/scripts/wm-control.sh", "set-bar-position", pos]
+    actionProcess.running = true
+    notifyStatus("Menu Bar Position: " + pos)
+  }
+
+  function toggleBarTransparent() {
+    actionProcess.command = [pluginPath + "/scripts/wm-control.sh", "toggle-bar-transparent"]
+    actionProcess.running = true
+    notifyStatus(root.barTransparent ? "Menu Bar Solid" : "Menu Bar Transparent")
+  }
+
+  function toggleBatteryPercentage() {
+    actionProcess.command = [pluginPath + "/scripts/wm-control.sh", "toggle-battery-percentage"]
+    actionProcess.running = true
+    notifyStatus(root.showPercentage ? "Battery Percentage Hidden" : "Battery Percentage Visible")
+  }
+
+  function toggleSingleWindowAspect() {
+    actionProcess.command = [pluginPath + "/scripts/wm-control.sh", "toggle-single-window-aspect"]
+    actionProcess.running = true
+    notifyStatus(root.singleWindowAspect ? "Single Window Aspect Ratio Disabled" : "1-Window Square Aspect Enabled")
+  }
+
+  function toggleWorkspaceLayout() {
+    actionProcess.command = [pluginPath + "/scripts/wm-control.sh", "toggle-workspace-layout"]
+    actionProcess.running = true
+    notifyStatus("Workspace Layout: " + (root.workspaceLayout === "dwindle" ? "Scrolling" : "Dwindle"))
+  }
+
+  function notifyStatus(msg) {
+    statusMessage = msg
+    statusClearTimer.restart()
+  }
+
+  Timer {
+    id: statusClearTimer
+    interval: 3000
+    repeat: false
+    onTriggered: root.statusMessage = ""
+  }
+
+  function handleMove(dx, dy) {
+    if (dy !== 0) {
+      focusedCard = Math.max(0, Math.min(8, focusedCard + dy))
+    } else if (dx !== 0) {
+      if (focusedCard === 0) toggleAnimations()
+      else if (focusedCard === 1) cycleGaps(dx)
+      else if (focusedCard === 2) toggleSingleWindowAspect()
+      else if (focusedCard === 3) cycleRounding(dx)
+      else if (focusedCard === 4) cycleBorder(dx)
+      else if (focusedCard === 5) cycleOpacity(dx)
+      else if (focusedCard === 6) toggleBlur()
+      else if (focusedCard === 7) toggleBar()
+      else if (focusedCard === 8) toggleWorkspaceLayout()
+    }
+  }
+
+  function handleActivate() {
+    if (focusedCard === 0) toggleAnimations()
+    else if (focusedCard === 1) cycleGaps(1)
+    else if (focusedCard === 2) toggleSingleWindowAspect()
+    else if (focusedCard === 3) cycleRounding(1)
+    else if (focusedCard === 4) cycleBorder(1)
+    else if (focusedCard === 5) cycleOpacity(1)
+    else if (focusedCard === 6) toggleBlur()
+    else if (focusedCard === 7) toggleBar()
+    else if (focusedCard === 8) toggleWorkspaceLayout()
+  }
+
+  function handleTextKey(key) {
+    var k = key.toLowerCase()
+    if (k === "a") {
+      focusedCard = 0
+      toggleAnimations()
+    } else if (k === "g") {
+      focusedCard = 1
+      cycleGaps(1)
+    } else if (k === "s") {
+      focusedCard = 2
+      toggleSingleWindowAspect()
+    } else if (k === "r") {
+      focusedCard = 3
+      cycleRounding(1)
+    } else if (k === "b") {
+      focusedCard = 4
+      cycleBorder(1)
+    } else if (k === "d") {
+      focusedCard = 5
+      cycleOpacity(1)
+    } else if (k === "l") {
+      focusedCard = 6
+      toggleBlur()
+    } else if (k === "t") {
+      focusedCard = 7
+      toggleBar()
+    } else if (k === "p") {
+      cycleBarPosition()
+    } else if (k === "e") {
+      toggleBarTransparent()
+    } else if (k === "c") {
+      toggleBatteryPercentage()
+    } else if (k === "w") {
+      focusedCard = 8
+      toggleWorkspaceLayout()
+    }
+  }
+
+  Component.onCompleted: refresh()
+
+  // State Process
+  Process {
+    id: stateProcess
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var data = JSON.parse(text)
+          if (data.animations !== undefined) root.animations = data.animations === true
+          if (typeof data.gapsIn === "number") root.gapsIn = data.gapsIn
+          if (typeof data.gapsOut === "number") root.gapsOut = data.gapsOut
+          if (typeof data.borderSize === "number") root.borderSize = data.borderSize
+          if (typeof data.rounding === "number") root.rounding = data.rounding
+          if (typeof data.inactiveOpacity === "number") root.inactiveOpacity = data.inactiveOpacity
+          if (data.blur !== undefined) root.blur = data.blur === true
+          if (data.barHidden !== undefined) root.barHidden = data.barHidden === true
+          if (data.barPosition) root.barPosition = String(data.barPosition)
+          if (data.barTransparent !== undefined) root.barTransparent = data.barTransparent === true
+          if (data.showPercentage !== undefined) root.showPercentage = data.showPercentage === true
+          if (data.singleWindowAspect !== undefined) root.singleWindowAspect = data.singleWindowAspect === true
+          if (data.workspaceLayout) root.workspaceLayout = String(data.workspaceLayout)
+        } catch (e) {}
+      }
+    }
+  }
+
+  // Action Process
+  Process {
+    id: actionProcess
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var data = JSON.parse(text)
+          if (data.animations !== undefined) root.animations = data.animations === true
+          if (typeof data.gapsIn === "number") root.gapsIn = data.gapsIn
+          if (typeof data.gapsOut === "number") root.gapsOut = data.gapsOut
+          if (typeof data.borderSize === "number") root.borderSize = data.borderSize
+          if (typeof data.rounding === "number") root.rounding = data.rounding
+          if (typeof data.inactiveOpacity === "number") root.inactiveOpacity = data.inactiveOpacity
+          if (data.blur !== undefined) root.blur = data.blur === true
+          if (data.barHidden !== undefined) root.barHidden = data.barHidden === true
+          if (data.barPosition) root.barPosition = String(data.barPosition)
+          if (data.barTransparent !== undefined) root.barTransparent = data.barTransparent === true
+          if (data.showPercentage !== undefined) root.showPercentage = data.showPercentage === true
+          if (data.singleWindowAspect !== undefined) root.singleWindowAspect = data.singleWindowAspect === true
+          if (data.workspaceLayout) root.workspaceLayout = String(data.workspaceLayout)
+        } catch (e) {}
+      }
+    }
+    onRunningChanged: if (!running) root.refresh()
+  }
+
+  ScrollView {
+    id: scrollArea
+    anchors.fill: parent
+    clip: true
+    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+    ScrollBar.vertical.policy: ScrollBar.AsNeeded
+
+    ColumnLayout {
+      width: Math.max(200, scrollArea.availableWidth - 12)
+      spacing: 14
+
+      // Status Notification Toast
+      Rectangle {
+        Layout.fillWidth: true
+        Layout.preferredHeight: 32
+        visible: root.statusMessage.length > 0
+        radius: 6
+        color: Color.pickAlpha("accent.subtle", "#1f3b30")
+        border.color: Color.accent
+        border.width: 1
+
+        RowLayout {
+          anchors.fill: parent
+          anchors.leftMargin: 12
+          anchors.rightMargin: 12
+
+          Text {
+            text: "✓  " + root.statusMessage
+            font.family: Style.font.family
+            font.pixelSize: 12
+            font.bold: true
+            color: Color.accent
+          }
+        }
+      }
+
+      // Card 1: Window Animations Hero Card
+      Rectangle {
+        id: animCard
+        Layout.fillWidth: true
+        Layout.preferredHeight: 82
+        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        radius: Style.cornerRadius || 8
+        border.color: (root.activeFocusSection && root.focusedCard === 0) ? Color.accent : "transparent"
+        border.width: (root.activeFocusSection && root.focusedCard === 0) ? 1 : 0
+
+        MouseArea {
+          anchors.fill: parent
+          cursorShape: Qt.PointingHandCursor
+          onClicked: {
+            root.focusedCard = 0
+            root.toggleAnimations()
+          }
+        }
+
+        RowLayout {
+          anchors.fill: parent
+          anchors.margins: 14
+          spacing: 14
+
+          Rectangle {
+            width: 48
+            height: 48
+            radius: 8
+            color: root.animations ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.selected", "#2a3036")
+
+            Text {
+              anchors.centerIn: parent
+              text: "󰓅"
+              font.family: Style.font.family
+              font.pixelSize: 26
+              color: root.animations ? Color.accent : Color.muted
+            }
+          }
+
+          ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 3
+
+            RowLayout {
+              spacing: 8
+              Text {
+                text: "Window Animations"
+                font.family: Style.font.family
+                font.pixelSize: Style.font.title || 15
+                font.bold: true
+                color: Color.foreground
+              }
+
+              Rectangle {
+                Layout.preferredHeight: 20
+                Layout.preferredWidth: animStatusText.implicitWidth + 14
+                radius: 4
+                color: root.animations ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#262b30")
+
+                Text {
+                  id: animStatusText
+                  anchors.centerIn: parent
+                  text: root.animations ? "SMOOTH (ON)" : "INSTANT (OFF)"
+                  font.family: Style.font.family
+                  font.pixelSize: 10
+                  font.bold: true
+                  color: root.animations ? Color.accent : Color.muted
+                }
+              }
+
+              Rectangle {
+                width: 18
+                height: 18
+                radius: 3
+                color: Color.pickAlpha("surface.selected", "#2a3036")
+                Text {
+                  anchors.centerIn: parent
+                  text: "A"
+                  font.family: Style.font.family
+                  font.pixelSize: 10
+                  color: Color.muted
+                }
+              }
+            }
+
+            Text {
+              Layout.fillWidth: true
+              text: root.animations
+                ? "Fluid window opening, closing, and workspace transitions active"
+                : "Zero animation delay for maximum snappiness and low battery draw"
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: Color.muted
+              elide: Text.ElideRight
+            }
+          }
+
+          Button {
+            text: root.animations ? "ON" : "OFF"
+            implicitWidth: 70
+            implicitHeight: 34
+            bordered: true
+            onClicked: {
+              root.focusedCard = 0
+              root.toggleAnimations()
+            }
+          }
+        }
+      }
+
+      // Card 2: Window Spacing & Layout
+      Rectangle {
+        Layout.fillWidth: true
+        Layout.preferredHeight: 126
+        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        radius: Style.cornerRadius || 8
+
+        ColumnLayout {
+          anchors.fill: parent
+          anchors.margins: 12
+          spacing: 10
+
+          // Row 1: Gaps Stepper
+          Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 44
+            radius: 6
+            color: (root.activeFocusSection && root.focusedCard === 1) ? Color.pickAlpha("surface.hover", "#22272c") : "transparent"
+            border.color: (root.activeFocusSection && root.focusedCard === 1) ? Color.accent : "transparent"
+            border.width: (root.activeFocusSection && root.focusedCard === 1) ? 1 : 0
+
+            RowLayout {
+              anchors.fill: parent
+              anchors.leftMargin: 8
+              anchors.rightMargin: 8
+              spacing: 10
+
+              Text {
+                text: ""
+                font.family: Style.font.family
+                font.pixelSize: 16
+                color: Color.accent
+              }
+
+              ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+
+                RowLayout {
+                  spacing: 6
+                  Text {
+                    text: "Window Gaps"
+                    font.family: Style.font.family
+                    font.pixelSize: 13
+                    font.bold: true
+                    color: Color.foreground
+                  }
+
+                  Rectangle {
+                    width: 18
+                    height: 18
+                    radius: 3
+                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    Text {
+                      anchors.centerIn: parent
+                      text: "G"
+                      font.family: Style.font.family
+                      font.pixelSize: 10
+                      color: Color.muted
+                    }
+                  }
+                }
+
+                Text {
+                  text: "Spacing between tiled windows and display edges"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: Color.muted
+                }
+              }
+
+              RowLayout {
+                spacing: 4
+
+                Button {
+                  text: "◀"
+                  implicitWidth: 30
+                  implicitHeight: 28
+                  bordered: true
+                  onClicked: {
+                    root.focusedCard = 1
+                    root.cycleGaps(-1)
+                  }
+                }
+
+                Rectangle {
+                  implicitWidth: 100
+                  implicitHeight: 28
+                  radius: 4
+                  color: Color.pickAlpha("surface.selected", "#2a3036")
+
+                  Text {
+                    anchors.centerIn: parent
+                    text: root.gapPresets[root.currentGapIndex()].label
+                    font.family: Style.font.family
+                    font.pixelSize: 11
+                    font.bold: true
+                    color: Color.foreground
+                  }
+                }
+
+                Button {
+                  text: "▶"
+                  implicitWidth: 30
+                  implicitHeight: 28
+                  bordered: true
+                  onClicked: {
+                    root.focusedCard = 1
+                    root.cycleGaps(1)
+                  }
+                }
+              }
+            }
+          }
+
+          // Row 2: Single Window Aspect Ratio
+          Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 44
+            radius: 6
+            color: (root.activeFocusSection && root.focusedCard === 2) ? Color.pickAlpha("surface.hover", "#22272c") : "transparent"
+            border.color: (root.activeFocusSection && root.focusedCard === 2) ? Color.accent : "transparent"
+            border.width: (root.activeFocusSection && root.focusedCard === 2) ? 1 : 0
+
+            RowLayout {
+              anchors.fill: parent
+              anchors.leftMargin: 8
+              anchors.rightMargin: 8
+              spacing: 10
+
+              Text {
+                text: ""
+                font.family: Style.font.family
+                font.pixelSize: 16
+                color: Color.muted
+              }
+
+              ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+
+                RowLayout {
+                  spacing: 6
+                  Text {
+                    text: "1-Window Square Aspect Ratio"
+                    font.family: Style.font.family
+                    font.pixelSize: 13
+                    font.bold: true
+                    color: Color.foreground
+                  }
+
+                  Rectangle {
+                    width: 18
+                    height: 18
+                    radius: 3
+                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    Text {
+                      anchors.centerIn: parent
+                      text: "S"
+                      font.family: Style.font.family
+                      font.pixelSize: 10
+                      color: Color.muted
+                    }
+                  }
+                }
+
+                Text {
+                  text: "Prevents solitary windows from stretching ultra-wide across widescreen displays"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: Color.muted
+                }
+              }
+
+              Button {
+                text: root.singleWindowAspect ? "ON" : "OFF"
+                implicitWidth: 64
+                implicitHeight: 28
+                bordered: true
+                onClicked: {
+                  root.focusedCard = 2
+                  root.toggleSingleWindowAspect()
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Card 3: Window Decoration & Styling
+      Rectangle {
+        Layout.fillWidth: true
+        Layout.preferredHeight: 184
+        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        radius: Style.cornerRadius || 8
+
+        ColumnLayout {
+          anchors.fill: parent
+          anchors.margins: 12
+          spacing: 8
+
+          // Header
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Text {
+              text: "󰆷"
+              font.family: Style.font.family
+              font.pixelSize: 18
+              color: Color.accent
+            }
+
+            Text {
+              text: "Decoration & Borders"
+              font.family: Style.font.family
+              font.pixelSize: Style.font.subtitle || 14
+              font.bold: true
+              color: Color.foreground
+            }
+          }
+
+          Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: Color.muted
+            opacity: 0.15
+          }
+
+          // Corner Rounding
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 10
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 1
+
+              RowLayout {
+                spacing: 6
+                Text {
+                  text: "Corner Rounding"
+                  font.family: Style.font.family
+                  font.pixelSize: 12
+                  font.bold: true
+                  color: Color.foreground
+                }
+
+                Rectangle {
+                  width: 16
+                  height: 16
+                  radius: 3
+                  color: Color.pickAlpha("surface.selected", "#2a3036")
+                  Text {
+                    anchors.centerIn: parent
+                    text: "R"
+                    font.family: Style.font.family
+                    font.pixelSize: 9
+                    color: Color.muted
+                  }
+                }
+              }
+
+              Text {
+                text: "Border corner radius on tiled and floating application windows"
+                font.family: Style.font.family
+                font.pixelSize: 10
+                color: Color.muted
+              }
+            }
+
+            RowLayout {
+              spacing: 4
+
+              Button {
+                text: "◀"
+                implicitWidth: 28
+                implicitHeight: 26
+                bordered: true
+                onClicked: {
+                  root.focusedCard = 3
+                  root.cycleRounding(-1)
+                }
+              }
+
+              Rectangle {
+                implicitWidth: 64
+                implicitHeight: 26
+                radius: 4
+                color: Color.pickAlpha("surface.selected", "#2a3036")
+
+                Text {
+                  anchors.centerIn: parent
+                  text: root.rounding === 0 ? "Sharp (0)" : (root.rounding + "px")
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: true
+                  color: Color.foreground
+                }
+              }
+
+              Button {
+                text: "▶"
+                implicitWidth: 28
+                implicitHeight: 26
+                bordered: true
+                onClicked: {
+                  root.focusedCard = 3
+                  root.cycleRounding(1)
+                }
+              }
+            }
+          }
+
+          // Border Thickness
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 10
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 1
+
+              RowLayout {
+                spacing: 6
+                Text {
+                  text: "Border Thickness"
+                  font.family: Style.font.family
+                  font.pixelSize: 12
+                  font.bold: true
+                  color: Color.foreground
+                }
+
+                Rectangle {
+                  width: 16
+                  height: 16
+                  radius: 3
+                  color: Color.pickAlpha("surface.selected", "#2a3036")
+                  Text {
+                    anchors.centerIn: parent
+                    text: "B"
+                    font.family: Style.font.family
+                    font.pixelSize: 9
+                    color: Color.muted
+                  }
+                }
+              }
+
+              Text {
+                text: "Active and inactive window outline border width"
+                font.family: Style.font.family
+                font.pixelSize: 10
+                color: Color.muted
+              }
+            }
+
+            RowLayout {
+              spacing: 4
+
+              Button {
+                text: "◀"
+                implicitWidth: 28
+                implicitHeight: 26
+                bordered: true
+                onClicked: {
+                  root.focusedCard = 4
+                  root.cycleBorder(-1)
+                }
+              }
+
+              Rectangle {
+                implicitWidth: 64
+                implicitHeight: 26
+                radius: 4
+                color: Color.pickAlpha("surface.selected", "#2a3036")
+
+                Text {
+                  anchors.centerIn: parent
+                  text: root.borderSize === 0 ? "None (0)" : (root.borderSize + "px")
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: true
+                  color: Color.foreground
+                }
+              }
+
+              Button {
+                text: "▶"
+                implicitWidth: 28
+                implicitHeight: 26
+                bordered: true
+                onClicked: {
+                  root.focusedCard = 4
+                  root.cycleBorder(1)
+                }
+              }
+            }
+          }
+
+          // Inactive Dimming & Blur
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 10
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 1
+
+              RowLayout {
+                spacing: 6
+                Text {
+                  text: "Inactive Window Opacity"
+                  font.family: Style.font.family
+                  font.pixelSize: 12
+                  font.bold: true
+                  color: Color.foreground
+                }
+
+                Rectangle {
+                  width: 16
+                  height: 16
+                  radius: 3
+                  color: Color.pickAlpha("surface.selected", "#2a3036")
+                  Text {
+                    anchors.centerIn: parent
+                    text: "D"
+                    font.family: Style.font.family
+                    font.pixelSize: 9
+                    color: Color.muted
+                  }
+                }
+              }
+
+              Text {
+                text: "Subtly dim unfocused windows to direct focus to active application"
+                font.family: Style.font.family
+                font.pixelSize: 10
+                color: Color.muted
+              }
+            }
+
+            RowLayout {
+              spacing: 4
+
+              Button {
+                text: "◀"
+                implicitWidth: 28
+                implicitHeight: 26
+                bordered: true
+                onClicked: {
+                  root.focusedCard = 5
+                  root.cycleOpacity(-1)
+                }
+              }
+
+              Rectangle {
+                implicitWidth: 64
+                implicitHeight: 26
+                radius: 4
+                color: Color.pickAlpha("surface.selected", "#2a3036")
+
+                Text {
+                  anchors.centerIn: parent
+                  text: Math.round(root.inactiveOpacity * 100) + "%"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: true
+                  color: Color.foreground
+                }
+              }
+
+              Button {
+                text: "▶"
+                implicitWidth: 28
+                implicitHeight: 26
+                bordered: true
+                onClicked: {
+                  root.focusedCard = 5
+                  root.cycleOpacity(1)
+                }
+              }
+            }
+          }
+
+          // Blur Toggle
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 10
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 1
+
+              RowLayout {
+                spacing: 6
+                Text {
+                  text: "Background Blur"
+                  font.family: Style.font.family
+                  font.pixelSize: 12
+                  font.bold: true
+                  color: Color.foreground
+                }
+
+                Rectangle {
+                  width: 16
+                  height: 16
+                  radius: 3
+                  color: Color.pickAlpha("surface.selected", "#2a3036")
+                  Text {
+                    anchors.centerIn: parent
+                    text: "L"
+                    font.family: Style.font.family
+                    font.pixelSize: 9
+                    color: Color.muted
+                  }
+                }
+              }
+
+              Text {
+                text: "Dual-kawase backdrop blur behind translucent shell windows"
+                font.family: Style.font.family
+                font.pixelSize: 10
+                color: Color.muted
+              }
+            }
+
+            Button {
+              text: root.blur ? "ON" : "OFF"
+              implicitWidth: 60
+              implicitHeight: 26
+              bordered: true
+              onClicked: {
+                root.focusedCard = 6
+                root.toggleBlur()
+              }
+            }
+          }
+        }
+      }
+
+      // Card 4: Menu Bar & Workspace Tiling
+      Rectangle {
+        Layout.fillWidth: true
+        Layout.preferredHeight: 184
+        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        radius: Style.cornerRadius || 8
+
+        ColumnLayout {
+          anchors.fill: parent
+          anchors.margins: 12
+          spacing: 8
+
+          // Header
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Text {
+              text: "󰍜"
+              font.family: Style.font.family
+              font.pixelSize: 18
+              color: Color.accent
+            }
+
+            Text {
+              text: "Top Bar & Workspace Layout"
+              font.family: Style.font.family
+              font.pixelSize: Style.font.subtitle || 14
+              font.bold: true
+              color: Color.foreground
+            }
+          }
+
+          Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: Color.muted
+            opacity: 0.15
+          }
+
+          // Top Bar Visibility
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 10
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 1
+
+              RowLayout {
+                spacing: 6
+                Text {
+                  text: "Menu Bar Visibility"
+                  font.family: Style.font.family
+                  font.pixelSize: 12
+                  font.bold: true
+                  color: Color.foreground
+                }
+
+                Rectangle {
+                  width: 16
+                  height: 16
+                  radius: 3
+                  color: Color.pickAlpha("surface.selected", "#2a3036")
+                  Text {
+                    anchors.centerIn: parent
+                    text: "T"
+                    font.family: Style.font.family
+                    font.pixelSize: 9
+                    color: Color.muted
+                  }
+                }
+              }
+
+              Text {
+                text: "Toggle status bar visibility without stopping the Omarchy shell"
+                font.family: Style.font.family
+                font.pixelSize: 10
+                color: Color.muted
+              }
+            }
+
+            Button {
+              text: root.barHidden ? "HIDDEN" : "VISIBLE"
+              implicitWidth: 78
+              implicitHeight: 26
+              bordered: true
+              onClicked: {
+                root.focusedCard = 7
+                root.toggleBar()
+              }
+            }
+          }
+
+          // Bar Edge Position
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 10
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 1
+
+              RowLayout {
+                spacing: 6
+                Text {
+                  text: "Bar Edge Position"
+                  font.family: Style.font.family
+                  font.pixelSize: 12
+                  font.bold: true
+                  color: Color.foreground
+                }
+
+                Rectangle {
+                  width: 16
+                  height: 16
+                  radius: 3
+                  color: Color.pickAlpha("surface.selected", "#2a3036")
+                  Text {
+                    anchors.centerIn: parent
+                    text: "P"
+                    font.family: Style.font.family
+                    font.pixelSize: 9
+                    color: Color.muted
+                  }
+                }
+              }
+
+              Text {
+                text: "Dock the menu bar to top or bottom screen edge"
+                font.family: Style.font.family
+                font.pixelSize: 10
+                color: Color.muted
+              }
+            }
+
+            Button {
+              text: root.barPosition.toUpperCase()
+              implicitWidth: 78
+              implicitHeight: 26
+              bordered: true
+              onClicked: root.cycleBarPosition()
+            }
+          }
+
+          // Bar Transparency
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 10
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 1
+
+              RowLayout {
+                spacing: 6
+                Text {
+                  text: "Bar Transparency"
+                  font.family: Style.font.family
+                  font.pixelSize: 12
+                  font.bold: true
+                  color: Color.foreground
+                }
+
+                Rectangle {
+                  width: 16
+                  height: 16
+                  radius: 3
+                  color: Color.pickAlpha("surface.selected", "#2a3036")
+                  Text {
+                    anchors.centerIn: parent
+                    text: "E"
+                    font.family: Style.font.family
+                    font.pixelSize: 9
+                    color: Color.muted
+                  }
+                }
+              }
+
+              Text {
+                text: "Transparent floating island vs solid edge bar style"
+                font.family: Style.font.family
+                font.pixelSize: 10
+                color: Color.muted
+              }
+            }
+
+            Button {
+              text: root.barTransparent ? "TRANSPARENT" : "SOLID"
+              implicitWidth: 96
+              implicitHeight: 26
+              bordered: true
+              onClicked: root.toggleBarTransparent()
+            }
+          }
+
+          // Workspace Tiling Layout
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 10
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 1
+
+              RowLayout {
+                spacing: 6
+                Text {
+                  text: "Workspace Tiling Layout"
+                  font.family: Style.font.family
+                  font.pixelSize: 12
+                  font.bold: true
+                  color: Color.foreground
+                }
+
+                Rectangle {
+                  width: 16
+                  height: 16
+                  radius: 3
+                  color: Color.pickAlpha("surface.selected", "#2a3036")
+                  Text {
+                    anchors.centerIn: parent
+                    text: "W"
+                    font.family: Style.font.family
+                    font.pixelSize: 9
+                    color: Color.muted
+                  }
+                }
+              }
+
+              Text {
+                text: "Tiling algorithm on active workspace (Dwindle spiral vs horizontal scrolling)"
+                font.family: Style.font.family
+                font.pixelSize: 10
+                color: Color.muted
+              }
+            }
+
+            Button {
+              text: root.workspaceLayout === "dwindle" ? "DWINDLE" : "SCROLLING"
+              implicitWidth: 96
+              implicitHeight: 26
+              bordered: true
+              onClicked: {
+                root.focusedCard = 8
+                root.toggleWorkspaceLayout()
+              }
+            }
+          }
+        }
+      }
+
+      Item { Layout.preferredHeight: 12 }
+    }
+  }
+}
