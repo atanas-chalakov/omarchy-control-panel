@@ -18,10 +18,11 @@ Item {
   property int inputVolume: 100
   property bool inputMuted: false
   property var sources: []
+  property var apps: []
   property string statusMessage: ""
 
   property bool activeFocusSection: false
-  property int focusedRow: 0   // 0: Vol, 1: Mute, 2: Sink, 3: Mic Vol, 4: Mic Mute, 5: Mic Source
+  property int focusedRow: 0   // 0: Vol, 1: Mute, 2: Sink, 3: Mic Vol, 4: Mic Mute, 5: Mic Source, 6+: Apps
 
   function currentSinkIndex() {
     for (var i = 0; i < sinks.length; i++) {
@@ -61,9 +62,20 @@ Item {
     setInputVolume(v)
   }
 
+  function adjustAppVolume(id, delta, name) {
+    for (var i = 0; i < root.apps.length; i++) {
+      if (root.apps[i].id === id) {
+        var newV = Math.max(0, Math.min(100, (root.apps[i].volume || 100) + delta))
+        setAppVolume(id, newV, name)
+        break
+      }
+    }
+  }
+
   function handleMove(dx, dy) {
+    var maxRow = 5 + (root.apps.length > 0 ? root.apps.length : 0)
     if (dy !== 0) {
-      focusedRow = Math.max(0, Math.min(5, focusedRow + dy))
+      focusedRow = Math.max(0, Math.min(maxRow, focusedRow + dy))
       return true
     }
     if (dx !== 0) {
@@ -73,6 +85,12 @@ Item {
       else if (focusedRow === 3) adjustInputVolume(dx * 5)
       else if (focusedRow === 4) toggleInputMute()
       else if (focusedRow === 5) cycleSource(dx)
+      else if (focusedRow >= 6) {
+        var appIdx = focusedRow - 6
+        if (appIdx >= 0 && appIdx < root.apps.length) {
+          adjustAppVolume(root.apps[appIdx].id, dx * 5, root.apps[appIdx].name)
+        }
+      }
       return true
     }
     return false
@@ -85,11 +103,22 @@ Item {
     else if (focusedRow === 3) toggleInputMute()
     else if (focusedRow === 4) toggleInputMute()
     else if (focusedRow === 5) cycleSource(1)
+    else if (focusedRow >= 6) {
+      var appIdx = focusedRow - 6
+      if (appIdx >= 0 && appIdx < root.apps.length) {
+        toggleAppMute(root.apps[appIdx].id, root.apps[appIdx].name)
+      }
+    }
   }
 
   function handleTextKey(key) {
     if (key === "m" || key === "M") {
-      if (focusedRow >= 3) {
+      if (focusedRow >= 6) {
+        var appIdx = focusedRow - 6
+        if (appIdx >= 0 && appIdx < root.apps.length) {
+          toggleAppMute(root.apps[appIdx].id, root.apps[appIdx].name)
+        }
+      } else if (focusedRow >= 3) {
         toggleInputMute()
       } else {
         toggleMute()
@@ -104,6 +133,8 @@ Item {
       focusedRow = 3
     } else if (key === "s" || key === "S") {
       focusedRow = 5
+    } else if (key === "a" || key === "A") {
+      if (root.apps.length > 0) focusedRow = 6
     } else if (key === "h" || key === "H") {
       if (focusedRow === 0) adjustVolume(-5)
       else if (focusedRow === 1) toggleMute()
@@ -111,6 +142,12 @@ Item {
       else if (focusedRow === 3) adjustInputVolume(-5)
       else if (focusedRow === 4) toggleInputMute()
       else if (focusedRow === 5) cycleSource(-1)
+      else if (focusedRow >= 6) {
+        var appIdx = focusedRow - 6
+        if (appIdx >= 0 && appIdx < root.apps.length) {
+          adjustAppVolume(root.apps[appIdx].id, -5, root.apps[appIdx].name)
+        }
+      }
     } else if (key === "l" || key === "L") {
       if (focusedRow === 0) adjustVolume(5)
       else if (focusedRow === 1) toggleMute()
@@ -118,6 +155,12 @@ Item {
       else if (focusedRow === 3) adjustInputVolume(5)
       else if (focusedRow === 4) toggleInputMute()
       else if (focusedRow === 5) cycleSource(1)
+      else if (focusedRow >= 6) {
+        var appIdx = focusedRow - 6
+        if (appIdx >= 0 && appIdx < root.apps.length) {
+          adjustAppVolume(root.apps[appIdx].id, 5, root.apps[appIdx].name)
+        }
+      }
     }
   }
 
@@ -170,6 +213,19 @@ Item {
     notifyStatus("Mic Source: " + name)
   }
 
+  function setAppVolume(id, val, name) {
+    var v = Math.round(val)
+    setAppVolProcess.command = [pluginPath + "/scripts/system-control.sh", "audio-set-app-volume", String(id), String(v)]
+    setAppVolProcess.running = true
+    notifyStatus((name || "App") + " Volume: " + v + "%")
+  }
+
+  function toggleAppMute(id, name) {
+    setAppMuteProcess.command = [pluginPath + "/scripts/system-control.sh", "audio-set-app-mute", String(id), "toggle"]
+    setAppMuteProcess.running = true
+    notifyStatus("Toggled mute for " + (name || "App"))
+  }
+
   function notifyStatus(msg) {
     statusMessage = msg
     statusClearTimer.restart()
@@ -198,6 +254,7 @@ Item {
           if (data.inputVolume !== undefined) root.inputVolume = data.inputVolume
           if (data.inputMuted !== undefined) root.inputMuted = data.inputMuted
           if (Array.isArray(data.sources)) root.sources = data.sources
+          if (Array.isArray(data.apps)) root.apps = data.apps
         } catch (e) {
           console.warn("SoundView: JSON parse error", e)
         }
@@ -236,6 +293,17 @@ Item {
   // Set Source Process
   Process {
     id: setSourceProcess
+    onRunningChanged: if (!running) root.refresh()
+  }
+
+  // Set App Volume Process
+  Process {
+    id: setAppVolProcess
+  }
+
+  // Set App Mute Process
+  Process {
+    id: setAppMuteProcess
     onRunningChanged: if (!running) root.refresh()
   }
 
@@ -1070,6 +1138,193 @@ Item {
                   }
                 }
               }
+            }
+          }
+        }
+      }
+
+      // Section Header: Applications Mixer
+      Text {
+        text: "APPLICATION AUDIO MIXER"
+        font.family: Style.font.family
+        font.pixelSize: 11
+        font.bold: true
+        color: Color.muted
+        Layout.topMargin: 8
+      }
+
+      // Empty state card
+      Rectangle {
+        visible: root.apps.length === 0
+        Layout.fillWidth: true
+        Layout.preferredHeight: 64
+        radius: Style.cornerRadius || 8
+        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        border.color: Color.pickAlpha("border.subtle", "#262b30")
+        border.width: 1
+
+        RowLayout {
+          anchors.fill: parent
+          anchors.margins: 14
+          spacing: 12
+
+          Text {
+            text: "󰝚"
+            font.family: Style.font.family
+            font.pixelSize: 20
+            color: Color.muted
+          }
+
+          ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 2
+
+            Text {
+              text: "No Active Application Audio Streams"
+              font.family: Style.font.family
+              font.pixelSize: 13
+              font.bold: true
+              color: Color.foreground
+            }
+
+            Text {
+              text: "Apps currently playing audio (browsers, media players, games) will appear here."
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: Color.muted
+            }
+          }
+        }
+      }
+
+      // Active Apps Repeater
+      Repeater {
+        model: root.apps
+
+        delegate: Rectangle {
+          id: appCard
+          Layout.fillWidth: true
+          implicitHeight: Math.max(104, appColLayout.implicitHeight + 24)
+          Layout.preferredHeight: implicitHeight
+          radius: Style.cornerRadius || 8
+          readonly property bool isFocused: root.activeFocusSection && root.focusedRow === (6 + index)
+          color: appCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
+          border.color: appCard.isFocused ? Color.accent : Color.pickAlpha("border.subtle", "#262b30")
+          border.width: appCard.isFocused ? 2 : 1
+
+          MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.focusedRow = 6 + index
+          }
+
+          ColumnLayout {
+            id: appColLayout
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 8
+
+            RowLayout {
+              Layout.fillWidth: true
+              spacing: 10
+
+              Rectangle {
+                width: 32
+                height: 32
+                radius: 6
+                color: modelData.muted ? Color.pickAlpha("urgent.subtle", "#3a1f1f") : Color.pickAlpha("surface.hover", "#20252b")
+
+                Text {
+                  anchors.centerIn: parent
+                  text: modelData.muted ? "󰝟" : "󰕾"
+                  font.family: Style.font.family
+                  font.pixelSize: 16
+                  color: modelData.muted ? Color.urgent : Color.accent
+                }
+              }
+
+              ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+
+                RowLayout {
+                  spacing: 6
+                  Text {
+                    text: modelData.name
+                    font.family: Style.font.family
+                    font.pixelSize: 13
+                    font.bold: true
+                    color: Color.foreground
+                  }
+
+                  Text {
+                    visible: appCard.isFocused
+                    text: "• Use [←/→ or h/l] to adjust"
+                    font.family: Style.font.family
+                    font.pixelSize: 11
+                    color: Color.accent
+                  }
+                }
+
+                Text {
+                  text: "Stream #" + modelData.id
+                  font.family: Style.font.family
+                  font.pixelSize: 10
+                  color: Color.muted
+                }
+              }
+
+              Text {
+                text: modelData.muted ? "MUTED" : (modelData.volume + "%")
+                font.family: Style.font.family
+                font.pixelSize: 13
+                font.bold: true
+                color: modelData.muted ? Color.urgent : Color.accent
+              }
+
+              Button {
+                text: modelData.muted ? "Unmute" : "Mute"
+                implicitHeight: 28
+                onClicked: {
+                  root.focusedRow = 6 + index
+                  root.toggleAppMute(modelData.id, modelData.name)
+                }
+              }
+
+              RowLayout {
+                spacing: 4
+
+                Button {
+                  text: "◀"
+                  implicitWidth: 28
+                  implicitHeight: 28
+                  onClicked: {
+                    root.focusedRow = 6 + index
+                    root.adjustAppVolume(modelData.id, -5, modelData.name)
+                  }
+                }
+
+                Button {
+                  text: "▶"
+                  implicitWidth: 28
+                  implicitHeight: 28
+                  onClicked: {
+                    root.focusedRow = 6 + index
+                    root.adjustAppVolume(modelData.id, 5, modelData.name)
+                  }
+                }
+              }
+            }
+
+            PanelSlider {
+              Layout.fillWidth: true
+              minimum: 0
+              maximum: 100
+              step: 1
+              integer: true
+              value: modelData.volume
+              onMoved: function(v) { modelData.volume = Math.round(v) }
+              onReleased: function(v) { root.setAppVolume(modelData.id, v, modelData.name) }
             }
           }
         }

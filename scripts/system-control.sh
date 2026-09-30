@@ -73,6 +73,15 @@ case "$cmd" in
       }
     ' | jq -R 'split("\t") | {id: .[0], name: .[1], isDefault: (.[2] == "true")}' | jq -s .)
 
+    # 5. Application Playback Streams
+    apps_json=$(pactl -f json list sink-inputs 2>/dev/null | jq -c '[.[] | {
+      id: .index,
+      name: (.properties["application.name"] // "Application"),
+      icon: (.properties["application.icon_name"] // "audio-speakers"),
+      muted: .mute,
+      volume: ((.volume["front-left"].value_percent // "100%") | rtrimstr("%") | tonumber)
+    }]' 2>/dev/null || echo "[]")
+
     jq -n \
       --argjson volume "$vol_percent" \
       --argjson muted "$is_muted" \
@@ -80,13 +89,15 @@ case "$cmd" in
       --argjson inputVolume "$input_vol_percent" \
       --argjson inputMuted "$input_is_muted" \
       --argjson sources "$sources_json" \
+      --argjson apps "${apps_json:-[]}" \
       '{
         volume: $volume,
         muted: $muted,
         sinks: ($sinks // []),
         inputVolume: $inputVolume,
         inputMuted: $inputMuted,
-        sources: ($sources // [])
+        sources: ($sources // []),
+        apps: ($apps // [])
       }'
     ;;
 
@@ -134,6 +145,25 @@ case "$cmd" in
     source_id="${2:-}"
     if [[ -n "$source_id" ]]; then
       wpctl set-default "$source_id" >/dev/null 2>&1 || true
+    fi
+    ;;
+
+  audio-set-app-volume)
+    stream_id="${2:-}"
+    val="${3:-}"
+    if [[ -n "$stream_id" && -n "$val" ]]; then
+      num=$(printf '%.0f' "$val")
+      if (( num < 0 )); then num=0; fi
+      if (( num > 100 )); then num=100; fi
+      pactl set-sink-input-volume "$stream_id" "${num}%" >/dev/null 2>&1 || true
+    fi
+    ;;
+
+  audio-set-app-mute)
+    stream_id="${2:-}"
+    action="${3:-toggle}"
+    if [[ -n "$stream_id" ]]; then
+      pactl set-sink-input-mute "$stream_id" "$action" >/dev/null 2>&1 || true
     fi
     ;;
 
