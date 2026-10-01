@@ -128,8 +128,8 @@ Item {
     title: "Control Panel"
     color: Color.background
     implicitWidth: 880
-    implicitHeight: 620
-    minimumSize: Qt.size(720, 520)
+    implicitHeight: 640
+    minimumSize: Qt.size(760, 520)
 
     onVisibleChanged: {
       if (visible) {
@@ -232,23 +232,24 @@ Item {
           if (handled === true) return
         }
 
-        if (root.focusSection === "sidebar" && (key === "s" || key === "S" || key === "/")) { root.currentCategory = "search"; root.focusSection = "content" }
-        else if (key === "1") { root.currentCategory = "displays"; root.focusSection = "sidebar" }
-        else if (key === "2") { root.currentCategory = "power"; root.focusSection = "sidebar" }
-        else if (key === "3") { root.currentCategory = "appearance"; root.focusSection = "sidebar" }
-        else if (key === "4") { root.currentCategory = "sound"; root.focusSection = "sidebar" }
-        else if (key === "5") { root.currentCategory = "network"; root.focusSection = "sidebar" }
-        else if (key === "6") { root.currentCategory = "bluetooth"; root.focusSection = "sidebar" }
-        else if (key === "7") { root.currentCategory = "input"; root.focusSection = "sidebar" }
-        else if (key === "8") { root.currentCategory = "windows"; root.focusSection = "sidebar" }
-        else if (key === "9") { root.currentCategory = "defaults"; root.focusSection = "sidebar" }
-        else if (root.focusSection === "sidebar" && (key === "u" || key === "U")) { root.currentCategory = "updates"; root.focusSection = "sidebar" }
-        else if (root.focusSection === "sidebar" && (key === "n" || key === "N")) { root.currentCategory = "notifications"; root.focusSection = "sidebar" }
-        else if (root.focusSection === "sidebar" && (key === "k" || key === "K")) { root.currentCategory = "shortcuts"; root.focusSection = "sidebar" }
-        else if (root.focusSection === "sidebar" && (key === "a" || key === "A")) { root.currentCategory = "agents"; root.focusSection = "sidebar" }
-        else if (root.focusSection === "sidebar" && (key === "l" || key === "L")) { root.currentCategory = "region"; root.focusSection = "sidebar" }
-        else if (key === "0") { root.currentCategory = "about"; root.focusSection = "sidebar" }
-        else if (root.focusSection === "content" && categoryLoader.item && typeof categoryLoader.item.handleTextKey === "function") {
+        if (root.focusSection === "sidebar") {
+          if (key === "s" || key === "S" || key === "/") { root.currentCategory = "search"; root.focusSection = "content" }
+          else if (key === "1") { root.currentCategory = "displays" }
+          else if (key === "2") { root.currentCategory = "power" }
+          else if (key === "3") { root.currentCategory = "appearance" }
+          else if (key === "4") { root.currentCategory = "sound" }
+          else if (key === "5") { root.currentCategory = "network" }
+          else if (key === "6") { root.currentCategory = "bluetooth" }
+          else if (key === "7") { root.currentCategory = "input" }
+          else if (key === "8") { root.currentCategory = "windows" }
+          else if (key === "9") { root.currentCategory = "defaults" }
+          else if (key === "u" || key === "U") { root.currentCategory = "updates" }
+          else if (key === "n" || key === "N") { root.currentCategory = "notifications" }
+          else if (key === "k" || key === "K") { root.currentCategory = "shortcuts" }
+          else if (key === "a" || key === "A") { root.currentCategory = "agents" }
+          else if (key === "l" || key === "L") { root.currentCategory = "region" }
+          else if (key === "0") { root.currentCategory = "about" }
+        } else if (root.focusSection === "content" && categoryLoader.item && typeof categoryLoader.item.handleTextKey === "function") {
           categoryLoader.item.handleTextKey(key)
         }
       }
@@ -475,6 +476,7 @@ Item {
             id: rightPanelView
             Layout.fillWidth: true
             Layout.preferredWidth: 0
+            Layout.minimumWidth: 460
             Layout.fillHeight: true
             clip: true
             color: "transparent"

@@ -128,20 +128,28 @@ Item {
     var k = key.toLowerCase()
     if (k === "u") {
       launchUpdate()
+      return true
     } else if (k === "p") {
       prunePacmanCache()
+      return true
     } else if (k === "v") {
       vacuumJournal()
+      return true
     } else if (k === "o") {
       removeOrphans()
+      return true
     } else if (k === "r") {
       refresh()
       notifyStatus("Checking for updates and storage usage...")
+      return true
     } else if (k === "1") {
       currentTab = 0
+      return true
     } else if (k === "2") {
       currentTab = 1
+      return true
     }
+    return false
   }
 
   Component.onCompleted: refresh()
@@ -223,7 +231,7 @@ Item {
     Rectangle {
       id: topBannerCard
       Layout.fillWidth: true
-      implicitHeight: Math.max(68, topBannerRow.implicitHeight + 28)
+      implicitHeight: Math.max(90, topBannerCol.implicitHeight + 24)
       Layout.preferredHeight: implicitHeight
       radius: Style.cornerRadius || 8
       color: Color.pickAlpha("surface.subtle", "#181b1d")
@@ -236,90 +244,102 @@ Item {
         onClicked: root.focusedAction = 0
       }
 
-      RowLayout {
-        id: topBannerRow
+      ColumnLayout {
+        id: topBannerCol
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.margins: 14
-        spacing: 14
+        anchors.margins: 12
+        spacing: 10
 
-        // Big Status Icon
-        Rectangle {
-          width: 36
-          height: 36
-          radius: 18
-          color: root.totalUpdates > 0
-            ? Color.pickAlpha("accent.subtle", "#283b32")
-            : Color.pickAlpha("surface.hover", "#22272c")
-
-          Text {
-            anchors.centerIn: parent
-            text: root.totalUpdates > 0 ? "󰚰" : "󰄬"
-            font.family: Style.font.family
-            font.pixelSize: 18
-            color: root.totalUpdates > 0 ? Color.accent : Color.muted
-          }
-        }
-
-        ColumnLayout {
+        RowLayout {
           Layout.fillWidth: true
-          Layout.preferredWidth: 0
-          spacing: 2
+          spacing: 12
 
-          RowLayout {
-            spacing: 8
+          // Big Status Icon
+          Rectangle {
+            width: 36
+            height: 36
+            radius: 18
+            color: root.totalUpdates > 0
+              ? Color.pickAlpha("accent.subtle", "#283b32")
+              : Color.pickAlpha("surface.hover", "#22272c")
+
             Text {
-              text: root.totalUpdates > 0 ? (root.totalUpdates + " Updates Available") : "System is Up to Date"
+              anchors.centerIn: parent
+              text: root.totalUpdates > 0 ? "󰚰" : "󰄬"
               font.family: Style.font.family
-              font.pixelSize: 15
-              font.bold: true
-              color: Color.foreground
+              font.pixelSize: 18
+              color: root.totalUpdates > 0 ? Color.accent : Color.muted
             }
+          }
 
-            Rectangle {
-              visible: root.totalUpdates > 0
-              Layout.preferredHeight: 18
-              Layout.preferredWidth: updateCountText.implicitWidth + 10
-              radius: 9
-              color: Color.accent
+          ColumnLayout {
+            Layout.fillWidth: true
+            Layout.preferredWidth: 0
+            spacing: 2
 
+            RowLayout {
+              spacing: 8
               Text {
-                id: updateCountText
-                anchors.centerIn: parent
-                text: root.pacmanCount + " pacman • " + root.aurCount + " aur"
+                text: root.totalUpdates > 0 ? (root.totalUpdates + " Updates Available") : "System is Up to Date"
                 font.family: Style.font.family
-                font.pixelSize: 10
+                font.pixelSize: 15
                 font.bold: true
-                color: Color.background
+                color: Color.foreground
+              }
+
+              Rectangle {
+                visible: root.totalUpdates > 0
+                Layout.preferredHeight: 18
+                Layout.preferredWidth: updateCountText.implicitWidth + 10
+                radius: 9
+                color: Color.accent
+
+                Text {
+                  id: updateCountText
+                  anchors.centerIn: parent
+                  text: root.pacmanCount + " pacman • " + root.aurCount + " aur"
+                  font.family: Style.font.family
+                  font.pixelSize: 10
+                  font.bold: true
+                  color: Color.background
+                }
               }
             }
-          }
 
-          Text {
-            Layout.fillWidth: true
-            wrapMode: Text.WordWrap
-            text: root.totalUpdates > 0
-              ? "Arch Linux and AUR packages have newer versions ready to install"
-              : "All packages and repositories are synced with latest versions"
-            font.family: Style.font.family
-            font.pixelSize: 12
-            color: Color.muted
+            Text {
+              Layout.fillWidth: true
+              wrapMode: Text.WordWrap
+              text: root.totalUpdates > 0
+                ? "Arch Linux and AUR packages have newer versions ready to install"
+                : "All packages and repositories are synced with latest versions"
+              font.family: Style.font.family
+              font.pixelSize: 12
+              color: Color.muted
+            }
           }
         }
 
         // Action Buttons
-        Button {
-          text: root.isRefreshing ? "Checking..." : "󰑐 Refresh [R]"
-          enabled: !root.isRefreshing
-          onClicked: root.refresh()
-        }
+        RowLayout {
+          Layout.fillWidth: true
+          spacing: 8
 
-        Button {
-          text: "󰚰 Update System [U]"
-          selected: root.totalUpdates > 0
-          bordered: true
-          onClicked: root.launchUpdate()
+          Item { Layout.fillWidth: true }
+
+          Button {
+            text: root.isRefreshing ? "Checking..." : "󰑐 Refresh [R]"
+            enabled: !root.isRefreshing
+            onClicked: root.refresh()
+          }
+
+          Button {
+            text: "󰚰 Update System [U]"
+            selected: root.totalUpdates > 0
+            bordered: true
+            onClicked: root.launchUpdate()
+          }
         }
       }
     }
@@ -330,8 +350,10 @@ Item {
       spacing: 8
 
       Rectangle {
+        id: tabUpdates
         Layout.fillWidth: true
-        height: 34
+        Layout.preferredHeight: 36
+        implicitHeight: 36
         radius: 6
         color: root.currentTab === 0
           ? Color.pickAlpha("accent.subtle", "#203a30")
@@ -346,7 +368,9 @@ Item {
         }
 
         RowLayout {
-          anchors.centerIn: parent
+          anchors.fill: parent
+          anchors.leftMargin: 10
+          anchors.rightMargin: 10
           spacing: 6
 
           Text {
@@ -357,18 +381,23 @@ Item {
           }
 
           Text {
+            Layout.fillWidth: true
             text: "Pending Updates (" + root.totalUpdates + ")"
             font.family: Style.font.family
             font.pixelSize: 12
             font.bold: root.currentTab === 0
             color: root.currentTab === 0 ? Color.accent : Color.muted
+            elide: Text.ElideRight
+            horizontalAlignment: Text.AlignHCenter
           }
         }
       }
 
       Rectangle {
+        id: tabDisk
         Layout.fillWidth: true
-        height: 34
+        Layout.preferredHeight: 36
+        implicitHeight: 36
         radius: 6
         color: root.currentTab === 1
           ? Color.pickAlpha("accent.subtle", "#203a30")
@@ -383,7 +412,9 @@ Item {
         }
 
         RowLayout {
-          anchors.centerIn: parent
+          anchors.fill: parent
+          anchors.leftMargin: 10
+          anchors.rightMargin: 10
           spacing: 6
 
           Text {
@@ -394,11 +425,14 @@ Item {
           }
 
           Text {
+            Layout.fillWidth: true
             text: "Disk & Maintenance"
             font.family: Style.font.family
             font.pixelSize: 12
             font.bold: root.currentTab === 1
             color: root.currentTab === 1 ? Color.accent : Color.muted
+            elide: Text.ElideRight
+            horizontalAlignment: Text.AlignHCenter
           }
         }
       }
@@ -415,7 +449,7 @@ Item {
       ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
       ColumnLayout {
-        width: Math.max(200, parent.width - 12)
+        width: Math.max(200, updatesScroll.availableWidth - 12)
         spacing: 8
 
         // Empty state
@@ -629,7 +663,7 @@ Item {
       ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
       ColumnLayout {
-        width: Math.max(200, parent.width - 12)
+        width: Math.max(200, diskScroll.availableWidth - 12)
         spacing: 12
 
         // Partitions Header
@@ -647,6 +681,7 @@ Item {
           delegate: Rectangle {
             id: partCard
             Layout.fillWidth: true
+            width: parent ? parent.width : undefined
             implicitHeight: Math.max(76, partCol.implicitHeight + 24)
             Layout.preferredHeight: implicitHeight
             radius: Style.cornerRadius || 8
@@ -666,14 +701,14 @@ Item {
                 Layout.fillWidth: true
 
                 Text {
+                  Layout.fillWidth: true
                   text: modelData.label
                   font.family: Style.font.family
                   font.pixelSize: 13
                   font.bold: true
                   color: Color.foreground
+                  elide: Text.ElideRight
                 }
-
-                Item { Layout.fillWidth: true }
 
                 Text {
                   text: modelData.used_str + " used of " + modelData.total_str + " (" + modelData.percent + "%)"
@@ -736,6 +771,7 @@ Item {
         Rectangle {
           id: pacmanCard
           Layout.fillWidth: true
+          width: parent ? parent.width : undefined
           implicitHeight: Math.max(68, pacmanCacheRow.implicitHeight + 24)
           Layout.preferredHeight: implicitHeight
           radius: Style.cornerRadius || 8
@@ -818,6 +854,7 @@ Item {
         Rectangle {
           id: journalCard
           Layout.fillWidth: true
+          width: parent ? parent.width : undefined
           implicitHeight: Math.max(68, journalRow.implicitHeight + 24)
           Layout.preferredHeight: implicitHeight
           radius: Style.cornerRadius || 8
@@ -900,6 +937,7 @@ Item {
         Rectangle {
           id: orphansCard
           Layout.fillWidth: true
+          width: parent ? parent.width : undefined
           implicitHeight: Math.max(68, orphansRow.implicitHeight + 24)
           Layout.preferredHeight: implicitHeight
           radius: Style.cornerRadius || 8

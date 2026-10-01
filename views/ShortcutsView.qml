@@ -423,7 +423,7 @@ Item {
       ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
       ColumnLayout {
-        width: Math.max(200, parent.width - 12)
+        width: Math.max(200, shortcutsScroll.availableWidth - 12)
         spacing: 6
 
         // Empty state
