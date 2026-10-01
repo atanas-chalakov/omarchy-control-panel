@@ -18,6 +18,9 @@ Item {
   property int focusedAction: 0 // 0: Update All, 1: Prune Cache, 2: Vacuum Journal, 3: Remove Orphans
   property string statusMessage: ""
 
+  readonly property var scrollArea: (currentTab === 0 ? updatesScroll : diskScroll)
+  readonly property var updatesScroll: (currentTab === 0 ? updatesScroll : diskScroll)
+
   // State data
   property int totalUpdates: 0
   property int pacmanCount: 0
@@ -76,11 +79,37 @@ Item {
     onTriggered: root.statusMessage = ""
   }
 
+  function ensureActionVisible(action) {
+    if (currentTab !== 1 || !diskScroll || !diskScroll.contentItem) return
+    var flick = diskScroll.contentItem
+    if (action === 0) {
+      flick.contentY = 0
+      return
+    }
+    var target = null
+    if (action === 1) target = pacmanCard
+    else if (action === 2) target = journalCard
+    else if (action === 3) target = orphansCard
+    if (!target) return
+
+    var pos = target.mapToItem(flick, 0, 0)
+    var targetY = pos.y
+    var targetH = target.height
+
+    if (targetY < flick.contentY + 10) {
+      flick.contentY = Math.max(0, targetY - 10)
+    } else if (targetY + targetH > flick.contentY + diskScroll.height - 10) {
+      flick.contentY = Math.max(0, targetY + targetH - diskScroll.height + 10)
+    }
+  }
+
   function handleMove(dx, dy) {
     if (dx !== 0) {
       currentTab = (currentTab + (dx > 0 ? 1 : -1) + 2) % 2
+      ensureActionVisible(focusedAction)
     } else if (dy !== 0) {
       focusedAction = Math.max(0, Math.min(3, focusedAction + dy))
+      ensureActionVisible(focusedAction)
     }
   }
 
@@ -192,15 +221,26 @@ Item {
 
     // Top Header Banner
     Rectangle {
+      id: topBannerCard
       Layout.fillWidth: true
-      Layout.preferredHeight: 64
+      implicitHeight: Math.max(68, topBannerRow.implicitHeight + 28)
+      Layout.preferredHeight: implicitHeight
       radius: Style.cornerRadius || 8
       color: Color.pickAlpha("surface.subtle", "#181b1d")
       border.color: (root.activeFocusSection && root.focusedAction === 0) ? Color.accent : Color.pickAlpha("border.subtle", "#262b30")
       border.width: (root.activeFocusSection && root.focusedAction === 0) ? 2 : 1
 
-      RowLayout {
+      MouseArea {
         anchors.fill: parent
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.focusedAction = 0
+      }
+
+      RowLayout {
+        id: topBannerRow
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
         anchors.margins: 14
         spacing: 14
 
@@ -224,6 +264,7 @@ Item {
 
         ColumnLayout {
           Layout.fillWidth: true
+          Layout.preferredWidth: 0
           spacing: 2
 
           RowLayout {
@@ -256,6 +297,8 @@ Item {
           }
 
           Text {
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
             text: root.totalUpdates > 0
               ? "Arch Linux and AUR packages have newer versions ready to install"
               : "All packages and repositories are synced with latest versions"
@@ -363,6 +406,7 @@ Item {
 
     // Tab 0: Updates List
     ScrollView {
+      id: updatesScroll
       visible: root.currentTab === 0
       Layout.fillWidth: true
       Layout.fillHeight: true
@@ -576,6 +620,7 @@ Item {
 
     // Tab 1: Disk Partitions & Maintenance
     ScrollView {
+      id: diskScroll
       visible: root.currentTab === 1
       Layout.fillWidth: true
       Layout.fillHeight: true
@@ -600,15 +645,20 @@ Item {
           model: root.partitions
 
           delegate: Rectangle {
+            id: partCard
             Layout.fillWidth: true
-            Layout.preferredHeight: 74
+            implicitHeight: Math.max(76, partCol.implicitHeight + 24)
+            Layout.preferredHeight: implicitHeight
             radius: Style.cornerRadius || 8
             color: Color.pickAlpha("surface.subtle", "#181b1d")
             border.color: Color.pickAlpha("border.subtle", "#262b30")
             border.width: 1
 
             ColumnLayout {
-              anchors.fill: parent
+              id: partCol
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
               anchors.margins: 12
               spacing: 8
 
@@ -684,15 +734,26 @@ Item {
 
         // Card 1: Pacman Cache
         Rectangle {
+          id: pacmanCard
           Layout.fillWidth: true
-          Layout.preferredHeight: 64
+          implicitHeight: Math.max(68, pacmanCacheRow.implicitHeight + 24)
+          Layout.preferredHeight: implicitHeight
           radius: Style.cornerRadius || 8
           color: Color.pickAlpha("surface.subtle", "#181b1d")
           border.color: (root.activeFocusSection && root.focusedAction === 1) ? Color.accent : Color.pickAlpha("border.subtle", "#262b30")
           border.width: (root.activeFocusSection && root.focusedAction === 1) ? 2 : 1
 
-          RowLayout {
+          MouseArea {
             anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.focusedAction = 1
+          }
+
+          RowLayout {
+            id: pacmanCacheRow
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
             anchors.margins: 12
             spacing: 12
 
@@ -705,6 +766,7 @@ Item {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.preferredWidth: 0
               spacing: 2
 
               RowLayout {
@@ -736,11 +798,12 @@ Item {
               }
 
               Text {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
                 text: "Prune superseded packages with paccache -rk2, keeping 2 offline rollback copies"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.muted
-                elide: Text.ElideRight
               }
             }
 
@@ -753,15 +816,26 @@ Item {
 
         // Card 2: Systemd Journal Logs
         Rectangle {
+          id: journalCard
           Layout.fillWidth: true
-          Layout.preferredHeight: 64
+          implicitHeight: Math.max(68, journalRow.implicitHeight + 24)
+          Layout.preferredHeight: implicitHeight
           radius: Style.cornerRadius || 8
           color: Color.pickAlpha("surface.subtle", "#181b1d")
           border.color: (root.activeFocusSection && root.focusedAction === 2) ? Color.accent : Color.pickAlpha("border.subtle", "#262b30")
           border.width: (root.activeFocusSection && root.focusedAction === 2) ? 2 : 1
 
-          RowLayout {
+          MouseArea {
             anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.focusedAction = 2
+          }
+
+          RowLayout {
+            id: journalRow
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
             anchors.margins: 12
             spacing: 12
 
@@ -774,6 +848,7 @@ Item {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.preferredWidth: 0
               spacing: 2
 
               RowLayout {
@@ -805,11 +880,12 @@ Item {
               }
 
               Text {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
                 text: "Vacuum older logs, keeping the last 7 days of diagnostics"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.muted
-                elide: Text.ElideRight
               }
             }
 
@@ -822,15 +898,26 @@ Item {
 
         // Card 3: Orphan Packages
         Rectangle {
+          id: orphansCard
           Layout.fillWidth: true
-          Layout.preferredHeight: 64
+          implicitHeight: Math.max(68, orphansRow.implicitHeight + 24)
+          Layout.preferredHeight: implicitHeight
           radius: Style.cornerRadius || 8
           color: Color.pickAlpha("surface.subtle", "#181b1d")
           border.color: (root.activeFocusSection && root.focusedAction === 3) ? Color.accent : Color.pickAlpha("border.subtle", "#262b30")
           border.width: (root.activeFocusSection && root.focusedAction === 3) ? 2 : 1
 
-          RowLayout {
+          MouseArea {
             anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.focusedAction = 3
+          }
+
+          RowLayout {
+            id: orphansRow
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
             anchors.margins: 12
             spacing: 12
 
@@ -843,6 +930,7 @@ Item {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.preferredWidth: 0
               spacing: 2
 
               RowLayout {
@@ -874,11 +962,12 @@ Item {
               }
 
               Text {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
                 text: "Review and safely remove dependency packages that are no longer needed"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.muted
-                elide: Text.ElideRight
               }
             }
 
