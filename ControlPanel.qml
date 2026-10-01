@@ -116,6 +116,7 @@ Item {
           categoryLoader.item.ensureCardVisible(cardIndex)
         }
       }
+      returnFocusToKeyCatcher()
     })
   }
 
@@ -157,6 +158,7 @@ Item {
           if (categoryLoader.item.scrollArea) targetScroll = categoryLoader.item.scrollArea
           else if (categoryLoader.item.themesScroll) targetScroll = categoryLoader.item.themesScroll
           else if (categoryLoader.item.resultsScroll) targetScroll = categoryLoader.item.resultsScroll
+          else if (categoryLoader.item.dashboardScroll) targetScroll = categoryLoader.item.dashboardScroll
           else if (categoryLoader.item.shortcutsScroll) targetScroll = categoryLoader.item.shortcutsScroll
           else if (categoryLoader.item.updatesScroll) targetScroll = categoryLoader.item.updatesScroll
         }
@@ -207,7 +209,14 @@ Item {
       onTabRequested: function(direction) {
         if (root.focusSection === "sidebar") {
           root.focusSection = "content"
+          if (categoryLoader.item && typeof categoryLoader.item.focusToInput === "function") {
+            categoryLoader.item.focusToInput()
+          }
         } else {
+          if (categoryLoader.item && typeof categoryLoader.item.handleTab === "function") {
+            var handled = categoryLoader.item.handleTab(direction)
+            if (handled === true) return
+          }
           root.focusSection = "sidebar"
         }
       }
@@ -218,6 +227,9 @@ Item {
             root.cycleCategory(dy)
           } else if (dx > 0) {
             root.focusSection = "content"
+            if (categoryLoader.item && typeof categoryLoader.item.focusToInput === "function") {
+              categoryLoader.item.focusToInput()
+            }
           }
         } else {
           if (categoryLoader.item && typeof categoryLoader.item.handleMove === "function") {
@@ -230,6 +242,15 @@ Item {
         if (root.focusSection === "content" && categoryLoader.item && typeof categoryLoader.item.handleTextKey === "function") {
           var handled = categoryLoader.item.handleTextKey(key)
           if (handled === true) return
+        }
+
+        if (key === "/" || ((key === "s" || key === "S") && (!categoryLoader.item || !categoryLoader.item.hasActiveInput))) {
+          root.currentCategory = "search"
+          root.focusSection = "content"
+          if (categoryLoader.item && typeof categoryLoader.item.focusToInput === "function") {
+            categoryLoader.item.focusToInput()
+          }
+          return
         }
 
         if (root.focusSection === "sidebar") {
@@ -249,8 +270,6 @@ Item {
           else if (key === "a" || key === "A") { root.currentCategory = "agents" }
           else if (key === "l" || key === "L") { root.currentCategory = "region" }
           else if (key === "0") { root.currentCategory = "about" }
-        } else if (root.focusSection === "content" && categoryLoader.item && typeof categoryLoader.item.handleTextKey === "function") {
-          categoryLoader.item.handleTextKey(key)
         }
       }
 

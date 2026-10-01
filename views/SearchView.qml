@@ -13,17 +13,43 @@ Item {
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   property var panelRoot: null
   property bool activeFocusSection: false
+  property string focusZone: "input" // "input", "chips", "tiles", "results"
+  property int selectedChipIndex: 0
+  property int selectedTileIndex: 0
   property int selectedResultIndex: 0
 
-  readonly property bool hasActiveInput: searchField && searchField.activeFocus
+  readonly property bool hasActiveInput: (focusZone === "input" && searchField && searchField.activeFocus)
 
   onActiveFocusSectionChanged: {
     if (activeFocusSection) {
-      if (searchField) searchField.forceActiveFocus()
+      focusToInput()
     } else {
       if (searchField) searchField.focus = false
     }
   }
+
+  readonly property var quickChips: [
+    { icon: "󰤨", label: "Wi-Fi", query: "wifi" },
+    { icon: "󰂯", label: "Bluetooth", query: "bluetooth" },
+    { icon: "󰕾", label: "Volume", query: "volume" },
+    { icon: "󰍹", label: "Brightness", query: "brightness" },
+    { icon: "󰆽", label: "Touchpad", query: "touchpad" },
+    { icon: "󰅐", label: "Clock", query: "clock" },
+    { icon: "", label: "Theme", query: "theme" },
+    { icon: "󰚰", label: "Updates", query: "updates" }
+  ]
+
+  readonly property var quickTiles: [
+    { title: "Brightness [1]", subtitle: "Displays & Scaling", icon: "󰍹", categoryId: "displays", cardIndex: 0 },
+    { title: "Audio & Volume [4]", subtitle: "Speakers & Mic", icon: "󰕾", categoryId: "sound", cardIndex: 0 },
+    { title: "Wi-Fi & Network [5]", subtitle: "Wireless Connections", icon: "󰤨", categoryId: "network", cardIndex: 0 },
+    { title: "Bluetooth [6]", subtitle: "Paired Accessories", icon: "󰂯", categoryId: "bluetooth", cardIndex: 0 },
+    { title: "Touchpad & Gestures [7]", subtitle: "Tap to Click & Scroll", icon: "󰆽", categoryId: "input", cardIndex: 3 },
+    { title: "Time & Language [L]", subtitle: "Clock, Timezone & Layouts", icon: "󰅐", categoryId: "region", cardIndex: 5 },
+    { title: "Themes & Styling [3]", subtitle: "Tokyo Night, Gruvbox", icon: "", categoryId: "appearance", cardIndex: 0 },
+    { title: "System Updates [U]", subtitle: "Packages & Storage", icon: "󰚰", categoryId: "updates", cardIndex: 0 },
+    { title: "Window Manager [8]", subtitle: "Gaps, Borders & Bar", icon: "", categoryId: "windows", cardIndex: 0 }
+  ]
 
   // Master index of all settings across all categories
   readonly property var settingsIndex: [
@@ -148,6 +174,14 @@ Item {
     }
   }
 
+  function focusToInput() {
+    focusZone = "input"
+    if (searchField) {
+      searchField.forceActiveFocus()
+      searchField.cursorPosition = searchField.text.length
+    }
+  }
+
   function activateResult(index) {
     if (index >= 0 && index < searchResults.length) {
       var item = searchResults[index]
@@ -160,53 +194,219 @@ Item {
     }
   }
 
-  function ensureVisible(index) {
+  function activateChip(index) {
+    if (index >= 0 && index < quickChips.length) {
+      var chip = quickChips[index]
+      if (searchField) {
+        searchField.text = chip.query
+        searchField.cursorPosition = searchField.text.length
+      }
+      focusZone = "results"
+      selectedResultIndex = 0
+      if (searchField) searchField.focus = false
+      if (panelRoot && typeof panelRoot.returnFocusToKeyCatcher === "function") {
+        panelRoot.returnFocusToKeyCatcher()
+      }
+    }
+  }
+
+  function activateTile(index) {
+    if (index >= 0 && index < quickTiles.length) {
+      var tile = quickTiles[index]
+      if (panelRoot && typeof panelRoot.navigateToSetting === "function") {
+        panelRoot.navigateToSetting(tile.categoryId, tile.cardIndex)
+      } else if (panelRoot) {
+        panelRoot.currentCategory = tile.categoryId
+        panelRoot.focusSection = "content"
+      }
+    }
+  }
+
+  function ensureResultVisible(index) {
     if (!resultsScroll || !resultsScroll.contentItem) return
-    var itemY = index * 70
+    var itemY = index * 72
     var flick = resultsScroll.contentItem
     if (itemY < flick.contentY) {
-      flick.contentY = Math.max(0, itemY)
-    } else if (itemY + 70 > flick.contentY + resultsScroll.height) {
-      flick.contentY = Math.max(0, itemY + 70 - resultsScroll.height)
+      flick.contentY = Math.max(0, itemY - 10)
+    } else if (itemY + 64 > flick.contentY + resultsScroll.height - 10) {
+      flick.contentY = Math.max(0, itemY + 64 - resultsScroll.height + 10)
+    }
+  }
+
+  function ensureTileVisible(index) {
+    if (!dashboardScroll || !dashboardScroll.contentItem) return
+    var row = Math.floor(index / 3)
+    var itemY = 30 + row * 94
+    var flick = dashboardScroll.contentItem
+    if (itemY < flick.contentY) {
+      flick.contentY = Math.max(0, itemY - 10)
+    } else if (itemY + 84 > flick.contentY + dashboardScroll.height - 10) {
+      flick.contentY = Math.max(0, itemY + 84 - dashboardScroll.height + 10)
     }
   }
 
   function handleMove(dx, dy) {
-    if (dx < 0 && searchField.cursorPosition === 0) {
-      if (panelRoot) panelRoot.focusSection = "sidebar"
-      return true
-    }
-    if (dy !== 0) {
-      if (searchResults.length > 0) {
-        selectedResultIndex = Math.max(0, Math.min(searchResults.length - 1, selectedResultIndex + dy))
-        ensureVisible(selectedResultIndex)
+    if (searchResults.length > 0 || (searchField && searchField.text.trim().length > 0)) {
+      if (dy > 0) {
+        selectedResultIndex = Math.min(searchResults.length - 1, selectedResultIndex + 1)
+        ensureResultVisible(selectedResultIndex)
+        return true
+      } else if (dy < 0) {
+        if (selectedResultIndex > 0) {
+          selectedResultIndex--
+          ensureResultVisible(selectedResultIndex)
+          return true
+        } else {
+          focusToInput()
+          return true
+        }
+      } else if (dx < 0) {
+        if (panelRoot) panelRoot.focusSection = "sidebar"
         return true
       }
+      return false
     }
+
+    if (focusZone === "chips") {
+      if (dx > 0) {
+        if (selectedChipIndex < quickChips.length - 1) {
+          selectedChipIndex++
+          return true
+        }
+      } else if (dx < 0) {
+        if (selectedChipIndex > 0) {
+          selectedChipIndex--
+          return true
+        } else {
+          if (panelRoot) panelRoot.focusSection = "sidebar"
+          return true
+        }
+      } else if (dy > 0) {
+        focusZone = "tiles"
+        selectedTileIndex = Math.min(2, Math.floor(selectedChipIndex / 3))
+        ensureTileVisible(selectedTileIndex)
+        return true
+      } else if (dy < 0) {
+        focusToInput()
+        return true
+      }
+    } else if (focusZone === "tiles") {
+      if (dy > 0) {
+        if (selectedTileIndex + 3 < quickTiles.length) {
+          selectedTileIndex += 3
+          ensureTileVisible(selectedTileIndex)
+          return true
+        }
+      } else if (dy < 0) {
+        if (selectedTileIndex >= 3) {
+          selectedTileIndex -= 3
+          ensureTileVisible(selectedTileIndex)
+          return true
+        } else {
+          focusZone = "chips"
+          selectedChipIndex = Math.min(quickChips.length - 1, selectedTileIndex * 3)
+          return true
+        }
+      } else if (dx > 0) {
+        if (selectedTileIndex % 3 < 2 && selectedTileIndex + 1 < quickTiles.length) {
+          selectedTileIndex++
+          ensureTileVisible(selectedTileIndex)
+          return true
+        }
+      } else if (dx < 0) {
+        if (selectedTileIndex % 3 > 0) {
+          selectedTileIndex--
+          ensureTileVisible(selectedTileIndex)
+          return true
+        } else {
+          if (panelRoot) panelRoot.focusSection = "sidebar"
+          return true
+        }
+      }
+    }
+
     return false
   }
 
   function handleActivate() {
-    if (searchResults.length > 0) {
+    if (searchResults.length > 0 || (searchField && searchField.text.trim().length > 0)) {
       activateResult(selectedResultIndex)
+    } else if (focusZone === "chips") {
+      activateChip(selectedChipIndex)
+    } else if (focusZone === "tiles") {
+      activateTile(selectedTileIndex)
+    }
+  }
+
+  function handleTab(direction) {
+    if (searchResults.length > 0 || (searchField && searchField.text.trim().length > 0)) {
+      if (focusZone === "input") {
+        focusZone = "results"
+        selectedResultIndex = 0
+        if (searchField) searchField.focus = false
+        ensureResultVisible(0)
+        if (panelRoot && typeof panelRoot.returnFocusToKeyCatcher === "function") {
+          panelRoot.returnFocusToKeyCatcher()
+        }
+        return true
+      } else {
+        return false
+      }
+    }
+
+    if (direction < 0) {
+      if (focusZone === "tiles") {
+        focusZone = "chips"
+        return true
+      } else if (focusZone === "chips") {
+        focusToInput()
+        return true
+      } else {
+        return false
+      }
+    } else {
+      if (focusZone === "input") {
+        focusZone = "chips"
+        selectedChipIndex = 0
+        if (searchField) searchField.focus = false
+        if (panelRoot && typeof panelRoot.returnFocusToKeyCatcher === "function") {
+          panelRoot.returnFocusToKeyCatcher()
+        }
+        return true
+      } else if (focusZone === "chips") {
+        focusZone = "tiles"
+        selectedTileIndex = 0
+        ensureTileVisible(0)
+        return true
+      } else {
+        return false
+      }
     }
   }
 
   function handleTextKey(key) {
-    if (searchField) {
-      searchField.forceActiveFocus()
-      if (key.length === 1 && key >= " ") {
+    if (focusZone === "input") return false
+
+    var k = key.toLowerCase()
+    if (k === "/" || k === "s") {
+      focusToInput()
+      return true
+    }
+
+    if (key.length === 1 && key >= " ") {
+      focusToInput()
+      if (searchField) {
         searchField.text = searchField.text + key
         searchField.cursorPosition = searchField.text.length
-        return true
       }
+      return true
     }
     return false
   }
 
   Component.onCompleted: {
     Qt.callLater(function() {
-      if (searchField) searchField.forceActiveFocus()
+      focusToInput()
     })
   }
 
@@ -220,15 +420,13 @@ Item {
       Layout.preferredHeight: 46
       color: Color.pickAlpha("surface.subtle", "#181b1d")
       radius: Style.cornerRadius || 8
-      border.color: (searchField && searchField.activeFocus) ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
-      border.width: (searchField && searchField.activeFocus) ? 2 : 1
+      border.color: (root.focusZone === "input" && searchField && searchField.activeFocus) ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
+      border.width: (root.focusZone === "input" && searchField && searchField.activeFocus) ? 2 : 1
 
       MouseArea {
         anchors.fill: parent
         cursorShape: Qt.IBeamCursor
-        onClicked: {
-          if (searchField) searchField.forceActiveFocus()
-        }
+        onClicked: root.focusToInput()
       }
 
       RowLayout {
@@ -241,7 +439,7 @@ Item {
           text: ""
           font.family: Style.font.family
           font.pixelSize: 16
-          color: (searchField && searchField.activeFocus) ? Color.accent : Color.muted
+          color: (root.focusZone === "input" && searchField && searchField.activeFocus) ? Color.accent : Color.muted
         }
 
         TextField {
@@ -255,48 +453,78 @@ Item {
           font.pixelSize: Style.font.body || 14
           focus: true
 
+          onTextChanged: {
+            if (root.focusZone !== "input" && root.focusZone !== "results") {
+              if (text.trim().length > 0) root.focusZone = "results"
+            }
+          }
+
           onAccepted: {
             if (root.searchResults.length > 0) {
               root.activateResult(root.selectedResultIndex)
+            } else {
+              root.focusZone = "tiles"
+              root.selectedTileIndex = 0
+              root.ensureTileVisible(0)
+              Qt.callLater(function() {
+                searchField.focus = false
+                if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                  root.panelRoot.returnFocusToKeyCatcher()
+                }
+              })
             }
           }
 
           Keys.onDownPressed: function(event) {
+            event.accepted = true
             if (root.searchResults.length > 0) {
-              root.selectedResultIndex = Math.min(root.searchResults.length - 1, root.selectedResultIndex + 1)
-              root.ensureVisible(root.selectedResultIndex)
-              event.accepted = true
-            } else if (dashboardScroll && dashboardScroll.contentItem) {
-              dashboardScroll.contentItem.contentY = Math.min(dashboardScroll.contentItem.contentHeight - dashboardScroll.height, dashboardScroll.contentItem.contentY + 60)
-              event.accepted = true
+              root.focusZone = "results"
+              root.selectedResultIndex = 0
+              root.ensureResultVisible(0)
+            } else {
+              root.focusZone = "chips"
+              root.selectedChipIndex = 0
             }
-          }
-
-          Keys.onUpPressed: function(event) {
-            if (root.searchResults.length > 0) {
-              root.selectedResultIndex = Math.max(0, root.selectedResultIndex - 1)
-              root.ensureVisible(root.selectedResultIndex)
-              event.accepted = true
-            } else if (dashboardScroll && dashboardScroll.contentItem) {
-              dashboardScroll.contentItem.contentY = Math.max(0, dashboardScroll.contentItem.contentY - 60)
-              event.accepted = true
-            }
+            Qt.callLater(function() {
+              searchField.focus = false
+              if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                root.panelRoot.returnFocusToKeyCatcher()
+              }
+            })
           }
 
           Keys.onTabPressed: function(event) {
-            searchField.focus = false
-            if (root.panelRoot) {
-              root.panelRoot.focusSection = "sidebar"
-              if (typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
-                root.panelRoot.returnFocusToKeyCatcher()
-              }
-            }
             event.accepted = true
+            if (event.modifiers & Qt.ShiftModifier) {
+              Qt.callLater(function() {
+                searchField.focus = false
+                if (root.panelRoot) root.panelRoot.focusSection = "sidebar"
+                if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                  root.panelRoot.returnFocusToKeyCatcher()
+                }
+              })
+            } else {
+              if (root.searchResults.length > 0) {
+                root.focusZone = "results"
+                root.selectedResultIndex = 0
+                root.ensureResultVisible(0)
+              } else {
+                root.focusZone = "chips"
+                root.selectedChipIndex = 0
+              }
+              Qt.callLater(function() {
+                searchField.focus = false
+                if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                  root.panelRoot.returnFocusToKeyCatcher()
+                }
+              })
+            }
           }
 
           Keys.onEscapePressed: function(event) {
             if (text.length > 0) {
               text = ""
+              root.focusZone = "input"
               event.accepted = true
             } else {
               searchField.focus = false
@@ -322,6 +550,50 @@ Item {
           }
         }
 
+        // Hint Badge: Jump to search or jump below
+        Rectangle {
+          visible: root.focusZone !== "input"
+          Layout.preferredHeight: 22
+          Layout.preferredWidth: searchHintBadgeText.implicitWidth + 12
+          radius: 4
+          color: searchHintBadgeMouse.containsMouse ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
+
+          MouseArea {
+            id: searchHintBadgeMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.focusToInput()
+          }
+
+          Text {
+            id: searchHintBadgeText
+            anchors.centerIn: parent
+            text: "Press [ / ] to search"
+            font.family: Style.font.family
+            font.pixelSize: 10
+            font.bold: true
+            color: searchHintBadgeMouse.containsMouse ? Color.background : Color.muted
+          }
+        }
+
+        Rectangle {
+          visible: (root.focusZone === "input" && searchField && searchField.activeFocus && searchField.text.length === 0)
+          Layout.preferredHeight: 22
+          Layout.preferredWidth: inputHintBadgeText.implicitWidth + 12
+          radius: 4
+          color: Color.pickAlpha("surface.selected", "#2a3036")
+
+          Text {
+            id: inputHintBadgeText
+            anchors.centerIn: parent
+            text: "Press [ ↓ ] for items below"
+            font.family: Style.font.family
+            font.pixelSize: 10
+            color: Color.muted
+          }
+        }
+
         // Clear Search Button
         Rectangle {
           Layout.preferredHeight: 24
@@ -335,7 +607,7 @@ Item {
             cursorShape: Qt.PointingHandCursor
             onClicked: {
               searchField.text = ""
-              searchField.forceActiveFocus()
+              root.focusToInput()
             }
           }
 
@@ -357,11 +629,11 @@ Item {
       spacing: 6
 
       Text {
-        text: "Quick Suggestions:"
+        text: (root.focusZone === "chips") ? "Quick Suggestions [←/→/Enter]:" : "Quick Suggestions:"
         font.family: Style.font.family
         font.pixelSize: 10
         font.bold: true
-        color: Color.muted
+        color: (root.focusZone === "chips") ? Color.accent : Color.muted
       }
 
       Flow {
@@ -369,24 +641,20 @@ Item {
         spacing: 6
 
         Repeater {
-          model: [
-            { icon: "󰤨", label: "Wi-Fi", query: "wifi" },
-            { icon: "󰂯", label: "Bluetooth", query: "bluetooth" },
-            { icon: "󰕾", label: "Volume", query: "volume" },
-            { icon: "󰍹", label: "Brightness", query: "brightness" },
-            { icon: "󰆽", label: "Touchpad", query: "touchpad" },
-            { icon: "󰅐", label: "Clock", query: "clock" },
-            { icon: "", label: "Theme", query: "theme" },
-            { icon: "󰚰", label: "Updates", query: "updates" }
-          ]
+          model: root.quickChips
 
           delegate: Rectangle {
-            height: 24
-            width: chipContent.implicitWidth + 14
-            radius: 4
-            color: Color.pickAlpha("surface.subtle", "#181b1d")
-            border.color: chipMouse.containsMouse ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
-            border.width: 1
+            id: chipCard
+            height: 26
+            width: chipContent.implicitWidth + 16
+            radius: 5
+            color: (root.focusZone === "chips" && index === root.selectedChipIndex)
+              ? Color.pickAlpha("accent.subtle", "#203a30")
+              : (chipMouse.containsMouse ? Color.pickAlpha("surface.hover", "#22272c") : Color.pickAlpha("surface.subtle", "#181b1d"))
+            border.color: (root.focusZone === "chips" && index === root.selectedChipIndex)
+              ? Color.accent
+              : (chipMouse.containsMouse ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036"))
+            border.width: (root.focusZone === "chips" && index === root.selectedChipIndex) ? 2 : 1
 
             MouseArea {
               id: chipMouse
@@ -394,9 +662,8 @@ Item {
               hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
               onClicked: {
-                searchField.text = modelData.query
-                searchField.cursorPosition = searchField.text.length
-                searchField.forceActiveFocus()
+                root.selectedChipIndex = index
+                root.activateChip(index)
               }
             }
 
@@ -416,7 +683,24 @@ Item {
                 text: modelData.label
                 font.family: Style.font.family
                 font.pixelSize: 10
-                color: Color.foreground
+                font.bold: (root.focusZone === "chips" && index === root.selectedChipIndex)
+                color: (root.focusZone === "chips" && index === root.selectedChipIndex) ? Color.accent : Color.foreground
+              }
+
+              Rectangle {
+                visible: root.focusZone === "chips" && index === root.selectedChipIndex
+                width: 14
+                height: 14
+                radius: 2
+                color: Color.accent
+
+                Text {
+                  anchors.centerIn: parent
+                  text: "󰌑"
+                  font.family: Style.font.family
+                  font.pixelSize: 8
+                  color: Color.background
+                }
               }
             }
           }
@@ -660,532 +944,85 @@ Item {
           Layout.fillWidth: true
           spacing: 10
 
-          // Tile 1: Displays & Brightness
-          Rectangle {
-            width: Math.max(160, (parent.width - 20) / 3)
-            height: 84
-            radius: 8
-            color: Color.pickAlpha("surface.subtle", "#181b1d")
+          Repeater {
+            model: root.quickTiles
 
-            MouseArea {
-              anchors.fill: parent
-              cursorShape: Qt.PointingHandCursor
-              onClicked: {
-                if (root.panelRoot && typeof root.panelRoot.navigateToSetting === "function") {
-                  root.panelRoot.navigateToSetting("displays", 0)
-                }
-              }
-            }
+            delegate: Rectangle {
+              id: tileCard
+              width: Math.max(160, (parent.width - 20) / 3)
+              height: 84
+              radius: 8
+              color: (root.focusZone === "tiles" && index === root.selectedTileIndex)
+                ? Color.pickAlpha("surface.selected", "#222a30")
+                : (tileMouse.containsMouse ? Color.pickAlpha("surface.hover", "#20252a") : Color.pickAlpha("surface.subtle", "#181b1d"))
+              border.color: (root.focusZone === "tiles" && index === root.selectedTileIndex)
+                ? Color.accent
+                : (tileMouse.containsMouse ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036"))
+              border.width: (root.focusZone === "tiles" && index === root.selectedTileIndex) ? 2 : 1
 
-            RowLayout {
-              anchors.fill: parent
-              anchors.margins: 12
-              spacing: 12
-
-              Rectangle {
-                width: 36
-                height: 36
-                radius: 8
-                color: Color.pickAlpha("accent.subtle", "#1f3b30")
-                Text {
-                  anchors.centerIn: parent
-                  text: "󰍹"
-                  font.family: Style.font.family
-                  font.pixelSize: 18
-                  color: Color.accent
+              MouseArea {
+                id: tileMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  root.selectedTileIndex = index
+                  root.activateTile(index)
                 }
               }
 
-              ColumnLayout {
-                Layout.fillWidth: true
-                Layout.preferredWidth: 0
-                spacing: 2
-                Text {
-                  text: "Brightness [1]"
-                  font.family: Style.font.family
-                  font.pixelSize: 12
-                  font.bold: true
-                  color: Color.foreground
+              RowLayout {
+                anchors.fill: parent
+                anchors.margins: 12
+                spacing: 12
+
+                Rectangle {
+                  width: 36
+                  height: 36
+                  radius: 8
+                  color: (root.focusZone === "tiles" && index === root.selectedTileIndex)
+                    ? Color.accent
+                    : Color.pickAlpha("accent.subtle", "#1f3b30")
+
+                  Text {
+                    anchors.centerIn: parent
+                    text: modelData.icon
+                    font.family: Style.font.family
+                    font.pixelSize: 18
+                    color: (root.focusZone === "tiles" && index === root.selectedTileIndex)
+                      ? Color.background
+                      : Color.accent
+                  }
                 }
-                Text {
-                  text: "Displays & Scaling"
-                  font.family: Style.font.family
-                  font.pixelSize: 10
-                  color: Color.muted
-                  elide: Text.ElideRight
+
+                ColumnLayout {
                   Layout.fillWidth: true
-                }
-              }
-            }
-          }
+                  Layout.preferredWidth: 0
+                  spacing: 2
 
-          // Tile 2: Volume & Sound
-          Rectangle {
-            width: Math.max(160, (parent.width - 20) / 3)
-            height: 84
-            radius: 8
-            color: Color.pickAlpha("surface.subtle", "#181b1d")
+                  Text {
+                    Layout.fillWidth: true
+                    text: modelData.title
+                    font.family: Style.font.family
+                    font.pixelSize: 12
+                    font.bold: true
+                    color: (root.focusZone === "tiles" && index === root.selectedTileIndex)
+                      ? Color.accent
+                      : Color.foreground
+                    elide: Text.ElideRight
+                  }
 
-            MouseArea {
-              anchors.fill: parent
-              cursorShape: Qt.PointingHandCursor
-              onClicked: {
-                if (root.panelRoot && typeof root.panelRoot.navigateToSetting === "function") {
-                  root.panelRoot.navigateToSetting("sound", 0)
-                }
-              }
-            }
-
-            RowLayout {
-              anchors.fill: parent
-              anchors.margins: 12
-              spacing: 12
-
-              Rectangle {
-                width: 36
-                height: 36
-                radius: 8
-                color: Color.pickAlpha("accent.subtle", "#1f3b30")
-                Text {
-                  anchors.centerIn: parent
-                  text: "󰕾"
-                  font.family: Style.font.family
-                  font.pixelSize: 18
-                  color: Color.accent
-                }
-              }
-
-              ColumnLayout {
-                Layout.fillWidth: true
-                Layout.preferredWidth: 0
-                spacing: 2
-                Text {
-                  text: "Audio & Volume [4]"
-                  font.family: Style.font.family
-                  font.pixelSize: 12
-                  font.bold: true
-                  color: Color.foreground
-                }
-                Text {
-                  text: "Speakers & Mic"
-                  font.family: Style.font.family
-                  font.pixelSize: 10
-                  color: Color.muted
-                  elide: Text.ElideRight
-                  Layout.fillWidth: true
-                }
-              }
-            }
-          }
-
-          // Tile 3: Wi-Fi Networks
-          Rectangle {
-            width: Math.max(160, (parent.width - 20) / 3)
-            height: 84
-            radius: 8
-            color: Color.pickAlpha("surface.subtle", "#181b1d")
-
-            MouseArea {
-              anchors.fill: parent
-              cursorShape: Qt.PointingHandCursor
-              onClicked: {
-                if (root.panelRoot && typeof root.panelRoot.navigateToSetting === "function") {
-                  root.panelRoot.navigateToSetting("network", 0)
-                }
-              }
-            }
-
-            RowLayout {
-              anchors.fill: parent
-              anchors.margins: 12
-              spacing: 12
-
-              Rectangle {
-                width: 36
-                height: 36
-                radius: 8
-                color: Color.pickAlpha("accent.subtle", "#1f3b30")
-                Text {
-                  anchors.centerIn: parent
-                  text: "󰤨"
-                  font.family: Style.font.family
-                  font.pixelSize: 18
-                  color: Color.accent
-                }
-              }
-
-              ColumnLayout {
-                Layout.fillWidth: true
-                Layout.preferredWidth: 0
-                spacing: 2
-                Text {
-                  text: "Wi-Fi & Network [5]"
-                  font.family: Style.font.family
-                  font.pixelSize: 12
-                  font.bold: true
-                  color: Color.foreground
-                }
-                Text {
-                  text: "Wireless Connections"
-                  font.family: Style.font.family
-                  font.pixelSize: 10
-                  color: Color.muted
-                  elide: Text.ElideRight
-                  Layout.fillWidth: true
-                }
-              }
-            }
-          }
-
-          // Tile 4: Bluetooth Devices
-          Rectangle {
-            width: Math.max(160, (parent.width - 20) / 3)
-            height: 84
-            radius: 8
-            color: Color.pickAlpha("surface.subtle", "#181b1d")
-
-            MouseArea {
-              anchors.fill: parent
-              cursorShape: Qt.PointingHandCursor
-              onClicked: {
-                if (root.panelRoot && typeof root.panelRoot.navigateToSetting === "function") {
-                  root.panelRoot.navigateToSetting("bluetooth", 0)
-                }
-              }
-            }
-
-            RowLayout {
-              anchors.fill: parent
-              anchors.margins: 12
-              spacing: 12
-
-              Rectangle {
-                width: 36
-                height: 36
-                radius: 8
-                color: Color.pickAlpha("accent.subtle", "#1f3b30")
-                Text {
-                  anchors.centerIn: parent
-                  text: "󰂯"
-                  font.family: Style.font.family
-                  font.pixelSize: 18
-                  color: Color.accent
-                }
-              }
-
-              ColumnLayout {
-                Layout.fillWidth: true
-                Layout.preferredWidth: 0
-                spacing: 2
-                Text {
-                  text: "Bluetooth [6]"
-                  font.family: Style.font.family
-                  font.pixelSize: 12
-                  font.bold: true
-                  color: Color.foreground
-                }
-                Text {
-                  text: "Paired Accessories"
-                  font.family: Style.font.family
-                  font.pixelSize: 10
-                  color: Color.muted
-                  elide: Text.ElideRight
-                  Layout.fillWidth: true
-                }
-              }
-            }
-          }
-
-          // Tile 5: Touchpad & Input
-          Rectangle {
-            width: Math.max(160, (parent.width - 20) / 3)
-            height: 84
-            radius: 8
-            color: Color.pickAlpha("surface.subtle", "#181b1d")
-
-            MouseArea {
-              anchors.fill: parent
-              cursorShape: Qt.PointingHandCursor
-              onClicked: {
-                if (root.panelRoot && typeof root.panelRoot.navigateToSetting === "function") {
-                  root.panelRoot.navigateToSetting("input", 3)
-                }
-              }
-            }
-
-            RowLayout {
-              anchors.fill: parent
-              anchors.margins: 12
-              spacing: 12
-
-              Rectangle {
-                width: 36
-                height: 36
-                radius: 8
-                color: Color.pickAlpha("accent.subtle", "#1f3b30")
-                Text {
-                  anchors.centerIn: parent
-                  text: "󰆽"
-                  font.family: Style.font.family
-                  font.pixelSize: 18
-                  color: Color.accent
-                }
-              }
-
-              ColumnLayout {
-                Layout.fillWidth: true
-                Layout.preferredWidth: 0
-                spacing: 2
-                Text {
-                  text: "Touchpad & Gestures [7]"
-                  font.family: Style.font.family
-                  font.pixelSize: 12
-                  font.bold: true
-                  color: Color.foreground
-                }
-                Text {
-                  text: "Tap to Click & Scroll"
-                  font.family: Style.font.family
-                  font.pixelSize: 10
-                  color: Color.muted
-                  elide: Text.ElideRight
-                  Layout.fillWidth: true
-                }
-              }
-            }
-          }
-
-          // Tile 6: Keyboard Layouts & Time
-          Rectangle {
-            width: Math.max(160, (parent.width - 20) / 3)
-            height: 84
-            radius: 8
-            color: Color.pickAlpha("surface.subtle", "#181b1d")
-
-            MouseArea {
-              anchors.fill: parent
-              cursorShape: Qt.PointingHandCursor
-              onClicked: {
-                if (root.panelRoot && typeof root.panelRoot.navigateToSetting === "function") {
-                  root.panelRoot.navigateToSetting("region", 5)
-                }
-              }
-            }
-
-            RowLayout {
-              anchors.fill: parent
-              anchors.margins: 12
-              spacing: 12
-
-              Rectangle {
-                width: 36
-                height: 36
-                radius: 8
-                color: Color.pickAlpha("accent.subtle", "#1f3b30")
-                Text {
-                  anchors.centerIn: parent
-                  text: "󰅐"
-                  font.family: Style.font.family
-                  font.pixelSize: 18
-                  color: Color.accent
-                }
-              }
-
-              ColumnLayout {
-                Layout.fillWidth: true
-                Layout.preferredWidth: 0
-                spacing: 2
-                Text {
-                  text: "Time & Language [L]"
-                  font.family: Style.font.family
-                  font.pixelSize: 12
-                  font.bold: true
-                  color: Color.foreground
-                }
-                Text {
-                  text: "Clock, Timezone & Layouts"
-                  font.family: Style.font.family
-                  font.pixelSize: 10
-                  color: Color.muted
-                  elide: Text.ElideRight
-                  Layout.fillWidth: true
-                }
-              }
-            }
-          }
-
-          // Tile 7: Desktop Themes
-          Rectangle {
-            width: Math.max(160, (parent.width - 20) / 3)
-            height: 84
-            radius: 8
-            color: Color.pickAlpha("surface.subtle", "#181b1d")
-
-            MouseArea {
-              anchors.fill: parent
-              cursorShape: Qt.PointingHandCursor
-              onClicked: {
-                if (root.panelRoot && typeof root.panelRoot.navigateToSetting === "function") {
-                  root.panelRoot.navigateToSetting("appearance", 0)
-                }
-              }
-            }
-
-            RowLayout {
-              anchors.fill: parent
-              anchors.margins: 12
-              spacing: 12
-
-              Rectangle {
-                width: 36
-                height: 36
-                radius: 8
-                color: Color.pickAlpha("accent.subtle", "#1f3b30")
-                Text {
-                  anchors.centerIn: parent
-                  text: ""
-                  font.family: Style.font.family
-                  font.pixelSize: 18
-                  color: Color.accent
-                }
-              }
-
-              ColumnLayout {
-                Layout.fillWidth: true
-                Layout.preferredWidth: 0
-                spacing: 2
-                Text {
-                  text: "Themes & Styling [3]"
-                  font.family: Style.font.family
-                  font.pixelSize: 12
-                  font.bold: true
-                  color: Color.foreground
-                }
-                Text {
-                  text: "Tokyo Night, Gruvbox"
-                  font.family: Style.font.family
-                  font.pixelSize: 10
-                  color: Color.muted
-                  elide: Text.ElideRight
-                  Layout.fillWidth: true
-                }
-              }
-            }
-          }
-
-          // Tile 8: System Updates
-          Rectangle {
-            width: Math.max(160, (parent.width - 20) / 3)
-            height: 84
-            radius: 8
-            color: Color.pickAlpha("surface.subtle", "#181b1d")
-
-            MouseArea {
-              anchors.fill: parent
-              cursorShape: Qt.PointingHandCursor
-              onClicked: {
-                if (root.panelRoot && typeof root.panelRoot.navigateToSetting === "function") {
-                  root.panelRoot.navigateToSetting("updates", 0)
-                }
-              }
-            }
-
-            RowLayout {
-              anchors.fill: parent
-              anchors.margins: 12
-              spacing: 12
-
-              Rectangle {
-                width: 36
-                height: 36
-                radius: 8
-                color: Color.pickAlpha("accent.subtle", "#1f3b30")
-                Text {
-                  anchors.centerIn: parent
-                  text: "󰚰"
-                  font.family: Style.font.family
-                  font.pixelSize: 18
-                  color: Color.accent
-                }
-              }
-
-              ColumnLayout {
-                Layout.fillWidth: true
-                Layout.preferredWidth: 0
-                spacing: 2
-                Text {
-                  text: "System Updates [U]"
-                  font.family: Style.font.family
-                  font.pixelSize: 12
-                  font.bold: true
-                  color: Color.foreground
-                }
-                Text {
-                  text: "Packages & Storage"
-                  font.family: Style.font.family
-                  font.pixelSize: 10
-                  color: Color.muted
-                  elide: Text.ElideRight
-                  Layout.fillWidth: true
-                }
-              }
-            }
-          }
-
-          // Tile 9: Window Manager
-          Rectangle {
-            width: Math.max(160, (parent.width - 20) / 3)
-            height: 84
-            radius: 8
-            color: Color.pickAlpha("surface.subtle", "#181b1d")
-
-            MouseArea {
-              anchors.fill: parent
-              cursorShape: Qt.PointingHandCursor
-              onClicked: {
-                if (root.panelRoot && typeof root.panelRoot.navigateToSetting === "function") {
-                  root.panelRoot.navigateToSetting("windows", 0)
-                }
-              }
-            }
-
-            RowLayout {
-              anchors.fill: parent
-              anchors.margins: 12
-              spacing: 12
-
-              Rectangle {
-                width: 36
-                height: 36
-                radius: 8
-                color: Color.pickAlpha("accent.subtle", "#1f3b30")
-                Text {
-                  anchors.centerIn: parent
-                  text: ""
-                  font.family: Style.font.family
-                  font.pixelSize: 18
-                  color: Color.accent
-                }
-              }
-
-              ColumnLayout {
-                Layout.fillWidth: true
-                Layout.preferredWidth: 0
-                spacing: 2
-                Text {
-                  text: "Window Manager [8]"
-                  font.family: Style.font.family
-                  font.pixelSize: 12
-                  font.bold: true
-                  color: Color.foreground
-                }
-                Text {
-                  text: "Gaps, Borders & Bar"
-                  font.family: Style.font.family
-                  font.pixelSize: 10
-                  color: Color.muted
-                  elide: Text.ElideRight
-                  Layout.fillWidth: true
+                  Text {
+                    Layout.fillWidth: true
+                    text: (root.focusZone === "tiles" && index === root.selectedTileIndex)
+                      ? ("󰌑 Enter to open • " + modelData.subtitle)
+                      : modelData.subtitle
+                    font.family: Style.font.family
+                    font.pixelSize: 10
+                    font.bold: (root.focusZone === "tiles" && index === root.selectedTileIndex)
+                    color: (root.focusZone === "tiles" && index === root.selectedTileIndex) ? Color.accent : Color.muted
+                    elide: Text.ElideRight
+                  }
                 }
               }
             }
