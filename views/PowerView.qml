@@ -350,7 +350,9 @@ Item {
 
         RowLayout {
           id: powerHeroRow
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 14
 
@@ -375,13 +377,11 @@ Item {
             Layout.minimumWidth: 0
             spacing: 2
 
-            RowLayout {
+            Flow {
               Layout.fillWidth: true
               spacing: 8
+
               Text {
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                elide: Text.ElideRight
                 text: root.batteryPresent ? ("Battery: " + root.batteryCapacity + "%") : "External Power"
                 font.family: Style.font.family
                 font.pixelSize: Style.font.title || 16
@@ -445,7 +445,9 @@ Item {
 
         ColumnLayout {
           id: profileColLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 10
 
@@ -470,10 +472,11 @@ Item {
               Layout.minimumWidth: 0
               spacing: 2
 
-              RowLayout {
+              Flow {
                 Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                spacing: 8
+                width: parent.width
+                spacing: 6
+
                 Text {
                   text: "Power Profile"
                   font.family: Style.font.family
@@ -481,15 +484,16 @@ Item {
                   font.bold: true
                   color: Color.foreground
                 }
+
                 Text {
                   visible: profileCard.isFocused
-                  Layout.fillWidth: true
-                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to cycle"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
-                  elide: Text.ElideRight
+                  topPadding: 2
+                  width: Math.min(implicitWidth, parent.width)
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -505,7 +509,7 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
-                elide: Text.ElideRight
+                wrapMode: Text.WordWrap
               }
             }
 
@@ -537,18 +541,24 @@ Item {
             }
           }
 
-          // Visual segmented option cards
-          RowLayout {
+          // Visual segmented option cards (Responsive Flow)
+          Flow {
+            id: profileFlow
             Layout.fillWidth: true
+            width: parent.width
             spacing: 8
+
+            readonly property int count: root.powerProfiles.length
+            readonly property int minItemWidth: 110
+            readonly property int cols: Math.max(1, Math.min(count, Math.floor((width + spacing) / (minItemWidth + spacing))))
+            readonly property real itemWidth: Math.max(70, Math.floor((width - (cols - 1) * spacing) / cols))
 
             Repeater {
               model: root.powerProfiles
 
               delegate: Rectangle {
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                Layout.preferredHeight: 34
+                width: profileFlow.itemWidth
+                height: 34
                 radius: 6
                 readonly property bool isSelected: root.currentProfile === modelData.id
                 color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
@@ -614,7 +624,9 @@ Item {
 
         RowLayout {
           id: stayAwakeRowLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 14
 
@@ -638,10 +650,11 @@ Item {
             Layout.minimumWidth: 0
             spacing: 2
 
-            RowLayout {
+            Flow {
               Layout.fillWidth: true
-              Layout.minimumWidth: 0
-              spacing: 8
+              width: parent.width
+              spacing: 6
+
               Text {
                 text: "Stay Awake (Inhibit Sleep)"
                 font.family: Style.font.family
@@ -649,15 +662,16 @@ Item {
                 font.bold: true
                 color: Color.foreground
               }
+
               Text {
                 visible: stayAwakeCard.isFocused
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
                 text: "• Press [Enter/Space or a] to toggle"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.accent
-                elide: Text.ElideRight
+                topPadding: 2
+                width: Math.min(implicitWidth, parent.width)
+                wrapMode: Text.WordWrap
               }
             }
 
@@ -668,13 +682,15 @@ Item {
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11
               color: Color.muted
-              elide: Text.ElideRight
+              wrapMode: Text.WordWrap
             }
           }
 
           Rectangle {
-            width: 90
-            height: 32
+            Layout.preferredWidth: 90
+            Layout.minimumWidth: 90
+            Layout.preferredHeight: 32
+            Layout.alignment: Qt.AlignVCenter
             radius: 16
             color: root.stayAwake ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
             border.color: stayAwakeCard.isFocused ? Color.accent : "transparent"
@@ -712,7 +728,9 @@ Item {
 
         ColumnLayout {
           id: screensaverColLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 10
 
@@ -732,10 +750,11 @@ Item {
               Layout.minimumWidth: 0
               spacing: 2
 
-              RowLayout {
+              Flow {
                 Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                spacing: 8
+                width: parent.width
+                spacing: 6
+
                 Text {
                   text: "Screen Off Timeout"
                   font.family: Style.font.family
@@ -743,15 +762,16 @@ Item {
                   font.bold: true
                   color: Color.foreground
                 }
+
                 Text {
                   visible: screensaverCard.isFocused
-                  Layout.fillWidth: true
-                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to cycle"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
-                  elide: Text.ElideRight
+                  topPadding: 2
+                  width: Math.min(implicitWidth, parent.width)
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -762,7 +782,7 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
-                elide: Text.ElideRight
+                wrapMode: Text.WordWrap
               }
             }
 
@@ -794,18 +814,24 @@ Item {
             }
           }
 
-          // Visual segmented option cards
-          RowLayout {
+          // Visual segmented option cards (Responsive Flow)
+          Flow {
+            id: screensaverFlow
             Layout.fillWidth: true
+            width: parent.width
             spacing: 8
+
+            readonly property int count: root.screensaverOptions.length
+            readonly property int minItemWidth: 65
+            readonly property int cols: Math.max(1, Math.min(count, Math.floor((width + spacing) / (minItemWidth + spacing))))
+            readonly property real itemWidth: Math.max(48, Math.floor((width - (cols - 1) * spacing) / cols))
 
             Repeater {
               model: root.screensaverOptions
 
               delegate: Rectangle {
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                Layout.preferredHeight: 34
+                width: screensaverFlow.itemWidth
+                height: 34
                 radius: 6
                 readonly property bool isSelected: root.screensaverTimeout === modelData.seconds
                 color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
@@ -825,6 +851,7 @@ Item {
                   anchors.centerIn: parent
                   width: Math.min(implicitWidth, parent.width - 8)
                   elide: Text.ElideRight
+                  horizontalAlignment: Text.AlignHCenter
                   text: modelData.label
                   font.family: Style.font.family
                   font.pixelSize: 11
@@ -857,7 +884,9 @@ Item {
 
         ColumnLayout {
           id: lockColLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 10
 
@@ -877,10 +906,11 @@ Item {
               Layout.minimumWidth: 0
               spacing: 2
 
-              RowLayout {
+              Flow {
                 Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                spacing: 8
+                width: parent.width
+                spacing: 6
+
                 Text {
                   text: "Lock Screen Timeout"
                   font.family: Style.font.family
@@ -888,15 +918,16 @@ Item {
                   font.bold: true
                   color: Color.foreground
                 }
+
                 Text {
                   visible: lockCard.isFocused
-                  Layout.fillWidth: true
-                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to cycle"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
-                  elide: Text.ElideRight
+                  topPadding: 2
+                  width: Math.min(implicitWidth, parent.width)
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -907,7 +938,7 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
-                elide: Text.ElideRight
+                wrapMode: Text.WordWrap
               }
             }
 
@@ -939,18 +970,24 @@ Item {
             }
           }
 
-          // Visual segmented option cards
-          RowLayout {
+          // Visual segmented option cards (Responsive Flow)
+          Flow {
+            id: lockFlow
             Layout.fillWidth: true
+            width: parent.width
             spacing: 8
+
+            readonly property int count: root.lockOptions.length
+            readonly property int minItemWidth: 65
+            readonly property int cols: Math.max(1, Math.min(count, Math.floor((width + spacing) / (minItemWidth + spacing))))
+            readonly property real itemWidth: Math.max(48, Math.floor((width - (cols - 1) * spacing) / cols))
 
             Repeater {
               model: root.lockOptions
 
               delegate: Rectangle {
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                Layout.preferredHeight: 34
+                width: lockFlow.itemWidth
+                height: 34
                 radius: 6
                 readonly property bool isSelected: root.lockTimeout === modelData.seconds
                 color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
@@ -970,6 +1007,7 @@ Item {
                   anchors.centerIn: parent
                   width: Math.min(implicitWidth, parent.width - 8)
                   elide: Text.ElideRight
+                  horizontalAlignment: Text.AlignHCenter
                   text: modelData.label
                   font.family: Style.font.family
                   font.pixelSize: 11

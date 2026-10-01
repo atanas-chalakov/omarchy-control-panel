@@ -370,13 +370,11 @@ Item {
             Layout.minimumWidth: 0
             spacing: 2
 
-            RowLayout {
+            Flow {
               Layout.fillWidth: true
               spacing: 8
+
               Text {
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                elide: Text.ElideRight
                 text: activeMonitor ? activeMonitor.name : "Display"
                 font.family: Style.font.family
                 font.pixelSize: Style.font.title || 16
@@ -440,7 +438,9 @@ Item {
 
         ColumnLayout {
           id: brightnessColLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 10
 
@@ -460,10 +460,11 @@ Item {
               Layout.minimumWidth: 0
               spacing: 2
 
-              RowLayout {
+              Flow {
                 Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                spacing: 8
+                width: parent.width
+                spacing: 6
+
                 Text {
                   text: "Display Brightness"
                   font.family: Style.font.family
@@ -471,15 +472,16 @@ Item {
                   font.bold: true
                   color: Color.foreground
                 }
+
                 Text {
                   visible: brightnessCard.isFocused
-                  Layout.fillWidth: true
-                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to adjust ±5%"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
-                  elide: Text.ElideRight
+                  topPadding: 2
+                  width: Math.min(implicitWidth, parent.width)
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -490,7 +492,7 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
-                elide: Text.ElideRight
+                wrapMode: Text.WordWrap
               }
             }
 
@@ -565,7 +567,9 @@ Item {
 
         RowLayout {
           id: nightlightToggleRowLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 14
 
@@ -589,10 +593,11 @@ Item {
             Layout.minimumWidth: 0
             spacing: 2
 
-            RowLayout {
+            Flow {
               Layout.fillWidth: true
-              Layout.minimumWidth: 0
-              spacing: 8
+              width: parent.width
+              spacing: 6
+
               Text {
                 text: "Night Light (Blue Light Filter)"
                 font.family: Style.font.family
@@ -600,15 +605,16 @@ Item {
                 font.bold: true
                 color: Color.foreground
               }
+
               Text {
                 visible: nightlightToggleCard.isFocused
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
                 text: "• Press [Enter/Space or n] to toggle"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.accent
-                elide: Text.ElideRight
+                topPadding: 2
+                width: Math.min(implicitWidth, parent.width)
+                wrapMode: Text.WordWrap
               }
             }
 
@@ -619,13 +625,15 @@ Item {
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11
               color: Color.muted
-              elide: Text.ElideRight
+              wrapMode: Text.WordWrap
             }
           }
 
           Rectangle {
-            width: 90
-            height: 32
+            Layout.preferredWidth: 90
+            Layout.minimumWidth: 90
+            Layout.preferredHeight: 32
+            Layout.alignment: Qt.AlignVCenter
             radius: 16
             color: root.nightlightEnabled ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
             border.color: nightlightToggleCard.isFocused ? Color.accent : "transparent"
@@ -663,7 +671,9 @@ Item {
 
         ColumnLayout {
           id: nightlightTempColLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 10
 
@@ -683,10 +693,11 @@ Item {
               Layout.minimumWidth: 0
               spacing: 2
 
-              RowLayout {
+              Flow {
                 Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                spacing: 8
+                width: parent.width
+                spacing: 6
+
                 Text {
                   text: "Color Warmth (Temperature)"
                   font.family: Style.font.family
@@ -694,15 +705,16 @@ Item {
                   font.bold: true
                   color: Color.foreground
                 }
+
                 Text {
                   visible: nightlightTempCard.isFocused
-                  Layout.fillWidth: true
-                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to cycle"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
-                  elide: Text.ElideRight
+                  topPadding: 2
+                  width: Math.min(implicitWidth, parent.width)
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -713,7 +725,7 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
-                elide: Text.ElideRight
+                wrapMode: Text.WordWrap
               }
             }
 
@@ -745,17 +757,24 @@ Item {
             }
           }
 
-          // Visual segmented option cards
-          RowLayout {
+          // Visual segmented option cards (Responsive Flow)
+          Flow {
+            id: nightlightFlow
             Layout.fillWidth: true
+            width: parent.width
             spacing: 8
+
+            readonly property int count: root.nightlightOptions.length
+            readonly property int minItemWidth: 105
+            readonly property int cols: Math.max(1, Math.min(count, Math.floor((width + spacing) / (minItemWidth + spacing))))
+            readonly property real itemWidth: Math.max(60, Math.floor((width - (cols - 1) * spacing) / cols))
 
             Repeater {
               model: root.nightlightOptions
 
               delegate: Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 34
+                width: nightlightFlow.itemWidth
+                height: 34
                 radius: 6
                 readonly property bool isSelected: Math.abs(root.nightlightTemp - modelData.temp) < 200
                 color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
@@ -773,6 +792,9 @@ Item {
 
                 Text {
                   anchors.centerIn: parent
+                  width: Math.min(implicitWidth, parent.width - 8)
+                  elide: Text.ElideRight
+                  horizontalAlignment: Text.AlignHCenter
                   text: modelData.label
                   font.family: Style.font.family
                   font.pixelSize: 11
@@ -805,7 +827,9 @@ Item {
 
         ColumnLayout {
           id: scaleColLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 10
 
@@ -825,10 +849,11 @@ Item {
               Layout.minimumWidth: 0
               spacing: 2
 
-              RowLayout {
+              Flow {
                 Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                spacing: 8
+                width: parent.width
+                spacing: 6
+
                 Text {
                   text: "Display Scaling"
                   font.family: Style.font.family
@@ -836,15 +861,16 @@ Item {
                   font.bold: true
                   color: Color.foreground
                 }
+
                 Text {
                   visible: scaleCard.isFocused
-                  Layout.fillWidth: true
-                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to cycle"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
-                  elide: Text.ElideRight
+                  topPadding: 2
+                  width: Math.min(implicitWidth, parent.width)
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -855,7 +881,7 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
-                elide: Text.ElideRight
+                wrapMode: Text.WordWrap
               }
             }
 
@@ -887,17 +913,24 @@ Item {
             }
           }
 
-          // Visual segmented option cards
-          RowLayout {
+          // Visual segmented option cards (Responsive Flow)
+          Flow {
+            id: scaleFlow
             Layout.fillWidth: true
+            width: parent.width
             spacing: 8
+
+            readonly property int count: root.scaleOptions.length
+            readonly property int minItemWidth: 64
+            readonly property int cols: Math.max(1, Math.min(count, Math.floor((width + spacing) / (minItemWidth + spacing))))
+            readonly property real itemWidth: Math.max(48, Math.floor((width - (cols - 1) * spacing) / cols))
 
             Repeater {
               model: root.scaleOptions
 
               delegate: Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 34
+                width: scaleFlow.itemWidth
+                height: 34
                 radius: 6
                 readonly property bool isSelected: Math.abs(root.currentScale - Number(modelData.value)) < 0.05
                 color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
@@ -915,6 +948,9 @@ Item {
 
                 Text {
                   anchors.centerIn: parent
+                  width: Math.min(implicitWidth, parent.width - 8)
+                  elide: Text.ElideRight
+                  horizontalAlignment: Text.AlignHCenter
                   text: modelData.label
                   font.family: Style.font.family
                   font.pixelSize: 11
@@ -947,7 +983,9 @@ Item {
 
         ColumnLayout {
           id: modeColLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 10
 
@@ -967,10 +1005,11 @@ Item {
               Layout.minimumWidth: 0
               spacing: 2
 
-              RowLayout {
+              Flow {
                 Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                spacing: 8
+                width: parent.width
+                spacing: 6
+
                 Text {
                   text: "Screen Resolution"
                   font.family: Style.font.family
@@ -978,15 +1017,16 @@ Item {
                   font.bold: true
                   color: Color.foreground
                 }
+
                 Text {
                   visible: modeCard.isFocused
-                  Layout.fillWidth: true
-                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to cycle"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
-                  elide: Text.ElideRight
+                  topPadding: 2
+                  width: Math.min(implicitWidth, parent.width)
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -997,7 +1037,7 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
-                elide: Text.ElideRight
+                wrapMode: Text.WordWrap
               }
             }
 
@@ -1029,17 +1069,24 @@ Item {
             }
           }
 
-          // Visual segmented option cards
-          RowLayout {
+          // Visual segmented option cards (Responsive Flow)
+          Flow {
+            id: modeFlow
             Layout.fillWidth: true
+            width: parent.width
             spacing: 8
+
+            readonly property int count: root.commonModes.length
+            readonly property int minItemWidth: 125
+            readonly property int cols: Math.max(1, Math.min(count, Math.floor((width + spacing) / (minItemWidth + spacing))))
+            readonly property real itemWidth: Math.max(80, Math.floor((width - (cols - 1) * spacing) / cols))
 
             Repeater {
               model: root.commonModes
 
               delegate: Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 34
+                width: modeFlow.itemWidth
+                height: 34
                 radius: 6
                 readonly property bool isSelected: {
                   if (!activeMonitor) return false
@@ -1061,6 +1108,9 @@ Item {
 
                 Text {
                   anchors.centerIn: parent
+                  width: Math.min(implicitWidth, parent.width - 8)
+                  elide: Text.ElideRight
+                  horizontalAlignment: Text.AlignHCenter
                   text: modelData.label
                   font.family: Style.font.family
                   font.pixelSize: 11

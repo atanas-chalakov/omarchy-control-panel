@@ -482,8 +482,9 @@ Item {
               root.selectedResultIndex = 0
               root.ensureResultVisible(0)
             } else {
-              root.focusZone = "chips"
-              root.selectedChipIndex = 0
+              root.focusZone = "tiles"
+              root.selectedTileIndex = 0
+              root.ensureTileVisible(0)
             }
             Qt.callLater(function() {
               searchField.focus = false
@@ -622,9 +623,10 @@ Item {
       }
     }
 
-    // Quick Search Suggestion Chips (When search is empty)
-    RowLayout {
+    // Quick Search Suggestion Chips (When search is empty - Responsive Flow)
+    Flow {
       Layout.fillWidth: true
+      width: parent.width
       visible: searchField.text.trim().length === 0
       spacing: 6
 
@@ -634,73 +636,69 @@ Item {
         font.pixelSize: 10
         font.bold: true
         color: (root.focusZone === "chips") ? Color.accent : Color.muted
+        topPadding: 6
       }
 
-      Flow {
-        Layout.fillWidth: true
-        spacing: 6
+      Repeater {
+        model: root.quickChips
 
-        Repeater {
-          model: root.quickChips
+        delegate: Rectangle {
+          id: chipCard
+          height: 26
+          width: chipContent.implicitWidth + 16
+          radius: 5
+          color: (root.focusZone === "chips" && index === root.selectedChipIndex)
+            ? Color.pickAlpha("accent.subtle", "#203a30")
+            : (chipMouse.containsMouse ? Color.pickAlpha("surface.hover", "#22272c") : Color.pickAlpha("surface.subtle", "#181b1d"))
+          border.color: (root.focusZone === "chips" && index === root.selectedChipIndex)
+            ? Color.accent
+            : (chipMouse.containsMouse ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036"))
+          border.width: (root.focusZone === "chips" && index === root.selectedChipIndex) ? 2 : 1
 
-          delegate: Rectangle {
-            id: chipCard
-            height: 26
-            width: chipContent.implicitWidth + 16
-            radius: 5
-            color: (root.focusZone === "chips" && index === root.selectedChipIndex)
-              ? Color.pickAlpha("accent.subtle", "#203a30")
-              : (chipMouse.containsMouse ? Color.pickAlpha("surface.hover", "#22272c") : Color.pickAlpha("surface.subtle", "#181b1d"))
-            border.color: (root.focusZone === "chips" && index === root.selectedChipIndex)
-              ? Color.accent
-              : (chipMouse.containsMouse ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036"))
-            border.width: (root.focusZone === "chips" && index === root.selectedChipIndex) ? 2 : 1
+          MouseArea {
+            id: chipMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+              root.selectedChipIndex = index
+              root.activateChip(index)
+            }
+          }
 
-            MouseArea {
-              id: chipMouse
-              anchors.fill: parent
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onClicked: {
-                root.selectedChipIndex = index
-                root.activateChip(index)
-              }
+          RowLayout {
+            id: chipContent
+            anchors.centerIn: parent
+            spacing: 4
+
+            Text {
+              text: modelData.icon
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: Color.accent
             }
 
-            RowLayout {
-              id: chipContent
-              anchors.centerIn: parent
-              spacing: 4
+            Text {
+              text: modelData.label
+              font.family: Style.font.family
+              font.pixelSize: 10
+              font.bold: (root.focusZone === "chips" && index === root.selectedChipIndex)
+              color: (root.focusZone === "chips" && index === root.selectedChipIndex) ? Color.accent : Color.foreground
+            }
+
+            Rectangle {
+              visible: root.focusZone === "chips" && index === root.selectedChipIndex
+              width: 14
+              height: 14
+              radius: 2
+              color: Color.accent
 
               Text {
-                text: modelData.icon
+                anchors.centerIn: parent
+                text: "󰌑"
                 font.family: Style.font.family
-                font.pixelSize: 11
-                color: Color.accent
-              }
-
-              Text {
-                text: modelData.label
-                font.family: Style.font.family
-                font.pixelSize: 10
-                font.bold: (root.focusZone === "chips" && index === root.selectedChipIndex)
-                color: (root.focusZone === "chips" && index === root.selectedChipIndex) ? Color.accent : Color.foreground
-              }
-
-              Rectangle {
-                visible: root.focusZone === "chips" && index === root.selectedChipIndex
-                width: 14
-                height: 14
-                radius: 2
-                color: Color.accent
-
-                Text {
-                  anchors.centerIn: parent
-                  text: "󰌑"
-                  font.family: Style.font.family
-                  font.pixelSize: 8
-                  color: Color.background
-                }
+                font.pixelSize: 8
+                color: Color.background
               }
             }
           }
@@ -949,6 +947,7 @@ Item {
         // Quick Grid of Essential Settings
         Flow {
           Layout.fillWidth: true
+          width: parent.width
           spacing: 10
 
           Repeater {
@@ -981,7 +980,9 @@ Item {
 
               RowLayout {
                 id: tileRow
-                anchors.fill: parent
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
                 anchors.margins: 10
                 spacing: 10
 

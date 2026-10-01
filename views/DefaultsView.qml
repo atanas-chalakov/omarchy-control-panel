@@ -307,51 +307,58 @@ Item {
 
         ColumnLayout {
           id: browserCol
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 12
           spacing: 8
 
-          RowLayout {
+          Flow {
             Layout.fillWidth: true
+            width: parent.width
             spacing: 8
 
-            Text {
-              text: "󰖟"
-              font.family: Style.font.family
-              font.pixelSize: 18
-              color: Color.accent
-            }
-
-            Text {
-              text: "Default Web Browser"
-              font.family: Style.font.family
-              font.pixelSize: Style.font.subtitle || 14
-              font.bold: true
-              color: Color.foreground
-            }
-
-            Item { Layout.fillWidth: true }
-
-            Rectangle {
-              width: 18
-              height: 18
-              radius: 3
-              color: Color.pickAlpha("surface.selected", "#2a3036")
+            RowLayout {
+              spacing: 8
               Text {
-                anchors.centerIn: parent
-                text: "B"
+                text: "󰖟"
                 font.family: Style.font.family
-                font.pixelSize: 10
-                color: Color.muted
+                font.pixelSize: 18
+                color: Color.accent
+              }
+
+              Text {
+                text: "Default Web Browser"
+                font.family: Style.font.family
+                font.pixelSize: Style.font.subtitle || 14
+                font.bold: true
+                color: Color.foreground
               }
             }
 
-            Button {
-              text: "Launch"
-              implicitWidth: 64
-              implicitHeight: 24
-              bordered: true
-              onClicked: root.launchApp("browser")
+            RowLayout {
+              spacing: 6
+              Rectangle {
+                width: 18
+                height: 18
+                radius: 3
+                color: Color.pickAlpha("surface.selected", "#2a3036")
+                Text {
+                  anchors.centerIn: parent
+                  text: "B"
+                  font.family: Style.font.family
+                  font.pixelSize: 10
+                  color: Color.muted
+                }
+              }
+
+              Button {
+                text: "Launch"
+                implicitWidth: 64
+                implicitHeight: 24
+                bordered: true
+                onClicked: root.launchApp("browser")
+              }
             }
           }
 
@@ -365,16 +372,23 @@ Item {
             wrapMode: Text.WordWrap
           }
 
-          RowLayout {
+          Flow {
+            id: browserFlow
             Layout.fillWidth: true
+            width: parent.width
             spacing: 8
+
+            readonly property int count: root.installedBrowsers.length
+            readonly property int minItemWidth: 120
+            readonly property int cols: Math.max(1, Math.min(count, Math.floor((width + spacing) / (minItemWidth + spacing))))
+            readonly property real itemWidth: Math.max(80, Math.floor((width - (cols - 1) * spacing) / cols))
 
             Repeater {
               model: root.installedBrowsers
 
               delegate: Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 36
+                width: browserFlow.itemWidth
+                height: 36
                 radius: 6
                 readonly property bool isSelected: root.currentBrowser === modelData.id
                 color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
@@ -392,6 +406,7 @@ Item {
 
                 RowLayout {
                   anchors.centerIn: parent
+                  width: Math.min(implicitWidth, parent.width - 12)
                   spacing: 6
 
                   Text {
@@ -407,6 +422,7 @@ Item {
                     font.pixelSize: 12
                     font.bold: isSelected
                     color: isSelected ? Color.accent : Color.foreground
+                    Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
                   }
@@ -438,51 +454,58 @@ Item {
 
         ColumnLayout {
           id: editorCol
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 12
           spacing: 8
 
-          RowLayout {
+          Flow {
             Layout.fillWidth: true
+            width: parent.width
             spacing: 8
 
-            Text {
-              text: "󰨞"
-              font.family: Style.font.family
-              font.pixelSize: 18
-              color: Color.accent
-            }
-
-            Text {
-              text: "Default Code Editor"
-              font.family: Style.font.family
-              font.pixelSize: Style.font.subtitle || 14
-              font.bold: true
-              color: Color.foreground
-            }
-
-            Item { Layout.fillWidth: true }
-
-            Rectangle {
-              width: 18
-              height: 18
-              radius: 3
-              color: Color.pickAlpha("surface.selected", "#2a3036")
+            RowLayout {
+              spacing: 8
               Text {
-                anchors.centerIn: parent
-                text: "E"
+                text: "󰨞"
                 font.family: Style.font.family
-                font.pixelSize: 10
-                color: Color.muted
+                font.pixelSize: 18
+                color: Color.accent
+              }
+
+              Text {
+                text: "Default Code Editor"
+                font.family: Style.font.family
+                font.pixelSize: Style.font.subtitle || 14
+                font.bold: true
+                color: Color.foreground
               }
             }
 
-            Button {
-              text: "Launch"
-              implicitWidth: 64
-              implicitHeight: 24
-              bordered: true
-              onClicked: root.launchApp("editor")
+            RowLayout {
+              spacing: 6
+              Rectangle {
+                width: 18
+                height: 18
+                radius: 3
+                color: Color.pickAlpha("surface.selected", "#2a3036")
+                Text {
+                  anchors.centerIn: parent
+                  text: "E"
+                  font.family: Style.font.family
+                  font.pixelSize: 10
+                  color: Color.muted
+                }
+              }
+
+              Button {
+                text: "Launch"
+                implicitWidth: 64
+                implicitHeight: 24
+                bordered: true
+                onClicked: root.launchApp("editor")
+              }
             }
           }
 
@@ -496,16 +519,23 @@ Item {
             wrapMode: Text.WordWrap
           }
 
-          RowLayout {
+          Flow {
+            id: editorFlow
             Layout.fillWidth: true
+            width: parent.width
             spacing: 8
+
+            readonly property int count: root.installedEditors.length
+            readonly property int minItemWidth: 120
+            readonly property int cols: Math.max(1, Math.min(count, Math.floor((width + spacing) / (minItemWidth + spacing))))
+            readonly property real itemWidth: Math.max(80, Math.floor((width - (cols - 1) * spacing) / cols))
 
             Repeater {
               model: root.installedEditors
 
               delegate: Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 36
+                width: editorFlow.itemWidth
+                height: 36
                 radius: 6
                 readonly property bool isSelected: root.currentEditor === modelData.code || root.currentEditor === modelData.id
                 color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
@@ -523,6 +553,7 @@ Item {
 
                 RowLayout {
                   anchors.centerIn: parent
+                  width: Math.min(implicitWidth, parent.width - 12)
                   spacing: 6
 
                   Text {
@@ -538,6 +569,7 @@ Item {
                     font.pixelSize: 12
                     font.bold: isSelected
                     color: isSelected ? Color.accent : Color.foreground
+                    Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
                   }
@@ -569,51 +601,58 @@ Item {
 
         ColumnLayout {
           id: terminalCol
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 12
           spacing: 8
 
-          RowLayout {
+          Flow {
             Layout.fillWidth: true
+            width: parent.width
             spacing: 8
 
-            Text {
-              text: ""
-              font.family: Style.font.family
-              font.pixelSize: 18
-              color: Color.accent
-            }
-
-            Text {
-              text: "Default Terminal Emulator"
-              font.family: Style.font.family
-              font.pixelSize: Style.font.subtitle || 14
-              font.bold: true
-              color: Color.foreground
-            }
-
-            Item { Layout.fillWidth: true }
-
-            Rectangle {
-              width: 18
-              height: 18
-              radius: 3
-              color: Color.pickAlpha("surface.selected", "#2a3036")
+            RowLayout {
+              spacing: 8
               Text {
-                anchors.centerIn: parent
-                text: "T"
+                text: ""
                 font.family: Style.font.family
-                font.pixelSize: 10
-                color: Color.muted
+                font.pixelSize: 18
+                color: Color.accent
+              }
+
+              Text {
+                text: "Default Terminal Emulator"
+                font.family: Style.font.family
+                font.pixelSize: Style.font.subtitle || 14
+                font.bold: true
+                color: Color.foreground
               }
             }
 
-            Button {
-              text: "Launch"
-              implicitWidth: 64
-              implicitHeight: 24
-              bordered: true
-              onClicked: root.launchApp("terminal")
+            RowLayout {
+              spacing: 6
+              Rectangle {
+                width: 18
+                height: 18
+                radius: 3
+                color: Color.pickAlpha("surface.selected", "#2a3036")
+                Text {
+                  anchors.centerIn: parent
+                  text: "T"
+                  font.family: Style.font.family
+                  font.pixelSize: 10
+                  color: Color.muted
+                }
+              }
+
+              Button {
+                text: "Launch"
+                implicitWidth: 64
+                implicitHeight: 24
+                bordered: true
+                onClicked: root.launchApp("terminal")
+              }
             }
           }
 
@@ -627,16 +666,23 @@ Item {
             wrapMode: Text.WordWrap
           }
 
-          RowLayout {
+          Flow {
+            id: terminalFlow
             Layout.fillWidth: true
+            width: parent.width
             spacing: 8
+
+            readonly property int count: root.installedTerminals.length
+            readonly property int minItemWidth: 120
+            readonly property int cols: Math.max(1, Math.min(count, Math.floor((width + spacing) / (minItemWidth + spacing))))
+            readonly property real itemWidth: Math.max(80, Math.floor((width - (cols - 1) * spacing) / cols))
 
             Repeater {
               model: root.installedTerminals
 
               delegate: Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 36
+                width: terminalFlow.itemWidth
+                height: 36
                 radius: 6
                 readonly property bool isSelected: root.currentTerminal === modelData.id
                 color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
@@ -654,6 +700,7 @@ Item {
 
                 RowLayout {
                   anchors.centerIn: parent
+                  width: Math.min(implicitWidth, parent.width - 12)
                   spacing: 6
 
                   Text {
@@ -669,6 +716,7 @@ Item {
                     font.pixelSize: 12
                     font.bold: isSelected
                     color: isSelected ? Color.accent : Color.foreground
+                    Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
                   }
@@ -700,51 +748,58 @@ Item {
 
         ColumnLayout {
           id: fileManagerCol
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 12
           spacing: 8
 
-          RowLayout {
+          Flow {
             Layout.fillWidth: true
+            width: parent.width
             spacing: 8
 
-            Text {
-              text: ""
-              font.family: Style.font.family
-              font.pixelSize: 18
-              color: Color.accent
-            }
-
-            Text {
-              text: "Default File Manager"
-              font.family: Style.font.family
-              font.pixelSize: Style.font.subtitle || 14
-              font.bold: true
-              color: Color.foreground
-            }
-
-            Item { Layout.fillWidth: true }
-
-            Rectangle {
-              width: 18
-              height: 18
-              radius: 3
-              color: Color.pickAlpha("surface.selected", "#2a3036")
+            RowLayout {
+              spacing: 8
               Text {
-                anchors.centerIn: parent
-                text: "F"
+                text: ""
                 font.family: Style.font.family
-                font.pixelSize: 10
-                color: Color.muted
+                font.pixelSize: 18
+                color: Color.accent
+              }
+
+              Text {
+                text: "Default File Manager"
+                font.family: Style.font.family
+                font.pixelSize: Style.font.subtitle || 14
+                font.bold: true
+                color: Color.foreground
               }
             }
 
-            Button {
-              text: "Launch"
-              implicitWidth: 64
-              implicitHeight: 24
-              bordered: true
-              onClicked: root.launchApp("file-manager")
+            RowLayout {
+              spacing: 6
+              Rectangle {
+                width: 18
+                height: 18
+                radius: 3
+                color: Color.pickAlpha("surface.selected", "#2a3036")
+                Text {
+                  anchors.centerIn: parent
+                  text: "F"
+                  font.family: Style.font.family
+                  font.pixelSize: 10
+                  color: Color.muted
+                }
+              }
+
+              Button {
+                text: "Launch"
+                implicitWidth: 64
+                implicitHeight: 24
+                bordered: true
+                onClicked: root.launchApp("file-manager")
+              }
             }
           }
 
@@ -758,16 +813,23 @@ Item {
             wrapMode: Text.WordWrap
           }
 
-          RowLayout {
+          Flow {
+            id: fileManagerFlow
             Layout.fillWidth: true
+            width: parent.width
             spacing: 8
+
+            readonly property int count: root.installedFileManagers.length
+            readonly property int minItemWidth: 120
+            readonly property int cols: Math.max(1, Math.min(count, Math.floor((width + spacing) / (minItemWidth + spacing))))
+            readonly property real itemWidth: Math.max(80, Math.floor((width - (cols - 1) * spacing) / cols))
 
             Repeater {
               model: root.installedFileManagers
 
               delegate: Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 36
+                width: fileManagerFlow.itemWidth
+                height: 36
                 radius: 6
                 readonly property bool isSelected: root.currentFileManager === modelData.id
                 color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
@@ -785,6 +847,7 @@ Item {
 
                 RowLayout {
                   anchors.centerIn: parent
+                  width: Math.min(implicitWidth, parent.width - 12)
                   spacing: 6
 
                   Text {
@@ -800,6 +863,7 @@ Item {
                     font.pixelSize: 12
                     font.bold: isSelected
                     color: isSelected ? Color.accent : Color.foreground
+                    Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
                   }

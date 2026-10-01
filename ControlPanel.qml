@@ -52,6 +52,16 @@ Item {
           currentCategory = parsed.category
           focusSection = (parsed.category === "search") ? "content" : "sidebar"
         }
+        if (parsed && typeof parsed.diff === "boolean") {
+          showDiffInspector = parsed.diff
+        }
+        if (parsed && typeof parsed.tab === "number") {
+          Qt.callLater(function() {
+            if (categoryLoader.item && "currentTab" in categoryLoader.item) {
+              categoryLoader.item.currentTab = parsed.tab
+            }
+          })
+        }
       } catch (e) {}
     } else {
       currentCategory = "search"

@@ -344,16 +344,22 @@ Item {
       }
     }
 
-    // Tab Bar (Updates vs Disk & Storage)
-    RowLayout {
+    // Tab Bar (Updates vs Disk & Storage - Responsive Flow)
+    Flow {
+      id: tabBarFlow
       Layout.fillWidth: true
+      width: parent.width
       spacing: 8
+
+      readonly property int count: 2
+      readonly property int minItemWidth: 170
+      readonly property int cols: Math.max(1, Math.min(count, Math.floor((width + spacing) / (minItemWidth + spacing))))
+      readonly property real itemWidth: Math.max(100, Math.floor((width - (cols - 1) * spacing) / cols))
 
       Rectangle {
         id: tabUpdates
-        Layout.fillWidth: true
-        Layout.preferredHeight: 36
-        implicitHeight: 36
+        width: tabBarFlow.itemWidth
+        height: 36
         radius: 6
         color: root.currentTab === 0
           ? Color.pickAlpha("accent.subtle", "#203a30")
@@ -368,9 +374,8 @@ Item {
         }
 
         RowLayout {
-          anchors.fill: parent
-          anchors.leftMargin: 10
-          anchors.rightMargin: 10
+          anchors.centerIn: parent
+          width: Math.min(implicitWidth, parent.width - 16)
           spacing: 6
 
           Text {
@@ -381,24 +386,20 @@ Item {
           }
 
           Text {
-            Layout.fillWidth: true
-            Layout.minimumWidth: 0
             text: "Pending Updates (" + root.totalUpdates + ")"
             font.family: Style.font.family
             font.pixelSize: 12
             font.bold: root.currentTab === 0
             color: root.currentTab === 0 ? Color.accent : Color.muted
             elide: Text.ElideRight
-            horizontalAlignment: Text.AlignHCenter
           }
         }
       }
 
       Rectangle {
         id: tabDisk
-        Layout.fillWidth: true
-        Layout.preferredHeight: 36
-        implicitHeight: 36
+        width: tabBarFlow.itemWidth
+        height: 36
         radius: 6
         color: root.currentTab === 1
           ? Color.pickAlpha("accent.subtle", "#203a30")
@@ -413,9 +414,8 @@ Item {
         }
 
         RowLayout {
-          anchors.fill: parent
-          anchors.leftMargin: 10
-          anchors.rightMargin: 10
+          anchors.centerIn: parent
+          width: Math.min(implicitWidth, parent.width - 16)
           spacing: 6
 
           Text {
@@ -426,15 +426,12 @@ Item {
           }
 
           Text {
-            Layout.fillWidth: true
-            Layout.minimumWidth: 0
             text: "Disk & Maintenance"
             font.family: Style.font.family
             font.pixelSize: 12
             font.bold: root.currentTab === 1
             color: root.currentTab === 1 ? Color.accent : Color.muted
             elide: Text.ElideRight
-            horizontalAlignment: Text.AlignHCenter
           }
         }
       }
@@ -699,18 +696,17 @@ Item {
               anchors.margins: 12
               spacing: 8
 
-              RowLayout {
+              Flow {
                 Layout.fillWidth: true
+                width: parent.width
+                spacing: 8
 
                 Text {
-                  Layout.fillWidth: true
-                  Layout.minimumWidth: 0
                   text: modelData.label
                   font.family: Style.font.family
                   font.pixelSize: 13
                   font.bold: true
                   color: Color.foreground
-                  elide: Text.ElideRight
                 }
 
                 Text {
@@ -737,8 +733,10 @@ Item {
                 }
               }
 
-              RowLayout {
+              Flow {
                 Layout.fillWidth: true
+                width: parent.width
+                spacing: 8
 
                 Text {
                   text: modelData.avail_str + " free"
@@ -746,8 +744,6 @@ Item {
                   font.pixelSize: 11
                   color: Color.muted
                 }
-
-                Item { Layout.fillWidth: true }
 
                 Text {
                   text: "Mounted on " + modelData.mount
@@ -775,7 +771,7 @@ Item {
           id: pacmanCard
           Layout.fillWidth: true
           width: parent ? parent.width : undefined
-          implicitHeight: Math.max(68, pacmanCacheRow.implicitHeight + 24)
+          implicitHeight: Math.max(68, pacmanCol.implicitHeight + 24)
           Layout.preferredHeight: implicitHeight
           radius: Style.cornerRadius || 8
           color: Color.pickAlpha("surface.subtle", "#181b1d")
@@ -788,29 +784,28 @@ Item {
             onClicked: root.focusedAction = 1
           }
 
-          RowLayout {
-            id: pacmanCacheRow
+          ColumnLayout {
+            id: pacmanCol
             anchors.top: parent.top
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.margins: 12
-            spacing: 12
+            spacing: 8
 
-            Text {
-              text: "󰮯"
-              font.family: Style.font.family
-              font.pixelSize: 20
-              color: Color.accent
-            }
-
-            ColumnLayout {
+            Flow {
               Layout.fillWidth: true
-              Layout.preferredWidth: 0
-              Layout.minimumWidth: 0
-              spacing: 2
+              width: parent.width
+              spacing: 8
 
               RowLayout {
                 spacing: 8
+                Text {
+                  text: "󰮯"
+                  font.family: Style.font.family
+                  font.pixelSize: 18
+                  color: Color.accent
+                }
+
                 Text {
                   text: "Pacman Package Cache"
                   font.family: Style.font.family
@@ -820,8 +815,8 @@ Item {
                 }
 
                 Rectangle {
-                  Layout.preferredHeight: 18
-                  Layout.preferredWidth: pacSizeText.implicitWidth + 10
+                  height: 18
+                  width: pacSizeText.implicitWidth + 10
                   radius: 4
                   color: Color.pickAlpha("accent.subtle", "#203a30")
 
@@ -837,20 +832,20 @@ Item {
                 }
               }
 
-              Text {
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                wrapMode: Text.WordWrap
-                text: "Prune superseded packages with paccache -rk2, keeping 2 offline rollback copies"
-                font.family: Style.font.family
-                font.pixelSize: 11
-                color: Color.muted
+              Button {
+                text: "Prune Cache [P]"
+                onClicked: root.prunePacmanCache()
               }
             }
 
-            Button {
-              text: "Prune Cache [P]"
-              onClicked: root.prunePacmanCache()
+            Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
+              text: "Prune superseded packages with paccache -rk2, keeping 2 offline rollback copies"
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: Color.muted
             }
           }
         }
@@ -860,7 +855,7 @@ Item {
           id: journalCard
           Layout.fillWidth: true
           width: parent ? parent.width : undefined
-          implicitHeight: Math.max(68, journalRow.implicitHeight + 24)
+          implicitHeight: Math.max(68, journalCol.implicitHeight + 24)
           Layout.preferredHeight: implicitHeight
           radius: Style.cornerRadius || 8
           color: Color.pickAlpha("surface.subtle", "#181b1d")
@@ -873,29 +868,28 @@ Item {
             onClicked: root.focusedAction = 2
           }
 
-          RowLayout {
-            id: journalRow
+          ColumnLayout {
+            id: journalCol
             anchors.top: parent.top
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.margins: 12
-            spacing: 12
+            spacing: 8
 
-            Text {
-              text: "󰌱"
-              font.family: Style.font.family
-              font.pixelSize: 20
-              color: "#85c1dc"
-            }
-
-            ColumnLayout {
+            Flow {
               Layout.fillWidth: true
-              Layout.preferredWidth: 0
-              Layout.minimumWidth: 0
-              spacing: 2
+              width: parent.width
+              spacing: 8
 
               RowLayout {
                 spacing: 8
+                Text {
+                  text: "󰌱"
+                  font.family: Style.font.family
+                  font.pixelSize: 18
+                  color: "#85c1dc"
+                }
+
                 Text {
                   text: "Systemd Journal Logs"
                   font.family: Style.font.family
@@ -905,8 +899,8 @@ Item {
                 }
 
                 Rectangle {
-                  Layout.preferredHeight: 18
-                  Layout.preferredWidth: jnlSizeText.implicitWidth + 10
+                  height: 18
+                  width: jnlSizeText.implicitWidth + 10
                   radius: 4
                   color: Color.pickAlpha("surface.hover", "#22272c")
 
@@ -922,20 +916,20 @@ Item {
                 }
               }
 
-              Text {
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                wrapMode: Text.WordWrap
-                text: "Vacuum older logs, keeping the last 7 days of diagnostics"
-                font.family: Style.font.family
-                font.pixelSize: 11
-                color: Color.muted
+              Button {
+                text: "Vacuum Logs [V]"
+                onClicked: root.vacuumJournal()
               }
             }
 
-            Button {
-              text: "Vacuum Logs [V]"
-              onClicked: root.vacuumJournal()
+            Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
+              text: "Vacuum older logs, keeping the last 7 days of diagnostics"
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: Color.muted
             }
           }
         }
@@ -945,7 +939,7 @@ Item {
           id: orphansCard
           Layout.fillWidth: true
           width: parent ? parent.width : undefined
-          implicitHeight: Math.max(68, orphansRow.implicitHeight + 24)
+          implicitHeight: Math.max(68, orphansCol.implicitHeight + 24)
           Layout.preferredHeight: implicitHeight
           radius: Style.cornerRadius || 8
           color: Color.pickAlpha("surface.subtle", "#181b1d")
@@ -958,29 +952,28 @@ Item {
             onClicked: root.focusedAction = 3
           }
 
-          RowLayout {
-            id: orphansRow
+          ColumnLayout {
+            id: orphansCol
             anchors.top: parent.top
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.margins: 12
-            spacing: 12
+            spacing: 8
 
-            Text {
-              text: "󰏗"
-              font.family: Style.font.family
-              font.pixelSize: 20
-              color: "#ca9ee6"
-            }
-
-            ColumnLayout {
+            Flow {
               Layout.fillWidth: true
-              Layout.preferredWidth: 0
-              Layout.minimumWidth: 0
-              spacing: 2
+              width: parent.width
+              spacing: 8
 
               RowLayout {
                 spacing: 8
+                Text {
+                  text: "󰏗"
+                  font.family: Style.font.family
+                  font.pixelSize: 18
+                  color: "#ca9ee6"
+                }
+
                 Text {
                   text: "Orphaned Packages"
                   font.family: Style.font.family
@@ -990,8 +983,8 @@ Item {
                 }
 
                 Rectangle {
-                  Layout.preferredHeight: 18
-                  Layout.preferredWidth: orphText.implicitWidth + 10
+                  height: 18
+                  width: orphText.implicitWidth + 10
                   radius: 4
                   color: Color.pickAlpha("surface.hover", "#22272c")
 
@@ -1007,20 +1000,20 @@ Item {
                 }
               }
 
-              Text {
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                wrapMode: Text.WordWrap
-                text: "Review and safely remove dependency packages that are no longer needed"
-                font.family: Style.font.family
-                font.pixelSize: 11
-                color: Color.muted
+              Button {
+                text: "Check Orphans [O]"
+                onClicked: root.removeOrphans()
               }
             }
 
-            Button {
-              text: "Check Orphans [O]"
-              onClicked: root.removeOrphans()
+            Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
+              text: "Review and safely remove dependency packages that are no longer needed"
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: Color.muted
             }
           }
         }
