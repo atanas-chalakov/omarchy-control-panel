@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MIME_FILE="$HOME/.config/mimeapps.list"
+
 cmd_get_state() {
   python3 - << 'EOF'
 import subprocess, json, shutil, os
@@ -89,8 +92,17 @@ case "${1:-get-state}" in
   set-browser)
     desktop_id="${2:-}"
     if [[ -n "$desktop_id" ]]; then
+      snap=""
+      if [[ -x "$SCRIPT_DIR/config-tracker.sh" && -f "$MIME_FILE" ]]; then
+        snap=$("$SCRIPT_DIR/config-tracker.sh" snapshot "$MIME_FILE" 2>/dev/null || true)
+      fi
+
       xdg-settings set default-web-browser "$desktop_id" 2>/dev/null || true
       xdg-mime default "$desktop_id" x-scheme-handler/http x-scheme-handler/https text/html
+
+      if [[ -n "$snap" && -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+        "$SCRIPT_DIR/config-tracker.sh" record "defaults" "Default Web Browser ($desktop_id)" "$MIME_FILE" "$snap" >/dev/null 2>&1 || true
+      fi
     fi
     cmd_get_state
     ;;
@@ -101,24 +113,52 @@ case "${1:-get-state}" in
     mkdir -p "$HOME/.local/state/omarchy/defaults"
     echo "$code" > "$HOME/.local/state/omarchy/defaults/editor"
     if [[ -n "$desktop_id" ]]; then
+      snap=""
+      if [[ -x "$SCRIPT_DIR/config-tracker.sh" && -f "$MIME_FILE" ]]; then
+        snap=$("$SCRIPT_DIR/config-tracker.sh" snapshot "$MIME_FILE" 2>/dev/null || true)
+      fi
+
       xdg-mime default "$desktop_id" text/plain 2>/dev/null || true
+
+      if [[ -n "$snap" && -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+        "$SCRIPT_DIR/config-tracker.sh" record "defaults" "Default Text Editor ($desktop_id)" "$MIME_FILE" "$snap" >/dev/null 2>&1 || true
+      fi
     fi
     cmd_get_state
     ;;
 
   set-terminal)
     desktop_id="${2:-Alacritty.desktop}"
-    cat > "$HOME/.config/xdg-terminals.list" << EOF
+    term_list="$HOME/.config/xdg-terminals.list"
+    snap=""
+    if [[ -x "$SCRIPT_DIR/config-tracker.sh" && -f "$term_list" ]]; then
+      snap=$("$SCRIPT_DIR/config-tracker.sh" snapshot "$term_list" 2>/dev/null || true)
+    fi
+
+    cat > "$term_list" << EOF
 # Terminal emulator preference order for xdg-terminal-exec
 # The first found and valid terminal will be used
 $desktop_id
 EOF
+
+    if [[ -n "$snap" && -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+      "$SCRIPT_DIR/config-tracker.sh" record "defaults" "Default Terminal ($desktop_id)" "$term_list" "$snap" >/dev/null 2>&1 || true
+    fi
     cmd_get_state
     ;;
 
   set-file-manager)
     desktop_id="${2:-org.gnome.Nautilus.desktop}"
+    snap=""
+    if [[ -x "$SCRIPT_DIR/config-tracker.sh" && -f "$MIME_FILE" ]]; then
+      snap=$("$SCRIPT_DIR/config-tracker.sh" snapshot "$MIME_FILE" 2>/dev/null || true)
+    fi
+
     xdg-mime default "$desktop_id" inode/directory
+
+    if [[ -n "$snap" && -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+      "$SCRIPT_DIR/config-tracker.sh" record "defaults" "Default File Manager ($desktop_id)" "$MIME_FILE" "$snap" >/dev/null 2>&1 || true
+    fi
     cmd_get_state
     ;;
 

@@ -13,6 +13,7 @@ Item {
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
 
+  property var panelRoot: null
   property bool activeFocusSection: false
   property int focusedCard: 0   // 0: Animations, 1: Gaps, 2: Single Window Aspect, 3: Rounding, 4: Border, 5: Opacity, 6: Blur, 7: Bar Hidden, 8: Bar Position, 9: Bar Transparency, 10: Workspace Layout
   onFocusedCardChanged: ensureCardVisible(focusedCard)
@@ -372,6 +373,9 @@ Item {
           if (data.singleWindowAspect !== undefined) root.singleWindowAspect = data.singleWindowAspect === true
           if (data.workspaceLayout) root.workspaceLayout = String(data.workspaceLayout)
         } catch (e) {}
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
       }
     }
     onRunningChanged: if (!running) root.refresh()

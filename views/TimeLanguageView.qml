@@ -557,6 +557,9 @@ Item {
           if (Array.isArray(data.installedLocales)) root.installedLocales = data.installedLocales
           if (data.fcitxActive !== undefined) root.fcitxActive = data.fcitxActive === true
         } catch (e) {}
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
       }
     }
     onRunningChanged: if (!running) root.refresh()

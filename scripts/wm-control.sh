@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATE_DIR="$HOME/.local/state/omarchy/toggles/hypr"
 PERSIST_LUA="$STATE_DIR/wm-settings.lua"
 mkdir -p "$STATE_DIR"
@@ -31,7 +32,13 @@ EOF
 }
 
 update_persist_lua() {
+  local title="${1:-Window Manager Settings}"
   ensure_persist_file
+
+  local snap=""
+  if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+    snap=$("$SCRIPT_DIR/config-tracker.sh" snapshot "$PERSIST_LUA" 2>/dev/null || true)
+  fi
 
   local anim=$(hyprctl getoption animations:enabled -j 2>/dev/null | jq -r '.bool // true')
   local gaps_in_css=$(hyprctl getoption general:gaps_in -j 2>/dev/null | jq -r '.css // "5 5 5 5"')
@@ -63,6 +70,10 @@ hl.config({
   },
 })
 EOF
+
+  if [[ -n "$snap" && -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+    "$SCRIPT_DIR/config-tracker.sh" record "windows" "$title" "$PERSIST_LUA" "$snap" >/dev/null 2>&1 || true
+  fi
 }
 
 cmd_get_state() {

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cmd="${1:-get-state}"
 PERSIST_DIR="$HOME/.local/state/omarchy/toggles/hypr"
 PERSIST_LUA="$PERSIST_DIR/keyboard-layout.lua"
@@ -298,6 +299,11 @@ print(typed_kb[0]["name"] if typed_kb else (devices[0]["name"] if devices else "
       opt_code="$opt_code,grp:ctrl_shift_toggle"
     fi
 
+    snap=""
+    if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+      snap=$("$SCRIPT_DIR/config-tracker.sh" snapshot "$PERSIST_LUA" 2>/dev/null || true)
+    fi
+
     cat > "$PERSIST_LUA" << EOF
 -- Omarchy Keyboard Layout Settings
 hl.config({
@@ -308,6 +314,10 @@ hl.config({
   },
 })
 EOF
+
+    if [[ -n "$snap" && -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+      "$SCRIPT_DIR/config-tracker.sh" record "region" "Keyboard Layout Preset ($layouts)" "$PERSIST_LUA" "$snap" >/dev/null 2>&1 || true
+    fi
 
     hyprctl reload >/dev/null 2>&1 || true
     omarchy-shell -q omarchy.keyboard-layout refresh >/dev/null 2>&1 || true

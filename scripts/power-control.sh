@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cmd="${1:-get-state}"
 
 case "$cmd" in
@@ -83,12 +84,20 @@ case "$cmd" in
   set-stay-awake)
     action="${2:-toggle}"
     omarchy-toggle-idle "$action" >/dev/null 2>&1 || true
+    if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+      cur_state="disabled"
+      [[ -f "$HOME/.local/state/omarchy/indicators/stay-awake" ]] && cur_state="enabled (idle inhibited)"
+      "$SCRIPT_DIR/config-tracker.sh" record-command "power" "Stay Awake (Idle Inhibition)" "omarchy-toggle-idle" "omarchy-toggle-idle $action" "Stay Awake set to $cur_state" >/dev/null 2>&1 || true
+    fi
     ;;
 
   set-profile)
     profile="${2:-}"
     if [[ "$profile" =~ ^(power-saver|balanced|performance)$ ]]; then
       powerprofilesctl set "$profile" >/dev/null 2>&1 || true
+      if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+        "$SCRIPT_DIR/config-tracker.sh" record-command "power" "Power Profile" "powerprofilesctl" "powerprofilesctl set $profile" "Governor switched to $profile" >/dev/null 2>&1 || true
+      fi
     fi
     ;;
 
@@ -96,6 +105,11 @@ case "$cmd" in
     screensaver="${2:-}"
     lock="${3:-}"
     shell_json="$HOME/.config/omarchy/shell.json"
+
+    snap=""
+    if [[ -x "$SCRIPT_DIR/config-tracker.sh" && -f "$shell_json" ]]; then
+      snap=$("$SCRIPT_DIR/config-tracker.sh" snapshot "$shell_json" 2>/dev/null || true)
+    fi
 
     # 1. Screensaver handling (0 = Never -> screensaver-off toggle)
     if [[ "$screensaver" == "0" ]]; then
@@ -118,6 +132,10 @@ case "$cmd" in
       tmp_file="${shell_json}.tmp.$$"
       jq --argjson s "$actual_screensaver" --argjson l "$actual_lock" \
         '.idle.screensaver = $s | .idle.lock = $l' "$shell_json" > "$tmp_file" && mv "$tmp_file" "$shell_json"
+
+      if [[ -n "$snap" && -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+        "$SCRIPT_DIR/config-tracker.sh" record "power" "Screen Idle & Lock Timeouts" "$shell_json" "$snap" >/dev/null 2>&1 || true
+      fi
     fi
     ;;
 

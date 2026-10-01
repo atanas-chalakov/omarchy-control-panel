@@ -13,6 +13,7 @@ Item {
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
 
+  property var panelRoot: null
   property bool activeFocusSection: false
   property int focusedCard: 0   // 0: Touchscreen, 1: Touch Gestures, 2: Touch Output, 3: Touchpad, 4: Natural Scroll, 5: Tap to Click, 6: Scroll Speed, 7: Disable While Typing, 8: Pointer Sensitivity
   onFocusedCardChanged: ensureCardVisible(focusedCard)
@@ -356,6 +357,9 @@ Item {
             root.touchOutput = String(data.touchOutput)
           }
         } catch (e) {}
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
       }
     }
     onRunningChanged: if (!running) root.refresh()

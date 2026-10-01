@@ -14,7 +14,14 @@ Item {
   property bool closingFromHost: false
   property string currentCategory: "search"
   property string focusSection: "content" // "sidebar" or "content"
+  property bool showDiffInspector: false
   readonly property string pluginPath: manifest && manifest.__sourceDir ? manifest.__sourceDir : "/home/ac/.config/omarchy/plugins/ac.control-panel"
+
+  function notifySettingChanged() {
+    if (diffInspectorLoader && diffInspectorLoader.item && root.showDiffInspector) {
+      diffInspectorLoader.item.refresh()
+    }
+  }
 
   readonly property var categories: [
     { id: "search", label: "Search & Overview", icon: "", key: "S" },
@@ -100,6 +107,9 @@ Item {
     var ids = categories.map(function(c) { return c.id })
     var idx = ids.indexOf(currentCategory)
     if (idx >= 0) ensureSidebarCategoryVisible(idx)
+    if (diffInspectorLoader && diffInspectorLoader.item && root.showDiffInspector) {
+      diffInspectorLoader.item.refreshCategoryFile()
+    }
   }
 
   function navigateToSetting(categoryId, cardIndex) {
@@ -128,9 +138,11 @@ Item {
     id: window
     title: "Control Panel"
     color: Color.background
-    implicitWidth: 880
+    width: root.showDiffInspector ? 1240 : 880
+    height: 640
+    implicitWidth: root.showDiffInspector ? 1240 : 880
     implicitHeight: 640
-    minimumSize: Qt.size(760, 520)
+    minimumSize: Qt.size(root.showDiffInspector ? 1240 : 880, 520)
 
     onVisibleChanged: {
       if (visible) {
@@ -149,6 +161,31 @@ Item {
     Item {
       id: scrollKeyHandler
       Keys.onPressed: function(event) {
+        if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_D)) {
+          root.showDiffInspector = !root.showDiffInspector
+          if (root.showDiffInspector && diffInspectorLoader && diffInspectorLoader.item) {
+            diffInspectorLoader.item.refresh()
+          }
+          event.accepted = true
+          return
+        }
+
+        if (root.showDiffInspector && (event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_BracketRight || event.key === Qt.Key_Right)) {
+          if (diffInspectorLoader && diffInspectorLoader.item && typeof diffInspectorLoader.item.cycleTab === "function") {
+            diffInspectorLoader.item.cycleTab(1)
+            event.accepted = true
+            return
+          }
+        }
+
+        if (root.showDiffInspector && (event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_Left)) {
+          if (diffInspectorLoader && diffInspectorLoader.item && typeof diffInspectorLoader.item.cycleTab === "function") {
+            diffInspectorLoader.item.cycleTab(-1)
+            event.accepted = true
+            return
+          }
+        }
+
         if (categoryLoader.item && categoryLoader.item.hasActiveInput === true) return
 
         var targetScroll = null
@@ -270,6 +307,22 @@ Item {
           else if (key === "a" || key === "A") { root.currentCategory = "agents" }
           else if (key === "l" || key === "L") { root.currentCategory = "region" }
           else if (key === "0") { root.currentCategory = "about" }
+          else if (key === "d" || key === "D") {
+            root.showDiffInspector = !root.showDiffInspector
+            if (root.showDiffInspector && diffInspectorLoader && diffInspectorLoader.item) {
+              diffInspectorLoader.item.refresh()
+            }
+          }
+          else if (root.showDiffInspector && (key === "h" || key === "H")) {
+            if (diffInspectorLoader && diffInspectorLoader.item) {
+              diffInspectorLoader.item.currentTab = (diffInspectorLoader.item.currentTab === "history") ? "diff" : "history"
+            }
+          }
+          else if (root.showDiffInspector && (key === "f" || key === "F")) {
+            if (diffInspectorLoader && diffInspectorLoader.item) {
+              diffInspectorLoader.item.currentTab = (diffInspectorLoader.item.currentTab === "file") ? "diff" : "file"
+            }
+          }
         }
       }
 
@@ -311,7 +364,7 @@ Item {
           Item { Layout.fillWidth: true }
 
           // Active Panel Indicator & Switcher Pills
-          RowLayout {
+          Row {
             spacing: 6
 
             Rectangle {
@@ -367,9 +420,79 @@ Item {
             }
           }
 
-          Button {
-            text: "✕"
-            onClicked: root.dismiss()
+          // Diff Inspector Toggle Button
+          Rectangle {
+            Layout.preferredHeight: 26
+            Layout.preferredWidth: diffRow.implicitWidth + 18
+            implicitWidth: diffRow.implicitWidth + 18
+            implicitHeight: 26
+            radius: 6
+            color: root.showDiffInspector
+              ? Color.pickAlpha("accent.subtle", "#1f3b30")
+              : (diffBtnMouse.containsMouse ? Color.pickAlpha("surface.hover", "#22272c") : Color.pickAlpha("surface.subtle", "#181b1d"))
+            border.color: root.showDiffInspector ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
+            border.width: root.showDiffInspector ? 2 : 1
+
+            MouseArea {
+              id: diffBtnMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: {
+                root.showDiffInspector = !root.showDiffInspector
+                if (root.showDiffInspector && diffInspectorLoader && diffInspectorLoader.item) {
+                  diffInspectorLoader.item.refresh()
+                }
+              }
+            }
+
+            RowLayout {
+              id: diffRow
+              anchors.centerIn: parent
+              spacing: 5
+
+              Text {
+                text: "󰊢"
+                font.family: Style.font.family
+                font.pixelSize: 12
+                color: root.showDiffInspector ? Color.accent : Color.muted
+              }
+
+              Text {
+                text: "Config Diff"
+                font.family: Style.font.family
+                font.pixelSize: 11
+                font.bold: root.showDiffInspector
+                color: root.showDiffInspector ? Color.accent : Color.foreground
+              }
+            }
+          }
+
+          Rectangle {
+            Layout.preferredHeight: 26
+            Layout.preferredWidth: 26
+            implicitWidth: 26
+            implicitHeight: 26
+            radius: 6
+            color: closeBtnMouse.containsMouse ? Color.pickAlpha("surface.hover", "#2a3036") : Color.pickAlpha("surface.subtle", "#181b1d")
+            border.color: Color.pickAlpha("surface.selected", "#2a3036")
+            border.width: 1
+
+            MouseArea {
+              id: closeBtnMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.dismiss()
+            }
+
+            Text {
+              anchors.centerIn: parent
+              text: "✕"
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: closeBtnMouse.containsMouse ? Color.foreground : Color.muted
+            }
           }
         }
 
@@ -625,6 +748,27 @@ Item {
               }
             }
           }
+
+          // 3rd Panel: Collapsible Diff & Config Inspector
+          Loader {
+            id: diffInspectorLoader
+            visible: root.showDiffInspector
+            active: root.showDiffInspector
+            Layout.preferredWidth: root.showDiffInspector ? 360 : 0
+            Layout.minimumWidth: root.showDiffInspector ? 360 : 0
+            Layout.maximumWidth: root.showDiffInspector ? 380 : 0
+            Layout.fillHeight: true
+            source: "views/DiffInspector.qml"
+
+            onLoaded: {
+              if (item) {
+                item.pluginPath = root.pluginPath
+                item.panelRoot = root
+                item.activeCategory = Qt.binding(function() { return root.currentCategory })
+                item.refresh()
+              }
+            }
+          }
         }
 
         // Bottom Keyboard Hints Footer
@@ -640,13 +784,13 @@ Item {
           spacing: 12
 
           Text {
-            text: "⌨ Shortcuts: [Tab] Switch Panels  •  [↑/↓ or j/k] Select Setting  •  [Enter/Space] Activate  •  [S or /] Search  •  [0-9/U/N/K/A/L] Categories  •  [Esc] Close"
+            Layout.fillWidth: true
+            elide: Text.ElideRight
+            text: "⌨ Shortcuts: [Tab] Switch Panels  •  [↑/↓ or j/k] Select  •  [Enter] Activate  •  [S or /] Search  •  [Ctrl+D] Diff  •  [Esc] Close"
             font.family: Style.font.family
             font.pixelSize: 11
             color: Color.muted
           }
-
-          Item { Layout.fillWidth: true }
         }
       }
     }

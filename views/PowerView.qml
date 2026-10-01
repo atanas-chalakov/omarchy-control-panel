@@ -12,6 +12,7 @@ Item {
 
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
+  property var panelRoot: null
   property string currentProfile: "balanced"
   property int batteryCapacity: 100
   property string batteryStatus: "Unknown"
@@ -266,19 +267,40 @@ Item {
   // Set Profile Process
   Process {
     id: setProfileProcess
-    onRunningChanged: if (!running) root.refresh()
+    onRunningChanged: {
+      if (!running) {
+        root.refresh()
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
+      }
+    }
   }
 
   // Set Stay Awake Process
   Process {
     id: setStayAwakeProcess
-    onRunningChanged: if (!running) root.refresh()
+    onRunningChanged: {
+      if (!running) {
+        root.refresh()
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
+      }
+    }
   }
 
   // Set Idle Process
   Process {
     id: setIdleProcess
-    onRunningChanged: if (!running) root.refresh()
+    onRunningChanged: {
+      if (!running) {
+        root.refresh()
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
+      }
+    }
   }
 
   ScrollView {

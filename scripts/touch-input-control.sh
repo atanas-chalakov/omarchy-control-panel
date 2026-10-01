@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATE_DIR="$HOME/.local/state/omarchy/toggles/hypr"
 PERSIST_LUA="$STATE_DIR/touch-settings.lua"
 mkdir -p "$STATE_DIR"
@@ -28,7 +29,13 @@ EOF
 }
 
 update_persist_lua() {
+  local title="${1:-Touch & Input Settings}"
   ensure_persist_file
+
+  local snap=""
+  if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+    snap=$("$SCRIPT_DIR/config-tracker.sh" snapshot "$PERSIST_LUA" 2>/dev/null || true)
+  fi
 
   # Read current hyprctl values
   local nat_scroll=$(hyprctl getoption input:touchpad:natural_scroll -j 2>/dev/null | jq -r '.bool // false')
@@ -62,6 +69,10 @@ hl.config({
   },
 })
 EOF
+
+  if [[ -n "$snap" && -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+    "$SCRIPT_DIR/config-tracker.sh" record "input" "$title" "$PERSIST_LUA" "$snap" >/dev/null 2>&1 || true
+  fi
 }
 
 cmd_get_state() {

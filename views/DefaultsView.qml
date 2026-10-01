@@ -13,6 +13,7 @@ Item {
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
 
+  property var panelRoot: null
   property bool activeFocusSection: false
   property int focusedCard: 0 // 0: Browser, 1: Editor, 2: Terminal, 3: File Manager
   onFocusedCardChanged: ensureCardVisible(focusedCard)
@@ -249,6 +250,9 @@ Item {
           if (data.terminal && data.terminal.current) root.currentTerminal = String(data.terminal.current)
           if (data.fileManager && data.fileManager.current) root.currentFileManager = String(data.fileManager.current)
         } catch (e) {}
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
       }
     }
     onRunningChanged: if (!running) root.refresh()
