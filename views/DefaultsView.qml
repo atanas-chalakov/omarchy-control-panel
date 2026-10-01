@@ -298,13 +298,15 @@ Item {
       Rectangle {
         id: browserCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 124
+        implicitHeight: Math.max(116, browserCol.implicitHeight + 24)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && root.focusedCard === 0) ? Color.accent : "transparent"
         border.width: (root.activeFocusSection && root.focusedCard === 0) ? 1 : 0
 
         ColumnLayout {
+          id: browserCol
           anchors.fill: parent
           anchors.margins: 12
           spacing: 8
@@ -355,10 +357,12 @@ Item {
 
           Text {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             text: "Handles web links, authentication sign-ins, and browser web applications"
             font.family: Style.font.family
             font.pixelSize: 11
             color: Color.muted
+            wrapMode: Text.WordWrap
           }
 
           RowLayout {
@@ -403,6 +407,8 @@ Item {
                     font.pixelSize: 12
                     font.bold: isSelected
                     color: isSelected ? Color.accent : Color.foreground
+                    Layout.minimumWidth: 0
+                    elide: Text.ElideRight
                   }
 
                   Rectangle {
@@ -423,13 +429,15 @@ Item {
       Rectangle {
         id: editorCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 124
+        implicitHeight: Math.max(116, editorCol.implicitHeight + 24)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && root.focusedCard === 1) ? Color.accent : "transparent"
         border.width: (root.activeFocusSection && root.focusedCard === 1) ? 1 : 0
 
         ColumnLayout {
+          id: editorCol
           anchors.fill: parent
           anchors.margins: 12
           spacing: 8
@@ -480,10 +488,12 @@ Item {
 
           Text {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             text: "Launched by Super + E, git commit editor, and configuration file editing"
             font.family: Style.font.family
             font.pixelSize: 11
             color: Color.muted
+            wrapMode: Text.WordWrap
           }
 
           RowLayout {
@@ -528,6 +538,8 @@ Item {
                     font.pixelSize: 12
                     font.bold: isSelected
                     color: isSelected ? Color.accent : Color.foreground
+                    Layout.minimumWidth: 0
+                    elide: Text.ElideRight
                   }
 
                   Rectangle {
@@ -548,13 +560,15 @@ Item {
       Rectangle {
         id: terminalCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 124
+        implicitHeight: Math.max(116, terminalCol.implicitHeight + 24)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && root.focusedCard === 2) ? Color.accent : "transparent"
         border.width: (root.activeFocusSection && root.focusedCard === 2) ? 1 : 0
 
         ColumnLayout {
+          id: terminalCol
           anchors.fill: parent
           anchors.margins: 12
           spacing: 8
@@ -605,10 +619,12 @@ Item {
 
           Text {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             text: "Launched by Super + Return and system terminal execution (xdg-terminal-exec)"
             font.family: Style.font.family
             font.pixelSize: 11
             color: Color.muted
+            wrapMode: Text.WordWrap
           }
 
           RowLayout {
@@ -653,6 +669,8 @@ Item {
                     font.pixelSize: 12
                     font.bold: isSelected
                     color: isSelected ? Color.accent : Color.foreground
+                    Layout.minimumWidth: 0
+                    elide: Text.ElideRight
                   }
 
                   Rectangle {
@@ -673,13 +691,15 @@ Item {
       Rectangle {
         id: fileManagerCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 124
+        implicitHeight: Math.max(116, fileManagerCol.implicitHeight + 24)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && root.focusedCard === 3) ? Color.accent : "transparent"
         border.width: (root.activeFocusSection && root.focusedCard === 3) ? 1 : 0
 
         ColumnLayout {
+          id: fileManagerCol
           anchors.fill: parent
           anchors.margins: 12
           spacing: 8
@@ -730,10 +750,12 @@ Item {
 
           Text {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             text: "Opens directory paths, downloads folders, and file browsing requests (Super + Shift + E)"
             font.family: Style.font.family
             font.pixelSize: 11
             color: Color.muted
+            wrapMode: Text.WordWrap
           }
 
           RowLayout {
@@ -778,6 +800,8 @@ Item {
                     font.pixelSize: 12
                     font.bold: isSelected
                     color: isSelected ? Color.accent : Color.foreground
+                    Layout.minimumWidth: 0
+                    elide: Text.ElideRight
                   }
 
                   Rectangle {

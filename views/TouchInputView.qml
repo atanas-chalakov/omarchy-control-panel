@@ -554,7 +554,8 @@ Item {
           Rectangle {
             id: tsRowSwipe
             Layout.fillWidth: true
-            Layout.preferredHeight: 46
+            implicitHeight: Math.max(46, tsRowSwipeInner.implicitHeight + 14)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: (root.activeFocusSection && root.focusedCard === 1) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 1) ? Color.accent : "transparent"
@@ -570,6 +571,7 @@ Item {
             }
 
             RowLayout {
+              id: tsRowSwipeInner
               anchors.fill: parent
               anchors.leftMargin: 8
               anchors.rightMargin: 8
@@ -584,6 +586,7 @@ Item {
 
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1
 
                 RowLayout {
@@ -612,10 +615,13 @@ Item {
                 }
 
                 Text {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "Swipe across the touchscreen to switch between Hyprland workspaces"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.muted
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -636,7 +642,8 @@ Item {
           Rectangle {
             id: tsRowOutput
             Layout.fillWidth: true
-            Layout.preferredHeight: 46
+            implicitHeight: Math.max(46, tsRowOutputInner.implicitHeight + 14)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: (root.activeFocusSection && root.focusedCard === 2) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 2) ? Color.accent : "transparent"
@@ -649,6 +656,7 @@ Item {
             }
 
             RowLayout {
+              id: tsRowOutputInner
               anchors.fill: parent
               anchors.leftMargin: 8
               anchors.rightMargin: 8
@@ -663,6 +671,7 @@ Item {
 
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1
 
                 RowLayout {
@@ -691,10 +700,13 @@ Item {
                 }
 
                 Text {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "Bind touch coordinates to a specific display monitor"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.muted
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -855,7 +867,8 @@ Item {
           Rectangle {
             id: tpRowNatural
             Layout.fillWidth: true
-            Layout.preferredHeight: 46
+            implicitHeight: Math.max(46, tpRowNaturalInner.implicitHeight + 14)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: (root.activeFocusSection && root.focusedCard === 4) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 4) ? Color.accent : "transparent"
@@ -871,6 +884,7 @@ Item {
             }
 
             RowLayout {
+              id: tpRowNaturalInner
               anchors.fill: parent
               anchors.leftMargin: 8
               anchors.rightMargin: 8
@@ -878,6 +892,7 @@ Item {
 
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1
 
                 RowLayout {
@@ -906,10 +921,13 @@ Item {
                 }
 
                 Text {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "Content moves in the same direction as fingers (like mobile screens)"
                   font.family: Style.font.family
                   font.pixelSize: 10
                   color: Color.muted
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -930,7 +948,8 @@ Item {
           Rectangle {
             id: tpRowTap
             Layout.fillWidth: true
-            Layout.preferredHeight: 46
+            implicitHeight: Math.max(46, tpRowTapInner.implicitHeight + 14)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: (root.activeFocusSection && root.focusedCard === 5) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 5) ? Color.accent : "transparent"
@@ -946,6 +965,7 @@ Item {
             }
 
             RowLayout {
+              id: tpRowTapInner
               anchors.fill: parent
               anchors.leftMargin: 8
               anchors.rightMargin: 8
@@ -953,6 +973,7 @@ Item {
 
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1
 
                 RowLayout {
@@ -981,10 +1002,13 @@ Item {
                 }
 
                 Text {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "1 finger = left click, 2 fingers = right click, 3 fingers = middle click"
                   font.family: Style.font.family
                   font.pixelSize: 10
                   color: Color.muted
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -1005,7 +1029,8 @@ Item {
           Rectangle {
             id: tpRowSpeed
             Layout.fillWidth: true
-            Layout.preferredHeight: 46
+            implicitHeight: Math.max(46, tpRowSpeedInner.implicitHeight + 14)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: (root.activeFocusSection && root.focusedCard === 6) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 6) ? Color.accent : "transparent"
@@ -1018,6 +1043,7 @@ Item {
             }
 
             RowLayout {
+              id: tpRowSpeedInner
               anchors.fill: parent
               anchors.leftMargin: 8
               anchors.rightMargin: 8
@@ -1025,6 +1051,7 @@ Item {
 
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1
 
                 RowLayout {
@@ -1053,10 +1080,13 @@ Item {
                 }
 
                 Text {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "Multiplier for two-finger trackpad scrolling sensitivity"
                   font.family: Style.font.family
                   font.pixelSize: 10
                   color: Color.muted
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -1108,7 +1138,8 @@ Item {
           Rectangle {
             id: tpRowTyping
             Layout.fillWidth: true
-            Layout.preferredHeight: 46
+            implicitHeight: Math.max(46, tpRowTypingInner.implicitHeight + 14)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: (root.activeFocusSection && root.focusedCard === 7) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 7) ? Color.accent : "transparent"
@@ -1124,6 +1155,7 @@ Item {
             }
 
             RowLayout {
+              id: tpRowTypingInner
               anchors.fill: parent
               anchors.leftMargin: 8
               anchors.rightMargin: 8
@@ -1131,6 +1163,7 @@ Item {
 
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1
 
                 RowLayout {
@@ -1159,10 +1192,13 @@ Item {
                 }
 
                 Text {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "Temporarily freeze touchpad during keyboard input to avoid jumps"
                   font.family: Style.font.family
                   font.pixelSize: 10
                   color: Color.muted
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -1199,7 +1235,8 @@ Item {
           Rectangle {
             id: sensRow
             Layout.fillWidth: true
-            Layout.preferredHeight: 46
+            implicitHeight: Math.max(46, sensInnerRow.implicitHeight + 14)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: (root.activeFocusSection && root.focusedCard === 8) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 8) ? Color.accent : "transparent"
@@ -1212,6 +1249,7 @@ Item {
             }
 
             RowLayout {
+              id: sensInnerRow
               anchors.fill: parent
               anchors.leftMargin: 8
               anchors.rightMargin: 8
@@ -1226,6 +1264,7 @@ Item {
 
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1
 
                 RowLayout {
@@ -1254,10 +1293,13 @@ Item {
                 }
 
                 Text {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "Global cursor acceleration curve (-0.5 to +0.8)"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.muted
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -1326,6 +1368,7 @@ Item {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 1
 
               RowLayout {
@@ -1357,10 +1400,13 @@ Item {
               }
 
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: "Fcitx5 / Wayland virtual keyboard input methods ready for touchscreen typing"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.muted
+                wrapMode: Text.WordWrap
               }
             }
           }

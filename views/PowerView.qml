@@ -341,12 +341,15 @@ Item {
 
       // Power/Battery Hero Card
       Rectangle {
+        id: powerHeroCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 76
+        implicitHeight: Math.max(76, powerHeroRow.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
         RowLayout {
+          id: powerHeroRow
           anchors.fill: parent
           anchors.margins: 14
           spacing: 14
@@ -368,11 +371,17 @@ Item {
 
           ColumnLayout {
             Layout.fillWidth: true
+            Layout.preferredWidth: 0
+            Layout.minimumWidth: 0
             spacing: 2
 
             RowLayout {
+              Layout.fillWidth: true
               spacing: 8
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                elide: Text.ElideRight
                 text: root.batteryPresent ? ("Battery: " + root.batteryCapacity + "%") : "External Power"
                 font.family: Style.font.family
                 font.pixelSize: Style.font.title || 16
@@ -398,6 +407,9 @@ Item {
             }
 
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: root.batteryPresent ? ("Status: " + root.batteryStatus) : "Direct AC supply active"
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 12
@@ -535,6 +547,7 @@ Item {
 
               delegate: Rectangle {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 Layout.preferredHeight: 34
                 radius: 6
                 readonly property bool isSelected: root.currentProfile === modelData.id
@@ -553,7 +566,8 @@ Item {
 
                 RowLayout {
                   anchors.centerIn: parent
-                  spacing: 6
+                  width: Math.min(implicitWidth, parent.width - 8)
+                  spacing: 4
                   Text {
                     text: modelData.icon
                     font.family: Style.font.family
@@ -561,6 +575,9 @@ Item {
                     color: isSelected ? Color.accent : Color.muted
                   }
                   Text {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    elide: Text.ElideRight
                     text: modelData.title
                     font.family: Style.font.family
                     font.pixelSize: 11
@@ -787,6 +804,7 @@ Item {
 
               delegate: Rectangle {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 Layout.preferredHeight: 34
                 radius: 6
                 readonly property bool isSelected: root.screensaverTimeout === modelData.seconds
@@ -805,6 +823,8 @@ Item {
 
                 Text {
                   anchors.centerIn: parent
+                  width: Math.min(implicitWidth, parent.width - 8)
+                  elide: Text.ElideRight
                   text: modelData.label
                   font.family: Style.font.family
                   font.pixelSize: 11
@@ -929,6 +949,7 @@ Item {
 
               delegate: Rectangle {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 Layout.preferredHeight: 34
                 radius: 6
                 readonly property bool isSelected: root.lockTimeout === modelData.seconds
@@ -947,6 +968,8 @@ Item {
 
                 Text {
                   anchors.centerIn: parent
+                  width: Math.min(implicitWidth, parent.width - 8)
+                  elide: Text.ElideRight
                   text: modelData.label
                   font.family: Style.font.family
                   font.pixelSize: 11

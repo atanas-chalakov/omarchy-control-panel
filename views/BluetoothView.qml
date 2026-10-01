@@ -244,12 +244,15 @@ Item {
 
       // Bluetooth Hero Card
       Rectangle {
+        id: bluetoothHeroCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 76
+        implicitHeight: Math.max(76, bluetoothHeroRow.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
         RowLayout {
+          id: bluetoothHeroRow
           anchors.fill: parent
           anchors.margins: 14
           spacing: 14
@@ -271,11 +274,17 @@ Item {
 
           ColumnLayout {
             Layout.fillWidth: true
+            Layout.preferredWidth: 0
+            Layout.minimumWidth: 0
             spacing: 2
 
             RowLayout {
+              Layout.fillWidth: true
               spacing: 8
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                elide: Text.ElideRight
                 text: (root.adapter && root.adapter.name) ? root.adapter.name : "Bluetooth Adapter"
                 font.family: Style.font.family
                 font.pixelSize: Style.font.title || 16
@@ -301,6 +310,9 @@ Item {
             }
 
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: root.powered
                 ? ((root.adapter && root.adapter.mac ? ("Controller MAC: " + root.adapter.mac + "  •  ") : "") + root.devices.length + " devices recorded")
                 : "Bluetooth radio is disabled. Enable it to connect devices."
@@ -392,17 +404,20 @@ Item {
             Text {
               Layout.fillWidth: true
               Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: root.powered ? "Bluetooth adapter is powered on and receptive." : "Bluetooth radio is completely switched off."
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11
               color: Color.muted
-              elide: Text.ElideRight
             }
           }
 
           Rectangle {
             width: 90
             height: 32
+            Layout.preferredWidth: 90
+            Layout.minimumWidth: 90
+            Layout.preferredHeight: 32
             radius: 16
             color: root.powered ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
             border.color: btPowerCard.isFocused ? Color.accent : "transparent"
@@ -494,17 +509,20 @@ Item {
             Text {
               Layout.fillWidth: true
               Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: root.discovering ? "Actively scanning for nearby devices..." : "Discover nearby devices in pairing mode."
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11
               color: Color.muted
-              elide: Text.ElideRight
             }
           }
 
           Rectangle {
             width: 100
             height: 28
+            Layout.preferredWidth: 100
+            Layout.minimumWidth: 100
+            Layout.preferredHeight: 28
             radius: 14
             color: root.discovering ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
             border.color: scanCard.isFocused ? Color.accent : "transparent"
@@ -654,6 +672,9 @@ Item {
               Rectangle {
                 width: modelData.connected ? 104 : (modelData.paired ? 96 : 74)
                 height: 28
+                Layout.preferredWidth: modelData.connected ? 104 : (modelData.paired ? 96 : 74)
+                Layout.minimumWidth: modelData.connected ? 104 : (modelData.paired ? 96 : 74)
+                Layout.preferredHeight: 28
                 radius: 14
                 color: modelData.connected
                   ? Color.pickAlpha("accent.subtle", "#1f3b30")

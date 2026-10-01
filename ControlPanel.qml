@@ -94,19 +94,28 @@ Item {
 
   function ensureSidebarCategoryVisible(index) {
     if (!sidebarScroll || !sidebarScroll.contentItem) return
-    var itemY = index * 50
     var flick = sidebarScroll.contentItem
-    if (itemY < flick.contentY) {
-      flick.contentY = Math.max(0, itemY)
-    } else if (itemY + 44 > flick.contentY + sidebarScroll.height) {
-      flick.contentY = Math.max(0, itemY + 44 - sidebarScroll.height)
+    var itemY = index * 50
+    var itemH = 44
+    var viewH = sidebarScroll.availableHeight > 50 ? sidebarScroll.availableHeight : (sidebarScroll.height > 50 ? sidebarScroll.height : 500)
+    var margin = 16
+
+    if (itemY - margin < flick.contentY) {
+      flick.contentY = Math.max(0, itemY - margin)
+    } else if (itemY + itemH + margin > flick.contentY + viewH) {
+      var maxScroll = Math.max(0, flick.contentHeight - viewH)
+      flick.contentY = Math.min(maxScroll, Math.max(0, itemY + itemH + margin - viewH))
     }
   }
 
   onCurrentCategoryChanged: {
     var ids = categories.map(function(c) { return c.id })
     var idx = ids.indexOf(currentCategory)
-    if (idx >= 0) ensureSidebarCategoryVisible(idx)
+    if (idx >= 0) {
+      Qt.callLater(function() {
+        ensureSidebarCategoryVisible(idx)
+      })
+    }
     if (diffInspectorLoader && diffInspectorLoader.item && root.showDiffInspector) {
       diffInspectorLoader.item.refreshCategoryFile()
     }
@@ -142,7 +151,7 @@ Item {
     height: 640
     implicitWidth: root.showDiffInspector ? 1240 : 880
     implicitHeight: 640
-    minimumSize: Qt.size(root.showDiffInspector ? 1240 : 880, 520)
+    minimumSize: Qt.size(root.showDiffInspector ? 960 : 720, 520)
 
     onVisibleChanged: {
       if (visible) {
@@ -516,13 +525,14 @@ Item {
           ScrollView {
             id: sidebarScroll
             Layout.preferredWidth: 220
+            Layout.minimumWidth: 190
             Layout.fillHeight: true
             clip: true
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
             ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
             ColumnLayout {
-              width: Math.max(200, sidebarScroll.availableWidth - 8)
+              width: sidebarScroll.availableWidth > 0 ? (sidebarScroll.availableWidth - 4) : 216
               spacing: 6
 
               Repeater {
@@ -577,6 +587,8 @@ Item {
 
                     Text {
                       Layout.fillWidth: true
+                      Layout.minimumWidth: 0
+                      elide: Text.ElideRight
                       text: modelData.label
                       font.family: Style.font.family
                       font.pixelSize: Style.font.body || 13
@@ -618,7 +630,7 @@ Item {
             id: rightPanelView
             Layout.fillWidth: true
             Layout.preferredWidth: 0
-            Layout.minimumWidth: 460
+            Layout.minimumWidth: 320
             Layout.fillHeight: true
             clip: true
             color: "transparent"

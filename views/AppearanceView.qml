@@ -192,11 +192,17 @@ Item {
 
         ColumnLayout {
           Layout.fillWidth: true
+          Layout.preferredWidth: 0
+          Layout.minimumWidth: 0
           spacing: 2
 
           RowLayout {
+            Layout.fillWidth: true
             spacing: 8
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              elide: Text.ElideRight
               text: "Current: " + root.currentTheme
               font.family: Style.font.family
               font.pixelSize: Style.font.title || 15
@@ -222,6 +228,9 @@ Item {
           }
 
           Text {
+            Layout.fillWidth: true
+            Layout.minimumWidth: 0
+            wrapMode: Text.WordWrap
             text: "Select a desktop theme below to apply wallpaper, colors, and styling."
             font.family: Style.font.family
             font.pixelSize: Style.font.subtext || 11

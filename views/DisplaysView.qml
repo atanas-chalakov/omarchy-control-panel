@@ -336,12 +336,15 @@ Item {
 
       // Display Hero Card
       Rectangle {
+        id: displayHeroCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 76
+        implicitHeight: Math.max(76, displayHeroRow.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
         RowLayout {
+          id: displayHeroRow
           anchors.fill: parent
           anchors.margins: 14
           spacing: 14
@@ -363,11 +366,17 @@ Item {
 
           ColumnLayout {
             Layout.fillWidth: true
+            Layout.preferredWidth: 0
+            Layout.minimumWidth: 0
             spacing: 2
 
             RowLayout {
+              Layout.fillWidth: true
               spacing: 8
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                elide: Text.ElideRight
                 text: activeMonitor ? activeMonitor.name : "Display"
                 font.family: Style.font.family
                 font.pixelSize: Style.font.title || 16
@@ -393,6 +402,9 @@ Item {
             }
 
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: activeMonitor ? (activeMonitor.description || activeMonitor.model || (activeMonitor.width + "x" + activeMonitor.height + " @ " + activeMonitor.refreshRate + "Hz")) : ""
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 12

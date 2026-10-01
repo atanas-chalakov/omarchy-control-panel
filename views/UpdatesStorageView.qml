@@ -382,6 +382,7 @@ Item {
 
           Text {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             text: "Pending Updates (" + root.totalUpdates + ")"
             font.family: Style.font.family
             font.pixelSize: 12
@@ -426,6 +427,7 @@ Item {
 
           Text {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             text: "Disk & Maintenance"
             font.family: Style.font.family
             font.pixelSize: 12
@@ -702,6 +704,7 @@ Item {
 
                 Text {
                   Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: modelData.label
                   font.family: Style.font.family
                   font.pixelSize: 13
@@ -803,6 +806,7 @@ Item {
             ColumnLayout {
               Layout.fillWidth: true
               Layout.preferredWidth: 0
+              Layout.minimumWidth: 0
               spacing: 2
 
               RowLayout {
@@ -835,6 +839,7 @@ Item {
 
               Text {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 wrapMode: Text.WordWrap
                 text: "Prune superseded packages with paccache -rk2, keeping 2 offline rollback copies"
                 font.family: Style.font.family
@@ -886,6 +891,7 @@ Item {
             ColumnLayout {
               Layout.fillWidth: true
               Layout.preferredWidth: 0
+              Layout.minimumWidth: 0
               spacing: 2
 
               RowLayout {
@@ -918,6 +924,7 @@ Item {
 
               Text {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 wrapMode: Text.WordWrap
                 text: "Vacuum older logs, keeping the last 7 days of diagnostics"
                 font.family: Style.font.family
@@ -969,6 +976,7 @@ Item {
             ColumnLayout {
               Layout.fillWidth: true
               Layout.preferredWidth: 0
+              Layout.minimumWidth: 0
               spacing: 2
 
               RowLayout {
@@ -1001,6 +1009,7 @@ Item {
 
               Text {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 wrapMode: Text.WordWrap
                 text: "Review and safely remove dependency packages that are no longer needed"
                 font.family: Style.font.family

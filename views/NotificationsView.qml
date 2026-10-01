@@ -272,11 +272,17 @@ Item {
 
           ColumnLayout {
             Layout.fillWidth: true
+            Layout.preferredWidth: 0
+            Layout.minimumWidth: 0
             spacing: 3
 
             RowLayout {
+              Layout.fillWidth: true
               spacing: 8
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                elide: Text.ElideRight
                 text: "Do Not Disturb (Silence Notifications)"
                 font.family: Style.font.family
                 font.pixelSize: 14
@@ -303,13 +309,15 @@ Item {
             }
 
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: root.dndEnabled
                 ? "Notifications are silenced and archived straight into history without on-screen popups."
                 : "Incoming notifications appear as popups in the top-right corner."
               font.family: Style.font.family
               font.pixelSize: 11
               color: Color.muted
-              wrapMode: Text.WordWrap
             }
           }
 
@@ -329,19 +337,23 @@ Item {
       Rectangle {
         id: actionsCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 52
+        implicitHeight: Math.max(52, actionsFlow.implicitHeight + 20)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         border.color: (root.activeFocusSection && root.focusedRow === 1) ? Color.accent : Color.pickAlpha("border.subtle", "#262b30")
         border.width: (root.activeFocusSection && root.focusedRow === 1) ? 2 : 1
 
-        RowLayout {
-          anchors.fill: parent
-          anchors.leftMargin: 14
-          anchors.rightMargin: 14
-          spacing: 10
+        Flow {
+          id: actionsFlow
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
+          anchors.margins: 10
+          spacing: 8
 
           Text {
+            topPadding: 6
             text: "Actions:"
             font.family: Style.font.family
             font.pixelSize: 12
@@ -363,8 +375,6 @@ Item {
             text: "󰄬 Send Test [T]"
             onClicked: root.sendTest()
           }
-
-          Item { Layout.fillWidth: true }
 
           Button {
             text: "🗑 Clear History [C]"

@@ -421,7 +421,8 @@ Item {
       Rectangle {
         id: animCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 82
+        implicitHeight: Math.max(76, animRow.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && root.focusedCard === 0) ? Color.accent : "transparent"
@@ -437,6 +438,7 @@ Item {
         }
 
         RowLayout {
+          id: animRow
           anchors.fill: parent
           anchors.margins: 14
           spacing: 14
@@ -458,6 +460,7 @@ Item {
 
           ColumnLayout {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             spacing: 3
 
             RowLayout {
@@ -504,13 +507,14 @@ Item {
 
             Text {
               Layout.fillWidth: true
+              Layout.minimumWidth: 0
               text: root.animations
                 ? "Fluid window opening, closing, and workspace transitions active"
                 : "Zero animation delay for maximum snappiness and low battery draw"
               font.family: Style.font.family
               font.pixelSize: 11
               color: Color.muted
-              elide: Text.ElideRight
+              wrapMode: Text.WordWrap
             }
           }
 
@@ -545,7 +549,8 @@ Item {
           Rectangle {
             id: gapsRow
             Layout.fillWidth: true
-            Layout.preferredHeight: 46
+            implicitHeight: Math.max(46, gapsInnerRow.implicitHeight + 14)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: (root.activeFocusSection && root.focusedCard === 1) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 1) ? Color.accent : "transparent"
@@ -558,6 +563,7 @@ Item {
             }
 
             RowLayout {
+              id: gapsInnerRow
               anchors.fill: parent
               anchors.leftMargin: 8
               anchors.rightMargin: 8
@@ -572,6 +578,7 @@ Item {
 
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1
 
                 RowLayout {
@@ -600,10 +607,13 @@ Item {
                 }
 
                 Text {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "Spacing between tiled windows and display edges"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.muted
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -655,7 +665,8 @@ Item {
           Rectangle {
             id: aspectRow
             Layout.fillWidth: true
-            Layout.preferredHeight: 46
+            implicitHeight: Math.max(46, aspectInnerRow.implicitHeight + 14)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: (root.activeFocusSection && root.focusedCard === 2) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 2) ? Color.accent : "transparent"
@@ -671,6 +682,7 @@ Item {
             }
 
             RowLayout {
+              id: aspectInnerRow
               anchors.fill: parent
               anchors.leftMargin: 8
               anchors.rightMargin: 8
@@ -685,6 +697,7 @@ Item {
 
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1
 
                 RowLayout {
@@ -713,10 +726,13 @@ Item {
                 }
 
                 Text {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "Prevents solitary windows from stretching ultra-wide across widescreen displays"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.muted
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -781,7 +797,8 @@ Item {
           Rectangle {
             id: roundingRow
             Layout.fillWidth: true
-            Layout.preferredHeight: 46
+            implicitHeight: Math.max(46, roundingInnerRow.implicitHeight + 14)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: (root.activeFocusSection && root.focusedCard === 3) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 3) ? Color.accent : "transparent"
@@ -794,6 +811,7 @@ Item {
             }
 
             RowLayout {
+              id: roundingInnerRow
               anchors.fill: parent
               anchors.leftMargin: 8
               anchors.rightMargin: 8
@@ -801,6 +819,7 @@ Item {
 
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1
 
                 RowLayout {
@@ -829,10 +848,13 @@ Item {
                 }
 
                 Text {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "Border corner radius on tiled and floating application windows"
                   font.family: Style.font.family
                   font.pixelSize: 10
                   color: Color.muted
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -884,7 +906,8 @@ Item {
           Rectangle {
             id: borderRow
             Layout.fillWidth: true
-            Layout.preferredHeight: 46
+            implicitHeight: Math.max(46, borderInnerRow.implicitHeight + 14)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: (root.activeFocusSection && root.focusedCard === 4) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 4) ? Color.accent : "transparent"
@@ -897,6 +920,7 @@ Item {
             }
 
             RowLayout {
+              id: borderInnerRow
               anchors.fill: parent
               anchors.leftMargin: 8
               anchors.rightMargin: 8
@@ -904,6 +928,7 @@ Item {
 
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1
 
                 RowLayout {
@@ -932,10 +957,13 @@ Item {
                 }
 
                 Text {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "Active and inactive window outline border width"
                   font.family: Style.font.family
                   font.pixelSize: 10
                   color: Color.muted
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -987,7 +1015,8 @@ Item {
           Rectangle {
             id: opacityRow
             Layout.fillWidth: true
-            Layout.preferredHeight: 46
+            implicitHeight: Math.max(46, opacityInnerRow.implicitHeight + 14)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: (root.activeFocusSection && root.focusedCard === 5) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 5) ? Color.accent : "transparent"
@@ -1000,6 +1029,7 @@ Item {
             }
 
             RowLayout {
+              id: opacityInnerRow
               anchors.fill: parent
               anchors.leftMargin: 8
               anchors.rightMargin: 8
@@ -1007,6 +1037,7 @@ Item {
 
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1
 
                 RowLayout {
@@ -1035,10 +1066,13 @@ Item {
                 }
 
                 Text {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "Subtly dim unfocused windows to direct focus to active application"
                   font.family: Style.font.family
                   font.pixelSize: 10
                   color: Color.muted
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -1090,7 +1124,8 @@ Item {
           Rectangle {
             id: blurRow
             Layout.fillWidth: true
-            Layout.preferredHeight: 46
+            implicitHeight: Math.max(46, blurInnerRow.implicitHeight + 14)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: (root.activeFocusSection && root.focusedCard === 6) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 6) ? Color.accent : "transparent"
@@ -1106,6 +1141,7 @@ Item {
             }
 
             RowLayout {
+              id: blurInnerRow
               anchors.fill: parent
               anchors.leftMargin: 8
               anchors.rightMargin: 8
@@ -1113,6 +1149,7 @@ Item {
 
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1
 
                 RowLayout {
@@ -1141,10 +1178,13 @@ Item {
                 }
 
                 Text {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "Dual-kawase backdrop blur behind translucent shell windows"
                   font.family: Style.font.family
                   font.pixelSize: 10
                   color: Color.muted
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -1209,7 +1249,8 @@ Item {
           Rectangle {
             id: barRow
             Layout.fillWidth: true
-            Layout.preferredHeight: 46
+            implicitHeight: Math.max(46, barInnerRow.implicitHeight + 14)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: (root.activeFocusSection && root.focusedCard === 7) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 7) ? Color.accent : "transparent"
@@ -1225,6 +1266,7 @@ Item {
             }
 
             RowLayout {
+              id: barInnerRow
               anchors.fill: parent
               anchors.leftMargin: 8
               anchors.rightMargin: 8
@@ -1232,6 +1274,7 @@ Item {
 
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1
 
                 RowLayout {
@@ -1260,10 +1303,13 @@ Item {
                 }
 
                 Text {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "Toggle status bar visibility without stopping the Omarchy shell"
                   font.family: Style.font.family
                   font.pixelSize: 10
                   color: Color.muted
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -1284,7 +1330,8 @@ Item {
           Rectangle {
             id: barPosRow
             Layout.fillWidth: true
-            Layout.preferredHeight: 46
+            implicitHeight: Math.max(46, barPosInnerRow.implicitHeight + 14)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: (root.activeFocusSection && root.focusedCard === 8) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 8) ? Color.accent : "transparent"
@@ -1300,6 +1347,7 @@ Item {
             }
 
             RowLayout {
+              id: barPosInnerRow
               anchors.fill: parent
               anchors.leftMargin: 8
               anchors.rightMargin: 8
@@ -1307,6 +1355,7 @@ Item {
 
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1
 
                 RowLayout {
@@ -1335,10 +1384,13 @@ Item {
                 }
 
                 Text {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "Dock the menu bar to top or bottom screen edge"
                   font.family: Style.font.family
                   font.pixelSize: 10
                   color: Color.muted
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -1359,7 +1411,8 @@ Item {
           Rectangle {
             id: barTransRow
             Layout.fillWidth: true
-            Layout.preferredHeight: 46
+            implicitHeight: Math.max(46, barTransInnerRow.implicitHeight + 14)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: (root.activeFocusSection && root.focusedCard === 9) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 9) ? Color.accent : "transparent"
@@ -1375,6 +1428,7 @@ Item {
             }
 
             RowLayout {
+              id: barTransInnerRow
               anchors.fill: parent
               anchors.leftMargin: 8
               anchors.rightMargin: 8
@@ -1382,6 +1436,7 @@ Item {
 
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1
 
                 RowLayout {
@@ -1410,10 +1465,13 @@ Item {
                 }
 
                 Text {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "Transparent floating island vs solid edge bar style"
                   font.family: Style.font.family
                   font.pixelSize: 10
                   color: Color.muted
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -1434,7 +1492,8 @@ Item {
           Rectangle {
             id: layoutRow
             Layout.fillWidth: true
-            Layout.preferredHeight: 46
+            implicitHeight: Math.max(46, layoutInnerRow.implicitHeight + 14)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: (root.activeFocusSection && root.focusedCard === 10) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 10) ? Color.accent : "transparent"
@@ -1450,6 +1509,7 @@ Item {
             }
 
             RowLayout {
+              id: layoutInnerRow
               anchors.fill: parent
               anchors.leftMargin: 8
               anchors.rightMargin: 8
@@ -1457,6 +1517,7 @@ Item {
 
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 1
 
                 RowLayout {
@@ -1485,10 +1546,13 @@ Item {
                 }
 
                 Text {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
                   text: "Tiling algorithm on active workspace (Dwindle spiral vs horizontal scrolling)"
                   font.family: Style.font.family
                   font.pixelSize: 10
                   color: Color.muted
+                  wrapMode: Text.WordWrap
                 }
               }
 

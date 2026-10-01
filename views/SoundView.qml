@@ -1184,13 +1184,15 @@ Item {
       Rectangle {
         visible: root.apps.length === 0
         Layout.fillWidth: true
-        Layout.preferredHeight: 64
+        implicitHeight: Math.max(64, soundEmptyRow.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         border.color: Color.pickAlpha("border.subtle", "#262b30")
         border.width: 1
 
         RowLayout {
+          id: soundEmptyRow
           anchors.fill: parent
           anchors.margins: 14
           spacing: 12
@@ -1204,9 +1206,14 @@ Item {
 
           ColumnLayout {
             Layout.fillWidth: true
+            Layout.preferredWidth: 0
+            Layout.minimumWidth: 0
             spacing: 2
 
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              elide: Text.ElideRight
               text: "No Active Application Audio Streams"
               font.family: Style.font.family
               font.pixelSize: 13
@@ -1215,6 +1222,9 @@ Item {
             }
 
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: "Apps currently playing audio (browsers, media players, games) will appear here."
               font.family: Style.font.family
               font.pixelSize: 11

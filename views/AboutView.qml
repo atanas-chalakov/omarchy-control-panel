@@ -312,11 +312,17 @@ Item {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.preferredWidth: 0
+              Layout.minimumWidth: 0
               spacing: 2
 
               RowLayout {
+                Layout.fillWidth: true
                 spacing: 8
                 Text {
+                  Layout.fillWidth: true
+                  Layout.minimumWidth: 0
+                  elide: Text.ElideRight
                   text: "Timezone & Network Time"
                   font.family: Style.font.family
                   font.pixelSize: 13
@@ -344,6 +350,9 @@ Item {
               }
 
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                wrapMode: Text.WordWrap
                 text: root.timezone.length > 0 ? root.timezone : "Loading timezone..."
                 font.family: Style.font.family
                 font.pixelSize: 12

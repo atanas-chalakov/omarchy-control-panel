@@ -219,14 +219,17 @@ Item {
 
     // Top Header Banner
     Rectangle {
+      id: topBannerCard
       Layout.fillWidth: true
-      Layout.preferredHeight: 64
+      implicitHeight: Math.max(64, topBannerRow.implicitHeight + 28)
+      Layout.preferredHeight: implicitHeight
       radius: Style.cornerRadius || 8
       color: Color.pickAlpha("surface.subtle", "#181b1d")
       border.color: Color.pickAlpha("border.subtle", "#262b30")
       border.width: 1
 
       RowLayout {
+        id: topBannerRow
         anchors.fill: parent
         anchors.margins: 14
         spacing: 14
@@ -248,11 +251,17 @@ Item {
 
         ColumnLayout {
           Layout.fillWidth: true
+          Layout.preferredWidth: 0
+          Layout.minimumWidth: 0
           spacing: 2
 
           RowLayout {
+            Layout.fillWidth: true
             spacing: 8
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              elide: Text.ElideRight
               text: "Shortcuts & Keybindings"
               font.family: Style.font.family
               font.pixelSize: 15
@@ -279,6 +288,9 @@ Item {
           }
 
           Text {
+            Layout.fillWidth: true
+            Layout.minimumWidth: 0
+            wrapMode: Text.WordWrap
             text: "Browse, filter, and customize Hyprland shortcuts in ~/.config/hypr/bindings.lua"
             font.family: Style.font.family
             font.pixelSize: 11

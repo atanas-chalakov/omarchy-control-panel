@@ -228,12 +228,15 @@ Item {
 
       // Wi-Fi Hero Card
       Rectangle {
+        id: networkHeroCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 76
+        implicitHeight: Math.max(76, networkHeroRow.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
         RowLayout {
+          id: networkHeroRow
           anchors.fill: parent
           anchors.margins: 14
           spacing: 14
@@ -255,11 +258,17 @@ Item {
 
           ColumnLayout {
             Layout.fillWidth: true
+            Layout.preferredWidth: 0
+            Layout.minimumWidth: 0
             spacing: 2
 
             RowLayout {
+              Layout.fillWidth: true
               spacing: 8
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                elide: Text.ElideRight
                 text: root.activeConnection ? root.activeConnection.ssid : (root.wifiEnabled ? "Wi-Fi Ready" : "Wi-Fi Disabled")
                 font.family: Style.font.family
                 font.pixelSize: Style.font.title || 16
@@ -285,6 +294,9 @@ Item {
             }
 
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: root.activeConnection
                 ? ("IP: " + (root.activeConnection.ip || "Obtaining...") + "  •  Signal: " + (root.activeConnection.signal || 100) + "%  •  Band: " + (root.activeConnection.frequency || "2.4GHz"))
                 : (root.wifiEnabled ? "Select a network below or press [r] to scan" : "Turn on Wi-Fi interface to discover wireless networks")
@@ -376,17 +388,20 @@ Item {
             Text {
               Layout.fillWidth: true
               Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: root.wifiEnabled ? "Wireless network interface is active and scanning." : "Wireless radio is switched off."
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11
               color: Color.muted
-              elide: Text.ElideRight
             }
           }
 
           Rectangle {
             width: 90
             height: 32
+            Layout.preferredWidth: 90
+            Layout.minimumWidth: 90
+            Layout.preferredHeight: 32
             radius: 16
             color: root.wifiEnabled ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
             border.color: wifiToggleCard.isFocused ? Color.accent : "transparent"
@@ -534,6 +549,9 @@ Item {
               Rectangle {
                 width: modelData.inUse ? 96 : 84
                 height: 28
+                Layout.preferredWidth: modelData.inUse ? 96 : 84
+                Layout.minimumWidth: modelData.inUse ? 96 : 84
+                Layout.preferredHeight: 28
                 radius: 14
                 color: modelData.inUse
                   ? Color.pickAlpha("accent.subtle", "#1f3b30")

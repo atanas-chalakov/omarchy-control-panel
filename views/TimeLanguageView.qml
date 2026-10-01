@@ -642,7 +642,8 @@ Item {
       Rectangle {
         id: clockCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 104
+        implicitHeight: Math.max(90, clockInnerRow.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && root.focusedCard === 0) ? Color.accent : "transparent"
@@ -658,6 +659,7 @@ Item {
         }
 
         RowLayout {
+          id: clockInnerRow
           anchors.fill: parent
           anchors.margins: 14
           spacing: 16
@@ -681,6 +683,7 @@ Item {
           ColumnLayout {
             Layout.fillWidth: true
             Layout.preferredWidth: 0
+            Layout.minimumWidth: 0
             spacing: 3
 
             RowLayout {
@@ -739,7 +742,8 @@ Item {
 
             Text {
               Layout.fillWidth: true
-              elide: Text.ElideRight
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: root.currentDate + "  •  " + root.currentTimezone + " (" + root.currentTimezoneOffset + ")"
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 12
@@ -753,7 +757,8 @@ Item {
       Rectangle {
         id: secondsCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 64
+        implicitHeight: Math.max(64, secondsInnerRow.implicitHeight + 20)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && root.focusedCard === 1) ? Color.accent : "transparent"
@@ -769,6 +774,7 @@ Item {
         }
 
         RowLayout {
+          id: secondsInnerRow
           anchors.fill: parent
           anchors.margins: 14
           spacing: 14
@@ -791,9 +797,13 @@ Item {
           ColumnLayout {
             Layout.fillWidth: true
             Layout.preferredWidth: 0
+            Layout.minimumWidth: 0
             spacing: 2
 
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: "Show Seconds Counter [S]"
               font.family: Style.font.family
               font.pixelSize: Style.font.body || 13
@@ -803,7 +813,8 @@ Item {
 
             Text {
               Layout.fillWidth: true
-              elide: Text.ElideRight
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: "Includes real-time second updates (:ss) in the top status bar"
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11
@@ -987,7 +998,8 @@ Item {
       Rectangle {
         id: locCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 88
+        implicitHeight: Math.max(76, locInnerRow.implicitHeight + 20)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && root.focusedCard === 3) ? Color.accent : "transparent"
@@ -1003,6 +1015,7 @@ Item {
         }
 
         RowLayout {
+          id: locInnerRow
           anchors.fill: parent
           anchors.margins: 14
           spacing: 14
@@ -1025,12 +1038,16 @@ Item {
           ColumnLayout {
             Layout.fillWidth: true
             Layout.preferredWidth: 0
+            Layout.minimumWidth: 0
             spacing: 3
 
             RowLayout {
               Layout.fillWidth: true
               spacing: 8
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                elide: Text.ElideRight
                 text: "Location: " + root.locationName
                 font.family: Style.font.family
                 font.pixelSize: Style.font.body || 13
@@ -1058,7 +1075,8 @@ Item {
 
             Text {
               Layout.fillWidth: true
-              elide: Text.ElideRight
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: root.weatherStatus.length > 0 ? root.weatherStatus : "Auto-detected from network IP address"
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11
@@ -1431,7 +1449,8 @@ Item {
       Rectangle {
         id: kbActiveCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 88
+        implicitHeight: Math.max(76, kbActiveInnerRow.implicitHeight + 20)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && root.focusedCard === 5) ? Color.accent : "transparent"
@@ -1447,6 +1466,7 @@ Item {
         }
 
         RowLayout {
+          id: kbActiveInnerRow
           anchors.fill: parent
           anchors.margins: 14
           spacing: 14
@@ -1469,12 +1489,16 @@ Item {
           ColumnLayout {
             Layout.fillWidth: true
             Layout.preferredWidth: 0
+            Layout.minimumWidth: 0
             spacing: 2
 
             RowLayout {
               Layout.fillWidth: true
               spacing: 8
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                elide: Text.ElideRight
                 text: "Active: " + root.activeLayout
                 font.family: Style.font.family
                 font.pixelSize: Style.font.body || 13
@@ -1501,7 +1525,8 @@ Item {
 
             Text {
               Layout.fillWidth: true
-              elide: Text.ElideRight
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: "Hardware: " + (root.kbDeviceName || "Default System Keyboard") + "  •  Configured: [" + root.kbLayout + "]"
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11

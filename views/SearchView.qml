@@ -808,7 +808,8 @@ Item {
           delegate: Rectangle {
             id: resultCard
             Layout.fillWidth: true
-            Layout.preferredHeight: 64
+            implicitHeight: Math.max(64, resultInnerRow.implicitHeight + 20)
+            Layout.preferredHeight: implicitHeight
             radius: Style.cornerRadius || 8
             color: (index === root.selectedResultIndex) ? Color.pickAlpha("surface.selected", "#222a30") : Color.pickAlpha("surface.subtle", "#181b1d")
             border.color: (index === root.selectedResultIndex) ? Color.accent : "transparent"
@@ -823,8 +824,9 @@ Item {
             }
 
             RowLayout {
+              id: resultInnerRow
               anchors.fill: parent
-              anchors.margins: 12
+              anchors.margins: 10
               spacing: 12
 
               // Category Icon Badge
@@ -847,6 +849,7 @@ Item {
               ColumnLayout {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 0
+                Layout.minimumWidth: 0
                 spacing: 2
 
                 RowLayout {
@@ -854,11 +857,14 @@ Item {
                   spacing: 8
 
                   Text {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     text: modelData.title
                     font.family: Style.font.family
                     font.pixelSize: Style.font.body || 13
                     font.bold: true
                     color: (index === root.selectedResultIndex) ? Color.accent : Color.foreground
+                    elide: Text.ElideRight
                   }
 
                   Rectangle {
@@ -881,7 +887,8 @@ Item {
 
                 Text {
                   Layout.fillWidth: true
-                  elide: Text.ElideRight
+                  Layout.minimumWidth: 0
+                  wrapMode: Text.WordWrap
                   text: modelData.desc
                   font.family: Style.font.family
                   font.pixelSize: Style.font.subtext || 11
@@ -949,8 +956,9 @@ Item {
 
             delegate: Rectangle {
               id: tileCard
-              width: Math.max(160, (parent.width - 20) / 3)
-              height: 84
+              width: parent.width > 680 ? Math.floor((parent.width - 20) / 3) : (parent.width > 340 ? Math.floor((parent.width - 10) / 2) : parent.width)
+              implicitHeight: Math.max(76, tileRow.implicitHeight + 20)
+              height: implicitHeight
               radius: 8
               color: (root.focusZone === "tiles" && index === root.selectedTileIndex)
                 ? Color.pickAlpha("surface.selected", "#222a30")
@@ -972,9 +980,10 @@ Item {
               }
 
               RowLayout {
+                id: tileRow
                 anchors.fill: parent
-                anchors.margins: 12
-                spacing: 12
+                anchors.margins: 10
+                spacing: 10
 
                 Rectangle {
                   width: 36
@@ -998,10 +1007,12 @@ Item {
                 ColumnLayout {
                   Layout.fillWidth: true
                   Layout.preferredWidth: 0
+                  Layout.minimumWidth: 0
                   spacing: 2
 
                   Text {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     text: modelData.title
                     font.family: Style.font.family
                     font.pixelSize: 12
@@ -1009,11 +1020,13 @@ Item {
                     color: (root.focusZone === "tiles" && index === root.selectedTileIndex)
                       ? Color.accent
                       : Color.foreground
-                    elide: Text.ElideRight
+                    wrapMode: Text.WordWrap
+                    maximumLineCount: 2
                   }
 
                   Text {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     text: (root.focusZone === "tiles" && index === root.selectedTileIndex)
                       ? ("󰌑 Enter to open • " + modelData.subtitle)
                       : modelData.subtitle
@@ -1021,7 +1034,8 @@ Item {
                     font.pixelSize: 10
                     font.bold: (root.focusZone === "tiles" && index === root.selectedTileIndex)
                     color: (root.focusZone === "tiles" && index === root.selectedTileIndex) ? Color.accent : Color.muted
-                    elide: Text.ElideRight
+                    wrapMode: Text.WordWrap
+                    maximumLineCount: 2
                   }
                 }
               }
