@@ -825,7 +825,9 @@ Item {
 
             RowLayout {
               id: resultInnerRow
-              anchors.fill: parent
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
               anchors.margins: 10
               spacing: 12
 
@@ -852,24 +854,22 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 2
 
-                RowLayout {
+                Flow {
                   Layout.fillWidth: true
+                  width: parent.width
                   spacing: 8
 
                   Text {
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: 0
                     text: modelData.title
                     font.family: Style.font.family
                     font.pixelSize: Style.font.body || 13
                     font.bold: true
                     color: (index === root.selectedResultIndex) ? Color.accent : Color.foreground
-                    elide: Text.ElideRight
                   }
 
                   Rectangle {
-                    Layout.preferredHeight: 18
-                    Layout.preferredWidth: catBadgeText.implicitWidth + 10
+                    width: catBadgeText.implicitWidth + 10
+                    height: 18
                     radius: 4
                     color: Color.pickAlpha("surface.selected", "#2a3036")
 
@@ -1058,12 +1058,16 @@ Item {
 
         Rectangle {
           Layout.fillWidth: true
-          Layout.preferredHeight: 74
+          implicitHeight: Math.max(74, searchHintRow.implicitHeight + 28)
+          Layout.preferredHeight: implicitHeight
           radius: 8
           color: Color.pickAlpha("surface.subtle", "#181b1d")
 
           RowLayout {
-            anchors.fill: parent
+            id: searchHintRow
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
             anchors.margins: 14
             spacing: 12
 
@@ -1077,9 +1081,13 @@ Item {
             ColumnLayout {
               Layout.fillWidth: true
               Layout.preferredWidth: 0
+              Layout.minimumWidth: 0
               spacing: 3
 
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                wrapMode: Text.WordWrap
                 text: "Start typing directly anywhere in this panel to filter settings instantly."
                 font.family: Style.font.family
                 font.pixelSize: Style.font.body || 12
@@ -1088,12 +1096,13 @@ Item {
               }
 
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                wrapMode: Text.WordWrap
                 text: "Use [↑/↓] to browse results, [Enter] to open that setting, or click any card."
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
-                elide: Text.ElideRight
-                Layout.fillWidth: true
               }
             }
           }

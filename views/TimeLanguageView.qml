@@ -660,7 +660,9 @@ Item {
 
         RowLayout {
           id: clockInnerRow
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 16
 
@@ -686,8 +688,10 @@ Item {
             Layout.minimumWidth: 0
             spacing: 3
 
-            RowLayout {
-              spacing: 12
+            Flow {
+              Layout.fillWidth: true
+              width: parent.width
+              spacing: 8
 
               Text {
                 text: root.currentTime
@@ -699,8 +703,8 @@ Item {
 
               // Format Badge (Clickable)
               Rectangle {
-                Layout.preferredHeight: 22
-                Layout.preferredWidth: 92
+                width: 92
+                height: 22
                 radius: 5
                 color: Color.pickAlpha("surface.selected", "#2a3036")
                 border.color: (root.activeFocusSection && root.focusedCard === 0) ? Color.accent : Color.muted
@@ -721,8 +725,8 @@ Item {
 
               // NTP Badge
               Rectangle {
-                Layout.preferredHeight: 22
-                Layout.preferredWidth: 108
+                width: 108
+                height: 22
                 radius: 5
                 color: root.ntpActive ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.selected", "#2a3036")
 
@@ -775,7 +779,9 @@ Item {
 
         RowLayout {
           id: secondsInnerRow
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 14
 
@@ -1016,7 +1022,9 @@ Item {
 
         RowLayout {
           id: locInnerRow
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 14
 
@@ -1041,13 +1049,12 @@ Item {
             Layout.minimumWidth: 0
             spacing: 3
 
-            RowLayout {
+            Flow {
               Layout.fillWidth: true
+              width: parent.width
               spacing: 8
+
               Text {
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                elide: Text.ElideRight
                 text: "Location: " + root.locationName
                 font.family: Style.font.family
                 font.pixelSize: Style.font.body || 13
@@ -1056,8 +1063,8 @@ Item {
               }
 
               Rectangle {
-                Layout.preferredHeight: 18
-                Layout.preferredWidth: autoBadgeText.implicitWidth + 10
+                width: autoBadgeText.implicitWidth + 10
+                height: 18
                 radius: 4
                 color: root.isAutoLocation ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.selected", "#2a3036")
 
@@ -1467,7 +1474,9 @@ Item {
 
         RowLayout {
           id: kbActiveInnerRow
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 14
 
@@ -1492,13 +1501,11 @@ Item {
             Layout.minimumWidth: 0
             spacing: 2
 
-            RowLayout {
+            Flow {
               Layout.fillWidth: true
+              width: parent.width
               spacing: 8
               Text {
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                elide: Text.ElideRight
                 text: "Active: " + root.activeLayout
                 font.family: Style.font.family
                 font.pixelSize: Style.font.body || 13
@@ -1507,8 +1514,8 @@ Item {
               }
 
               Rectangle {
-                Layout.preferredHeight: 18
-                Layout.preferredWidth: 64
+                width: 64
+                height: 18
                 radius: 4
                 color: Color.pickAlpha("accent.subtle", "#1f3b30")
 
@@ -1958,9 +1965,12 @@ Item {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 2
 
-              RowLayout {
+              Flow {
+                Layout.fillWidth: true
+                width: parent.width
                 spacing: 8
                 Text {
                   text: "System Locale: " + root.systemLocale
@@ -1971,8 +1981,8 @@ Item {
                 }
 
                 Rectangle {
-                  Layout.preferredHeight: 18
-                  Layout.preferredWidth: fcitxText.implicitWidth + 10
+                  width: fcitxText.implicitWidth + 10
+                  height: 18
                   radius: 4
                   color: root.fcitxActive ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.selected", "#2a3036")
 
@@ -1990,7 +2000,8 @@ Item {
 
               Text {
                 Layout.fillWidth: true
-                elide: Text.ElideRight
+                Layout.minimumWidth: 0
+                wrapMode: Text.WordWrap
                 text: "Installed locales: " + root.installedLocales.join(", ")
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11

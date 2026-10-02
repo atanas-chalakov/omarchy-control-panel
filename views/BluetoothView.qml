@@ -253,7 +253,9 @@ Item {
 
         RowLayout {
           id: bluetoothHeroRow
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 14
 
@@ -278,13 +280,12 @@ Item {
             Layout.minimumWidth: 0
             spacing: 2
 
-            RowLayout {
+            Flow {
               Layout.fillWidth: true
+              width: parent.width
               spacing: 8
+
               Text {
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                elide: Text.ElideRight
                 text: (root.adapter && root.adapter.name) ? root.adapter.name : "Bluetooth Adapter"
                 font.family: Style.font.family
                 font.pixelSize: Style.font.title || 16
@@ -354,7 +355,9 @@ Item {
 
         RowLayout {
           id: btPowerRowLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 14
 
@@ -378,9 +381,9 @@ Item {
             Layout.minimumWidth: 0
             spacing: 2
 
-            RowLayout {
+            Flow {
               Layout.fillWidth: true
-              Layout.minimumWidth: 0
+              width: parent.width
               spacing: 8
               Text {
                 text: "Bluetooth Power"
@@ -391,13 +394,10 @@ Item {
               }
               Text {
                 visible: btPowerCard.isFocused
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
                 text: "• Press [Enter/Space or b] to toggle"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.accent
-                elide: Text.ElideRight
               }
             }
 
@@ -459,7 +459,9 @@ Item {
 
         RowLayout {
           id: scanRowLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 14
 
@@ -483,9 +485,9 @@ Item {
             Layout.minimumWidth: 0
             spacing: 2
 
-            RowLayout {
+            Flow {
               Layout.fillWidth: true
-              Layout.minimumWidth: 0
+              width: parent.width
               spacing: 8
               Text {
                 text: "Device Discovery"
@@ -496,13 +498,10 @@ Item {
               }
               Text {
                 visible: scanCard.isFocused
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
                 text: "• Press [Enter/Space or s] to scan"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.accent
-                elide: Text.ElideRight
               }
             }
 
@@ -598,7 +597,10 @@ Item {
 
             RowLayout {
               id: delegateBtRowLayout
-              anchors.fill: parent
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               anchors.leftMargin: 14
               anchors.rightMargin: 14
               spacing: 12
@@ -625,13 +627,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 2
 
-                RowLayout {
+                Flow {
                   Layout.fillWidth: true
-                  Layout.minimumWidth: 0
+                  width: parent.width
                   spacing: 6
                   Text {
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: 0
                     text: modelData.name || modelData.mac
                     font.family: Style.font.family
                     font.pixelSize: Style.font.body || 13
@@ -650,7 +650,9 @@ Item {
                   }
                 }
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 8
                   Text {
                     text: modelData.mac

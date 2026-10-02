@@ -103,7 +103,9 @@ Item {
 
         RowLayout {
           id: heroLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 16
           spacing: 16
 
@@ -124,9 +126,12 @@ Item {
 
           ColumnLayout {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             spacing: 4
 
-            RowLayout {
+            Flow {
+              Layout.fillWidth: true
+              width: parent.width
               spacing: 8
               Text {
                 text: root.osName
@@ -154,6 +159,9 @@ Item {
             }
 
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: "Arch Linux based • Hyprland compositor • Quickshell desktop"
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 12
@@ -181,7 +189,9 @@ Item {
 
         ColumnLayout {
           id: specsLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 16
           spacing: 12
 
@@ -195,7 +205,7 @@ Item {
 
           GridLayout {
             Layout.fillWidth: true
-            columns: 2
+            columns: parent.width >= 480 ? 2 : 1
             rowSpacing: 10
             columnSpacing: 20
 
@@ -207,6 +217,9 @@ Item {
               font.pixelSize: Style.font.body || 13
             }
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: root.hostname
               color: Color.foreground
               font.family: Style.font.family
@@ -222,6 +235,9 @@ Item {
               font.pixelSize: Style.font.body || 13
             }
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: root.cpu
               color: Color.foreground
               font.family: Style.font.family
@@ -237,6 +253,9 @@ Item {
               font.pixelSize: Style.font.body || 13
             }
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: root.ram
               color: Color.foreground
               font.family: Style.font.family
@@ -252,6 +271,9 @@ Item {
               font.pixelSize: Style.font.body || 13
             }
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: root.kernel
               color: Color.foreground
               font.family: Style.font.family
@@ -267,6 +289,9 @@ Item {
               font.pixelSize: Style.font.body || 13
             }
             Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              wrapMode: Text.WordWrap
               text: root.uptime
               color: Color.foreground
               font.family: Style.font.family
@@ -287,7 +312,9 @@ Item {
 
         ColumnLayout {
           id: tzColLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 16
           spacing: 12
 
@@ -316,13 +343,11 @@ Item {
               Layout.minimumWidth: 0
               spacing: 2
 
-              RowLayout {
+              Flow {
                 Layout.fillWidth: true
+                width: parent.width
                 spacing: 8
                 Text {
-                  Layout.fillWidth: true
-                  Layout.minimumWidth: 0
-                  elide: Text.ElideRight
                   text: "Timezone & Network Time"
                   font.family: Style.font.family
                   font.pixelSize: 13
@@ -332,8 +357,8 @@ Item {
 
                 Rectangle {
                   visible: root.ntp.length > 0
-                  Layout.preferredHeight: 18
-                  Layout.preferredWidth: ntpText.implicitWidth + 10
+                  width: ntpText.implicitWidth + 10
+                  height: 18
                   radius: 4
                   color: (root.ntp === "active") ? Color.pickAlpha("accent.subtle", "#203a30") : Color.pickAlpha("surface.hover", "#22272c")
 

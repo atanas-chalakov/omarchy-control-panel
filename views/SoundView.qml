@@ -400,7 +400,9 @@ Item {
 
         ColumnLayout {
           id: volumeColLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 10
 
@@ -420,10 +422,11 @@ Item {
               Layout.minimumWidth: 0
               spacing: 2
 
-              RowLayout {
+              Flow {
                 Layout.fillWidth: true
-                Layout.minimumWidth: 0
+                width: parent.width
                 spacing: 8
+
                 Text {
                   text: "Master Output Volume"
                   font.family: Style.font.family
@@ -431,15 +434,13 @@ Item {
                   font.bold: true
                   color: Color.foreground
                 }
+
                 Text {
                   visible: volumeCard.isFocused
-                  Layout.fillWidth: true
-                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to adjust ±5%"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
-                  elide: Text.ElideRight
                 }
               }
 
@@ -450,7 +451,7 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
-                elide: Text.ElideRight
+                wrapMode: Text.WordWrap
               }
             }
 
@@ -525,7 +526,9 @@ Item {
 
         RowLayout {
           id: muteRowLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 14
 
@@ -549,10 +552,11 @@ Item {
             Layout.minimumWidth: 0
             spacing: 2
 
-            RowLayout {
+            Flow {
               Layout.fillWidth: true
-              Layout.minimumWidth: 0
+              width: parent.width
               spacing: 8
+
               Text {
                 text: "Mute All Audio Output"
                 font.family: Style.font.family
@@ -560,15 +564,13 @@ Item {
                 font.bold: true
                 color: Color.foreground
               }
+
               Text {
                 visible: muteCard.isFocused
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
                 text: "• Press [Enter/Space or m] to toggle"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.accent
-                elide: Text.ElideRight
               }
             }
 
@@ -579,7 +581,7 @@ Item {
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11
               color: Color.muted
-              elide: Text.ElideRight
+              wrapMode: Text.WordWrap
             }
           }
 
@@ -623,7 +625,9 @@ Item {
 
         ColumnLayout {
           id: sinkColLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 12
 
@@ -643,9 +647,9 @@ Item {
               Layout.minimumWidth: 0
               spacing: 2
 
-              RowLayout {
+              Flow {
                 Layout.fillWidth: true
-                Layout.minimumWidth: 0
+                width: parent.width
                 spacing: 8
                 Text {
                   text: "Audio Output Device"
@@ -656,13 +660,10 @@ Item {
                 }
                 Text {
                   visible: sinkCard.isFocused
-                  Layout.fillWidth: true
-                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to cycle"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
-                  elide: Text.ElideRight
                 }
               }
 
@@ -673,7 +674,7 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
-                elide: Text.ElideRight
+                wrapMode: Text.WordWrap
               }
             }
 
@@ -716,9 +717,11 @@ Item {
               model: root.sinks
 
               delegate: Rectangle {
+                id: sinkPillRect
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                Layout.preferredHeight: 36
+                implicitHeight: Math.max(36, sinkPillRow.implicitHeight + 12)
+                Layout.preferredHeight: implicitHeight
                 radius: 6
                 color: modelData.isDefault ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
                 border.color: modelData.isDefault ? Color.accent : "transparent"
@@ -734,7 +737,10 @@ Item {
                 }
 
                 RowLayout {
-                  anchors.fill: parent
+                  id: sinkPillRow
+                  anchors.top: parent.top
+                  anchors.left: parent.left
+                  anchors.right: parent.right
                   anchors.margins: 8
                   spacing: 6
 
@@ -800,7 +806,9 @@ Item {
 
         ColumnLayout {
           id: inputVolColLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 10
 
@@ -820,9 +828,9 @@ Item {
               Layout.minimumWidth: 0
               spacing: 2
 
-              RowLayout {
+              Flow {
                 Layout.fillWidth: true
-                Layout.minimumWidth: 0
+                width: parent.width
                 spacing: 8
                 Text {
                   text: "Microphone Input Volume"
@@ -833,13 +841,10 @@ Item {
                 }
                 Text {
                   visible: inputVolCard.isFocused
-                  Layout.fillWidth: true
-                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to adjust ±5%"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
-                  elide: Text.ElideRight
                 }
               }
 
@@ -850,7 +855,7 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
-                elide: Text.ElideRight
+                wrapMode: Text.WordWrap
               }
             }
 
@@ -925,7 +930,9 @@ Item {
 
         RowLayout {
           id: inputMuteRowLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 14
 
@@ -949,9 +956,9 @@ Item {
             Layout.minimumWidth: 0
             spacing: 2
 
-            RowLayout {
+            Flow {
               Layout.fillWidth: true
-              Layout.minimumWidth: 0
+              width: parent.width
               spacing: 8
               Text {
                 text: "Mute Microphone"
@@ -962,13 +969,10 @@ Item {
               }
               Text {
                 visible: inputMuteCard.isFocused
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
                 text: "• Press [Enter/Space or m] to toggle"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.accent
-                elide: Text.ElideRight
               }
             }
 
@@ -979,7 +983,7 @@ Item {
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11
               color: Color.muted
-              elide: Text.ElideRight
+              wrapMode: Text.WordWrap
             }
           }
 
@@ -1023,7 +1027,9 @@ Item {
 
         ColumnLayout {
           id: sourceColLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 12
 
@@ -1043,9 +1049,9 @@ Item {
               Layout.minimumWidth: 0
               spacing: 2
 
-              RowLayout {
+              Flow {
                 Layout.fillWidth: true
-                Layout.minimumWidth: 0
+                width: parent.width
                 spacing: 8
                 Text {
                   text: "Microphone Input Device"
@@ -1056,13 +1062,10 @@ Item {
                 }
                 Text {
                   visible: sourceCard.isFocused
-                  Layout.fillWidth: true
-                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to cycle"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
-                  elide: Text.ElideRight
                 }
               }
 
@@ -1073,7 +1076,7 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
-                elide: Text.ElideRight
+                wrapMode: Text.WordWrap
               }
             }
 
@@ -1116,9 +1119,11 @@ Item {
               model: root.sources
 
               delegate: Rectangle {
+                id: sourcePillRect
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                Layout.preferredHeight: 36
+                implicitHeight: Math.max(36, sourcePillRow.implicitHeight + 12)
+                Layout.preferredHeight: implicitHeight
                 radius: 6
                 color: modelData.isDefault ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
                 border.color: modelData.isDefault ? Color.accent : "transparent"
@@ -1134,7 +1139,10 @@ Item {
                 }
 
                 RowLayout {
-                  anchors.fill: parent
+                  id: sourcePillRow
+                  anchors.top: parent.top
+                  anchors.left: parent.left
+                  anchors.right: parent.right
                   anchors.margins: 8
                   spacing: 6
 
@@ -1193,7 +1201,9 @@ Item {
 
         RowLayout {
           id: soundEmptyRow
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 12
 
@@ -1258,7 +1268,9 @@ Item {
 
           ColumnLayout {
             id: appColLayout
-            anchors.fill: parent
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
             anchors.margins: 12
             spacing: 8
 
@@ -1283,9 +1295,12 @@ Item {
 
               ColumnLayout {
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 spacing: 2
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 6
                   Text {
                     text: modelData.name

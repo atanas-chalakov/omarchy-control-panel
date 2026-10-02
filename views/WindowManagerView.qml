@@ -439,7 +439,9 @@ Item {
 
         RowLayout {
           id: animRow
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 14
 
@@ -463,8 +465,11 @@ Item {
             Layout.minimumWidth: 0
             spacing: 3
 
-            RowLayout {
+            Flow {
+              Layout.fillWidth: true
+              width: parent.width
               spacing: 8
+
               Text {
                 text: "Window Animations"
                 font.family: Style.font.family
@@ -535,13 +540,16 @@ Item {
       Rectangle {
         id: spacingCard
         Layout.fillWidth: true
-        Layout.preferredHeight: spacingCol.implicitHeight + 24
+        implicitHeight: spacingCol.implicitHeight + 24
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
         ColumnLayout {
           id: spacingCol
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 12
           spacing: 10
 
@@ -564,9 +572,10 @@ Item {
 
             RowLayout {
               id: gapsInnerRow
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               spacing: 10
 
               Text {
@@ -581,8 +590,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 1
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 6
+
                   Text {
                     text: "Window Gaps"
                     font.family: Style.font.family
@@ -683,9 +695,10 @@ Item {
 
             RowLayout {
               id: aspectInnerRow
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               spacing: 10
 
               Text {
@@ -700,8 +713,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 1
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 6
+
                   Text {
                     text: "1-Window Square Aspect Ratio"
                     font.family: Style.font.family
@@ -755,13 +771,16 @@ Item {
       Rectangle {
         id: card3
         Layout.fillWidth: true
-        Layout.preferredHeight: card3Col.implicitHeight + 24
+        implicitHeight: Math.max(120, card3Col.implicitHeight + 24)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
         ColumnLayout {
           id: card3Col
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 12
           spacing: 8
 
@@ -812,9 +831,10 @@ Item {
 
             RowLayout {
               id: roundingInnerRow
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               spacing: 10
 
               ColumnLayout {
@@ -822,8 +842,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 1
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 6
+
                   Text {
                     text: "Corner Rounding"
                     font.family: Style.font.family
@@ -921,9 +944,10 @@ Item {
 
             RowLayout {
               id: borderInnerRow
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               spacing: 10
 
               ColumnLayout {
@@ -931,8 +955,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 1
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 6
+
                   Text {
                     text: "Border Thickness"
                     font.family: Style.font.family
@@ -1030,9 +1057,10 @@ Item {
 
             RowLayout {
               id: opacityInnerRow
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               spacing: 10
 
               ColumnLayout {
@@ -1040,8 +1068,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 1
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 6
+
                   Text {
                     text: "Inactive Window Opacity"
                     font.family: Style.font.family
@@ -1142,9 +1173,10 @@ Item {
 
             RowLayout {
               id: blurInnerRow
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               spacing: 10
 
               ColumnLayout {
@@ -1152,8 +1184,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 1
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 6
+
                   Text {
                     text: "Background Blur"
                     font.family: Style.font.family
@@ -1207,13 +1242,16 @@ Item {
       Rectangle {
         id: card4
         Layout.fillWidth: true
-        Layout.preferredHeight: card4Col.implicitHeight + 24
+        implicitHeight: card4Col.implicitHeight + 24
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
         ColumnLayout {
           id: card4Col
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 12
           spacing: 8
 
@@ -1267,9 +1305,10 @@ Item {
 
             RowLayout {
               id: barInnerRow
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               spacing: 10
 
               ColumnLayout {
@@ -1277,8 +1316,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 1
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 6
+
                   Text {
                     text: "Menu Bar Visibility"
                     font.family: Style.font.family
@@ -1348,9 +1390,10 @@ Item {
 
             RowLayout {
               id: barPosInnerRow
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               spacing: 10
 
               ColumnLayout {
@@ -1358,8 +1401,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 1
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 6
+
                   Text {
                     text: "Bar Edge Position"
                     font.family: Style.font.family
@@ -1429,9 +1475,10 @@ Item {
 
             RowLayout {
               id: barTransInnerRow
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               spacing: 10
 
               ColumnLayout {
@@ -1439,8 +1486,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 1
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 6
+
                   Text {
                     text: "Bar Transparency"
                     font.family: Style.font.family
@@ -1510,9 +1560,10 @@ Item {
 
             RowLayout {
               id: layoutInnerRow
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               spacing: 10
 
               ColumnLayout {
@@ -1520,8 +1571,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 1
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 6
+
                   Text {
                     text: "Workspace Tiling Layout"
                     font.family: Style.font.family

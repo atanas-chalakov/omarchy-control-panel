@@ -345,7 +345,9 @@ Item {
 
         RowLayout {
           id: displayHeroRow
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 14
 

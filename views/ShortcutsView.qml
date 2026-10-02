@@ -230,7 +230,9 @@ Item {
 
       RowLayout {
         id: topBannerRow
-        anchors.fill: parent
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
         anchors.margins: 14
         spacing: 14
 
@@ -255,13 +257,12 @@ Item {
           Layout.minimumWidth: 0
           spacing: 2
 
-          RowLayout {
+          Flow {
             Layout.fillWidth: true
+            width: parent.width
             spacing: 8
+
             Text {
-              Layout.fillWidth: true
-              Layout.minimumWidth: 0
-              elide: Text.ElideRight
               text: "Shortcuts & Keybindings"
               font.family: Style.font.family
               font.pixelSize: 15
@@ -270,8 +271,8 @@ Item {
             }
 
             Rectangle {
-              Layout.preferredHeight: 18
-              Layout.preferredWidth: countText.implicitWidth + 10
+              width: countText.implicitWidth + 10
+              height: 18
               radius: 9
               color: Color.accent
 
@@ -380,16 +381,17 @@ Item {
     }
 
     // Category Tabs Row
-    RowLayout {
+    Flow {
       Layout.fillWidth: true
+      width: parent.width
       spacing: 6
 
       Repeater {
         model: root.categoryList
 
         delegate: Rectangle {
-          Layout.preferredHeight: 28
-          Layout.preferredWidth: catText.implicitWidth + 20
+          height: 28
+          width: catText.implicitWidth + 20
           radius: 14
           color: (root.activeCategory === modelData.id)
             ? Color.pickAlpha("accent.subtle", "#203a30")
@@ -415,9 +417,9 @@ Item {
         }
       }
 
-      Item { Layout.fillWidth: true }
-
       Text {
+        topPadding: 5
+        leftPadding: 4
         text: root.filteredBindings.length + " matching"
         font.family: Style.font.family
         font.pixelSize: 11
@@ -481,14 +483,19 @@ Item {
 
           delegate: Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 42
+            implicitHeight: Math.max(42, bindingRowLayout.implicitHeight + 14)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: Color.pickAlpha("surface.subtle", "#181b1d")
             border.color: Color.pickAlpha("border.subtle", "#262b30")
             border.width: 1
 
             RowLayout {
-              anchors.fill: parent
+              id: bindingRowLayout
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 7
               anchors.leftMargin: 14
               anchors.rightMargin: 14
               spacing: 12
@@ -506,16 +513,15 @@ Item {
 
               // Description
               Text {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: modelData.desc
                 font.family: Style.font.family
                 font.pixelSize: 13
                 font.bold: true
                 color: Color.foreground
-                elide: Text.ElideRight
-                Layout.preferredWidth: 260
+                wrapMode: Text.WordWrap
               }
-
-              Item { Layout.fillWidth: true }
 
               // Keyboard Sequence Badge
               Rectangle {

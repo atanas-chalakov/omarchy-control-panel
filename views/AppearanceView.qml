@@ -171,7 +171,9 @@ Item {
 
       RowLayout {
         id: headerLayout
-        anchors.fill: parent
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
         anchors.margins: 14
         spacing: 14
 
@@ -196,13 +198,12 @@ Item {
           Layout.minimumWidth: 0
           spacing: 2
 
-          RowLayout {
+          Flow {
             Layout.fillWidth: true
+            width: parent.width
             spacing: 8
+
             Text {
-              Layout.fillWidth: true
-              Layout.minimumWidth: 0
-              elide: Text.ElideRight
               text: "Current: " + root.currentTheme
               font.family: Style.font.family
               font.pixelSize: Style.font.title || 15
@@ -393,7 +394,8 @@ Item {
 
             delegate: Rectangle {
               Layout.fillWidth: true
-              Layout.preferredHeight: 40
+              implicitHeight: Math.max(40, themeRowLayout.implicitHeight + 12)
+              Layout.preferredHeight: implicitHeight
               radius: 6
               readonly property bool isCurrent: root.currentTheme.toLowerCase() === modelData.toLowerCase()
               readonly property bool isCursorTarget: root.activeFocusSection && root.focusTarget === "list" && root.focusedIndex === index
@@ -420,7 +422,11 @@ Item {
               }
 
               RowLayout {
-                anchors.fill: parent
+                id: themeRowLayout
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.margins: 6
                 anchors.leftMargin: 12
                 anchors.rightMargin: 12
                 spacing: 10

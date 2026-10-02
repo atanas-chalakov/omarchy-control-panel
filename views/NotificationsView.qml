@@ -251,7 +251,9 @@ Item {
 
         RowLayout {
           id: dndRowLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 14
 
@@ -276,13 +278,12 @@ Item {
             Layout.minimumWidth: 0
             spacing: 3
 
-            RowLayout {
+            Flow {
               Layout.fillWidth: true
+              width: parent.width
               spacing: 8
+
               Text {
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                elide: Text.ElideRight
                 text: "Do Not Disturb (Silence Notifications)"
                 font.family: Style.font.family
                 font.pixelSize: 14
@@ -291,8 +292,8 @@ Item {
               }
 
               Rectangle {
-                Layout.preferredHeight: 18
-                Layout.preferredWidth: dndPillText.implicitWidth + 10
+                width: dndPillText.implicitWidth + 10
+                height: 18
                 radius: 4
                 color: root.dndEnabled ? Color.urgent : Color.accent
 
@@ -446,7 +447,7 @@ Item {
 
         delegate: Rectangle {
           Layout.fillWidth: true
-          implicitHeight: Math.max(56, histColLayout.implicitHeight + 18)
+          implicitHeight: Math.max(56, histRowLayout.implicitHeight + 16)
           Layout.preferredHeight: implicitHeight
           radius: 6
           readonly property bool isSelected: root.activeFocusSection && root.focusedRow === (2 + index)
@@ -461,7 +462,11 @@ Item {
           }
 
           RowLayout {
-            anchors.fill: parent
+            id: histRowLayout
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.margins: 8
             anchors.leftMargin: 12
             anchors.rightMargin: 12
             spacing: 12
@@ -487,11 +492,13 @@ Item {
             ColumnLayout {
               id: histColLayout
               Layout.fillWidth: true
+              Layout.minimumWidth: 0
               spacing: 2
 
-              RowLayout {
+              Flow {
                 Layout.fillWidth: true
-                spacing: 8
+                width: parent.width
+                spacing: 6
 
                 Text {
                   text: modelData.app
@@ -509,7 +516,6 @@ Item {
                 }
 
                 Text {
-                  Layout.fillWidth: true
                   text: modelData.summary
                   font.family: Style.font.family
                   font.pixelSize: 12
@@ -529,12 +535,14 @@ Item {
               Text {
                 visible: modelData.body && modelData.body.length > 0
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 text: root.stripHtml(modelData.body)
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.muted
+                wrapMode: Text.WordWrap
+                maximumLineCount: 2
                 elide: Text.ElideRight
-                maximumLineCount: 1
               }
             }
           }

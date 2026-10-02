@@ -273,7 +273,9 @@ Item {
 
         RowLayout {
           id: heroLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 14
 
@@ -309,9 +311,9 @@ Item {
             Layout.minimumWidth: 0
             spacing: 3
 
-            RowLayout {
+            Flow {
               Layout.fillWidth: true
-              Layout.minimumWidth: 0
+              width: parent.width
               spacing: 8
 
               Text {
@@ -346,7 +348,7 @@ Item {
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11
               color: Color.muted
-              elide: Text.ElideRight
+              wrapMode: Text.WordWrap
             }
           }
 
@@ -391,7 +393,9 @@ Item {
 
         ColumnLayout {
           id: selectorColLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 12
 
@@ -411,9 +415,9 @@ Item {
               Layout.minimumWidth: 0
               spacing: 2
 
-              RowLayout {
+              Flow {
                 Layout.fillWidth: true
-                Layout.minimumWidth: 0
+                width: parent.width
                 spacing: 8
 
                 Text {
@@ -426,13 +430,10 @@ Item {
 
                 Text {
                   visible: selectorCard.isFocused
-                  Layout.fillWidth: true
-                  Layout.minimumWidth: 0
                   text: "• Use [←/→ or h/l] to cycle, [Enter] to set default"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
-                  elide: Text.ElideRight
                 }
               }
 
@@ -443,7 +444,7 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.subtext || 11
                 color: Color.muted
-                elide: Text.ElideRight
+                wrapMode: Text.WordWrap
               }
             }
 
@@ -622,7 +623,9 @@ Item {
 
           ColumnLayout {
             id: providerLayout
-            anchors.fill: parent
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
             anchors.margins: 14
             spacing: 12
 
@@ -663,9 +666,9 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 2
 
-                RowLayout {
+                Flow {
                   Layout.fillWidth: true
-                  Layout.minimumWidth: 0
+                  width: parent.width
                   spacing: 8
 
                   Text {
@@ -681,7 +684,7 @@ Item {
                     height: 18
                     radius: 4
                     color: Color.pickAlpha("accent.subtle", "#1f3b30")
-                    implicitWidth: tierLabelText.implicitWidth + 12
+                    width: tierLabelText.implicitWidth + 12
 
                     Text {
                       id: tierLabelText
@@ -702,7 +705,7 @@ Item {
                   font.family: Style.font.family
                   font.pixelSize: Style.font.subtext || 11
                   color: Color.muted
-                  elide: Text.ElideRight
+                  wrapMode: Text.WordWrap
                 }
               }
 
@@ -823,7 +826,9 @@ Item {
 
               RowLayout {
                 id: authHelpRow
-                anchors.fill: parent
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
                 anchors.margins: 6
                 spacing: 8
 

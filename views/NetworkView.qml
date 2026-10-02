@@ -237,7 +237,9 @@ Item {
 
         RowLayout {
           id: networkHeroRow
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 14
 
@@ -262,13 +264,12 @@ Item {
             Layout.minimumWidth: 0
             spacing: 2
 
-            RowLayout {
+            Flow {
               Layout.fillWidth: true
+              width: parent.width
               spacing: 8
+
               Text {
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                elide: Text.ElideRight
                 text: root.activeConnection ? root.activeConnection.ssid : (root.wifiEnabled ? "Wi-Fi Ready" : "Wi-Fi Disabled")
                 font.family: Style.font.family
                 font.pixelSize: Style.font.title || 16
@@ -338,7 +339,9 @@ Item {
 
         RowLayout {
           id: wifiToggleRowLayout
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 14
 
@@ -362,9 +365,9 @@ Item {
             Layout.minimumWidth: 0
             spacing: 2
 
-            RowLayout {
+            Flow {
               Layout.fillWidth: true
-              Layout.minimumWidth: 0
+              width: parent.width
               spacing: 8
               Text {
                 text: "Wi-Fi Interface"
@@ -375,13 +378,10 @@ Item {
               }
               Text {
                 visible: wifiToggleCard.isFocused
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
                 text: "• Press [Enter/Space or w] to toggle"
                 font.family: Style.font.family
                 font.pixelSize: 11
                 color: Color.accent
-                elide: Text.ElideRight
               }
             }
 
@@ -477,7 +477,10 @@ Item {
 
             RowLayout {
               id: delegateRowLayout
-              anchors.fill: parent
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               anchors.leftMargin: 14
               anchors.rightMargin: 14
               spacing: 12
@@ -502,13 +505,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 2
 
-                RowLayout {
+                Flow {
                   Layout.fillWidth: true
-                  Layout.minimumWidth: 0
+                  width: parent.width
                   spacing: 6
                   Text {
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: 0
                     text: modelData.ssid
                     font.family: Style.font.family
                     font.pixelSize: Style.font.body || 13
@@ -527,7 +528,9 @@ Item {
                   }
                 }
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 8
                   Text {
                     text: (modelData.security && modelData.security.length > 0) ? ("󰌾 " + modelData.security) : "󰌿 Open Network"

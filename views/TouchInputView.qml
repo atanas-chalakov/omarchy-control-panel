@@ -422,7 +422,8 @@ Item {
       Rectangle {
         id: tsCard
         Layout.fillWidth: true
-        Layout.preferredHeight: 90
+        implicitHeight: Math.max(86, tsRow.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
         border.color: (root.activeFocusSection && root.focusedCard === 0) ? Color.accent : "transparent"
@@ -438,7 +439,10 @@ Item {
         }
 
         RowLayout {
-          anchors.fill: parent
+          id: tsRow
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 14
           spacing: 14
 
@@ -461,8 +465,11 @@ Item {
             Layout.fillWidth: true
             spacing: 3
 
-            RowLayout {
+            Flow {
+              Layout.fillWidth: true
+              width: parent.width
               spacing: 8
+
               Text {
                 text: "Touchscreen"
                 font.family: Style.font.family
@@ -540,13 +547,16 @@ Item {
       Rectangle {
         id: tsGesturesCard
         Layout.fillWidth: true
-        Layout.preferredHeight: tsGesturesCol.implicitHeight + 24
+        implicitHeight: tsGesturesCol.implicitHeight + 24
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
         ColumnLayout {
           id: tsGesturesCol
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 12
           spacing: 10
 
@@ -572,9 +582,10 @@ Item {
 
             RowLayout {
               id: tsRowSwipeInner
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               spacing: 10
 
               Text {
@@ -589,8 +600,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 1
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 6
+
                   Text {
                     text: "3-Finger Workspace Swipe"
                     font.family: Style.font.family
@@ -657,9 +671,10 @@ Item {
 
             RowLayout {
               id: tsRowOutputInner
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               spacing: 10
 
               Text {
@@ -674,8 +689,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 1
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 6
+
                   Text {
                     text: "Display Output Mapping"
                     font.family: Style.font.family
@@ -760,13 +778,16 @@ Item {
       Rectangle {
         id: tpCard
         Layout.fillWidth: true
-        Layout.preferredHeight: tpCol.implicitHeight + 24
+        implicitHeight: tpCol.implicitHeight + 24
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
         ColumnLayout {
           id: tpCol
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 12
           spacing: 8
 
@@ -774,7 +795,8 @@ Item {
           Rectangle {
             id: tpRowHeader
             Layout.fillWidth: true
-            Layout.preferredHeight: 38
+            implicitHeight: Math.max(38, tpRowHeaderInner.implicitHeight + 12)
+            Layout.preferredHeight: implicitHeight
             radius: 6
             color: (root.activeFocusSection && root.focusedCard === 3) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
             border.color: (root.activeFocusSection && root.focusedCard === 3) ? Color.accent : "transparent"
@@ -790,9 +812,11 @@ Item {
             }
 
             RowLayout {
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
+              id: tpRowHeaderInner
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               spacing: 8
 
               Text {
@@ -885,9 +909,10 @@ Item {
 
             RowLayout {
               id: tpRowNaturalInner
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               spacing: 10
 
               ColumnLayout {
@@ -895,8 +920,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 1
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 6
+
                   Text {
                     text: "Natural (Inverse) Scrolling"
                     font.family: Style.font.family
@@ -966,9 +994,10 @@ Item {
 
             RowLayout {
               id: tpRowTapInner
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               spacing: 10
 
               ColumnLayout {
@@ -976,8 +1005,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 1
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 6
+
                   Text {
                     text: "Tap to Click (Clickfinger)"
                     font.family: Style.font.family
@@ -1044,9 +1076,10 @@ Item {
 
             RowLayout {
               id: tpRowSpeedInner
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               spacing: 10
 
               ColumnLayout {
@@ -1054,8 +1087,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 1
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 6
+
                   Text {
                     text: "Touchpad Scroll Speed"
                     font.family: Style.font.family
@@ -1156,9 +1192,10 @@ Item {
 
             RowLayout {
               id: tpRowTypingInner
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               spacing: 10
 
               ColumnLayout {
@@ -1166,8 +1203,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 1
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 6
+
                   Text {
                     text: "Disable While Typing"
                     font.family: Style.font.family
@@ -1221,13 +1261,16 @@ Item {
       Rectangle {
         id: sensCard
         Layout.fillWidth: true
-        Layout.preferredHeight: sensCol.implicitHeight + 24
+        implicitHeight: sensCol.implicitHeight + 24
+        Layout.preferredHeight: implicitHeight
         color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
 
         ColumnLayout {
           id: sensCol
-          anchors.fill: parent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
           anchors.margins: 12
           spacing: 10
 
@@ -1250,9 +1293,10 @@ Item {
 
             RowLayout {
               id: sensInnerRow
-              anchors.fill: parent
-              anchors.leftMargin: 8
-              anchors.rightMargin: 8
+              anchors.top: parent.top
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.margins: 8
               spacing: 10
 
               Text {
@@ -1267,8 +1311,11 @@ Item {
                 Layout.minimumWidth: 0
                 spacing: 1
 
-                RowLayout {
+                Flow {
+                  Layout.fillWidth: true
+                  width: parent.width
                   spacing: 6
+
                   Text {
                     text: "Pointer Sensitivity"
                     font.family: Style.font.family
@@ -1371,8 +1418,11 @@ Item {
               Layout.minimumWidth: 0
               spacing: 1
 
-              RowLayout {
+              Flow {
+                Layout.fillWidth: true
+                width: parent.width
                 spacing: 8
+
                 Text {
                   text: "Virtual On-Screen Keyboard"
                   font.family: Style.font.family
