@@ -163,8 +163,8 @@ Item {
     id: window
     title: "Control Panel"
     color: Color.background
-    implicitWidth: root.showDiffInspector ? 1240 : 880
-    implicitHeight: 640
+    implicitWidth: window.screen ? Math.max(960, window.screen.width - 34) : 1886
+    implicitHeight: window.screen ? Math.min(880, Math.max(640, window.screen.height - 100)) : 680
     minimumSize: Qt.size(root.showDiffInspector ? 960 : 720, 520)
 
     onVisibleChanged: {
