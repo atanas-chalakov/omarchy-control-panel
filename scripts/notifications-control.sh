@@ -3,6 +3,7 @@
 
 set -u
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cmd="${1:-get-state}"
 
 get_state() {
@@ -52,6 +53,9 @@ case "$cmd" in
       omarchy-shell notifications toggleDnd >/dev/null 2>&1 || true
       omarchy-shell -q omarchy.indicators refresh >/dev/null 2>&1 || true
     fi
+    if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+      "$SCRIPT_DIR/config-tracker.sh" record-command "notifications" "Toggle Do Not Disturb" "omarchy-shell" "omarchy-shell notifications toggleDnd" "Toggled quiet mode" >/dev/null 2>&1 || true
+    fi
     get_state
     ;;
   set-dnd)
@@ -59,6 +63,9 @@ case "$cmd" in
     if command -v omarchy-shell >/dev/null 2>&1; then
       omarchy-shell notifications setDnd "$val" >/dev/null 2>&1 || true
       omarchy-shell -q omarchy.indicators refresh >/dev/null 2>&1 || true
+    fi
+    if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+      "$SCRIPT_DIR/config-tracker.sh" record-command "notifications" "Do Not Disturb" "omarchy-shell" "omarchy-shell notifications setDnd $val" "Set quiet mode to $val" >/dev/null 2>&1 || true
     fi
     get_state
     ;;
@@ -71,6 +78,9 @@ case "$cmd" in
   clear-history)
     if command -v omarchy-shell >/dev/null 2>&1; then
       omarchy-shell notifications clear >/dev/null 2>&1 || true
+    fi
+    if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+      "$SCRIPT_DIR/config-tracker.sh" record-command "notifications" "Clear Notifications" "omarchy-shell" "omarchy-shell notifications clear" "Cleared notification history" >/dev/null 2>&1 || true
     fi
     get_state
     ;;

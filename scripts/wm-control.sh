@@ -40,7 +40,7 @@ update_persist_lua() {
     snap=$("$SCRIPT_DIR/config-tracker.sh" snapshot "$PERSIST_LUA" 2>/dev/null || true)
   fi
 
-  local anim=$(hyprctl getoption animations:enabled -j 2>/dev/null | jq -r '.bool // true')
+  local anim=$(hyprctl getoption animations:enabled -j 2>/dev/null | jq -r 'if .bool != null then .bool else true end')
   local gaps_in_css=$(hyprctl getoption general:gaps_in -j 2>/dev/null | jq -r '.css // "5 5 5 5"')
   local gaps_in=$(echo "$gaps_in_css" | awk '{print $1}')
   local gaps_out_css=$(hyprctl getoption general:gaps_out -j 2>/dev/null | jq -r '.css // "10 10 10 10"')
@@ -48,7 +48,7 @@ update_persist_lua() {
   local border=$(hyprctl getoption general:border_size -j 2>/dev/null | jq -r '.int // 2')
   local rounding=$(hyprctl getoption decoration:rounding -j 2>/dev/null | jq -r '.int // 0')
   local opacity=$(hyprctl getoption decoration:inactive_opacity -j 2>/dev/null | jq -r '.float // 1.0')
-  local blur=$(hyprctl getoption decoration:blur:enabled -j 2>/dev/null | jq -r '.bool // false')
+  local blur=$(hyprctl getoption decoration:blur:enabled -j 2>/dev/null | jq -r 'if .bool != null then .bool else false end')
 
   cat > "$PERSIST_LUA" << EOF
 -- Omarchy Window Manager Settings
@@ -77,7 +77,7 @@ EOF
 }
 
 cmd_get_state() {
-  local anim=$(hyprctl getoption animations:enabled -j 2>/dev/null | jq -r '.bool // true')
+  local anim=$(hyprctl getoption animations:enabled -j 2>/dev/null | jq -r 'if .bool != null then .bool else true end')
   local gaps_in_css=$(hyprctl getoption general:gaps_in -j 2>/dev/null | jq -r '.css // "5 5 5 5"')
   local gaps_in=$(echo "$gaps_in_css" | awk '{print $1}')
   local gaps_out_css=$(hyprctl getoption general:gaps_out -j 2>/dev/null | jq -r '.css // "10 10 10 10"')
@@ -85,7 +85,7 @@ cmd_get_state() {
   local border=$(hyprctl getoption general:border_size -j 2>/dev/null | jq -r '.int // 2')
   local rounding=$(hyprctl getoption decoration:rounding -j 2>/dev/null | jq -r '.int // 0')
   local opacity=$(hyprctl getoption decoration:inactive_opacity -j 2>/dev/null | jq -r '.float // 1.0')
-  local blur=$(hyprctl getoption decoration:blur:enabled -j 2>/dev/null | jq -r '.bool // false')
+  local blur=$(hyprctl getoption decoration:blur:enabled -j 2>/dev/null | jq -r 'if .bool != null then .bool else false end')
 
   local bar_hidden="false"
   if [[ -f "$HOME/.local/state/omarchy/toggles/bar-off" ]]; then
@@ -99,7 +99,7 @@ cmd_get_state() {
   if [[ -f "$shell_json" ]]; then
     bar_pos=$(jq -r '.bar.position // "top"' "$shell_json" 2>/dev/null || echo "top")
     bar_trans=$(jq -r '.bar.transparent // false' "$shell_json" 2>/dev/null || echo "false")
-    show_pct=$(jq -r '[.bar.layout.right[]? | select(.id == "omarchy.power") | .showPercentage] | first // true' "$shell_json" 2>/dev/null || echo "true")
+    show_pct=$(jq -r '[.bar.layout.right[]? | select(.id == "omarchy.power") | .showPercentage] | if first != null then first else true end' "$shell_json" 2>/dev/null || echo "true")
   fi
 
   local single_aspect="false"
@@ -191,37 +191,70 @@ case "${1:-get-state}" in
   toggle-bar)
     omarchy-toggle bar-off toggle
     omarchy-shell -q omarchy.bar syncHidden 2>/dev/null || true
+    if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+      "$SCRIPT_DIR/config-tracker.sh" record-command "windows" "Toggle Omarchy Bar" "omarchy-shell" "omarchy-toggle bar-off toggle" "Toggled bar visibility" >/dev/null 2>&1 || true
+    fi
     cmd_get_state
     ;;
 
   set-bar-position)
     pos="${2:-top}"
+    shell_json="$HOME/.config/omarchy/shell.json"
+    snap=""
+    if [[ -x "$SCRIPT_DIR/config-tracker.sh" && -f "$shell_json" ]]; then
+      snap=$("$SCRIPT_DIR/config-tracker.sh" snapshot "$shell_json" 2>/dev/null || true)
+    fi
     omarchy bar position "$pos" 2>/dev/null || true
+    if [[ -n "$snap" && -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+      "$SCRIPT_DIR/config-tracker.sh" record "windows" "Bar Position ($pos)" "$shell_json" "$snap" >/dev/null 2>&1 || true
+    fi
     cmd_get_state
     ;;
 
   toggle-bar-transparent)
-    cur=$(jq -r '.bar.transparent // false' "$HOME/.config/omarchy/shell.json" 2>/dev/null || echo "false")
+    shell_json="$HOME/.config/omarchy/shell.json"
+    snap=""
+    if [[ -x "$SCRIPT_DIR/config-tracker.sh" && -f "$shell_json" ]]; then
+      snap=$("$SCRIPT_DIR/config-tracker.sh" snapshot "$shell_json" 2>/dev/null || true)
+    fi
+    cur=$(jq -r '.bar.transparent // false' "$shell_json" 2>/dev/null || echo "false")
     if [[ "$cur" == "true" ]]; then
       omarchy bar transparent false 2>/dev/null || true
     else
       omarchy bar transparent true 2>/dev/null || true
     fi
+    if [[ -n "$snap" && -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+      "$SCRIPT_DIR/config-tracker.sh" record "windows" "Bar Transparency" "$shell_json" "$snap" >/dev/null 2>&1 || true
+    fi
     cmd_get_state
     ;;
 
   toggle-battery-percentage)
+    shell_json="$HOME/.config/omarchy/shell.json"
+    snap=""
+    if [[ -x "$SCRIPT_DIR/config-tracker.sh" && -f "$shell_json" ]]; then
+      snap=$("$SCRIPT_DIR/config-tracker.sh" snapshot "$shell_json" 2>/dev/null || true)
+    fi
     omarchy-shell omarchy.power togglePercentage 2>/dev/null || true
+    if [[ -n "$snap" && -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+      "$SCRIPT_DIR/config-tracker.sh" record "windows" "Battery Percentage Indicator" "$shell_json" "$snap" >/dev/null 2>&1 || true
+    fi
     cmd_get_state
     ;;
 
   toggle-single-window-aspect)
     omarchy-hyprland-window-single-square-aspect-toggle >/dev/null 2>&1 || true
+    if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+      "$SCRIPT_DIR/config-tracker.sh" record-command "windows" "Single Window Aspect Ratio" "hyprland" "omarchy-hyprland-window-single-square-aspect-toggle" "Toggled square aspect ratio" >/dev/null 2>&1 || true
+    fi
     cmd_get_state
     ;;
 
   toggle-workspace-layout)
     omarchy-hyprland-workspace-layout-toggle >/dev/null 2>&1 || true
+    if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+      "$SCRIPT_DIR/config-tracker.sh" record-command "windows" "Workspace Layout" "hyprland" "omarchy-hyprland-workspace-layout-toggle" "Switched workspace tiling layout" >/dev/null 2>&1 || true
+    fi
     cmd_get_state
     ;;
 

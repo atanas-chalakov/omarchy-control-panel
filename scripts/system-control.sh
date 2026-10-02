@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cmd="${1:-}"
 
 case "$cmd" in
@@ -22,7 +23,17 @@ case "$cmd" in
   theme-set)
     target="${2:-}"
     if [[ -n "$target" ]]; then
+      theme_file="$HOME/.local/state/omarchy/current/theme.name"
+      snap=""
+      if [[ -x "$SCRIPT_DIR/config-tracker.sh" && -f "$theme_file" ]]; then
+        snap=$("$SCRIPT_DIR/config-tracker.sh" snapshot "$theme_file" 2>/dev/null || true)
+      fi
       omarchy theme set "$target" >/dev/null 2>&1 || true
+      if [[ -n "$snap" && -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+        "$SCRIPT_DIR/config-tracker.sh" record "appearance" "Theme changed to $target" "$theme_file" "$snap" >/dev/null 2>&1 || true
+      elif [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+        "$SCRIPT_DIR/config-tracker.sh" record-command "appearance" "Theme changed to $target" "omarchy-theme" "omarchy theme set $target" "Switched active theme to $target" >/dev/null 2>&1 || true
+      fi
     fi
     ;;
 
@@ -122,6 +133,9 @@ case "$cmd" in
     sink_id="${2:-}"
     if [[ -n "$sink_id" ]]; then
       wpctl set-default "$sink_id" >/dev/null 2>&1 || true
+      if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+        "$SCRIPT_DIR/config-tracker.sh" record-command "sound" "Default Audio Output Device" "wireplumber" "wpctl set-default $sink_id" "Set default audio output device" >/dev/null 2>&1 || true
+      fi
     fi
     ;;
 
@@ -145,6 +159,9 @@ case "$cmd" in
     source_id="${2:-}"
     if [[ -n "$source_id" ]]; then
       wpctl set-default "$source_id" >/dev/null 2>&1 || true
+      if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+        "$SCRIPT_DIR/config-tracker.sh" record-command "sound" "Default Audio Input Device" "wireplumber" "wpctl set-default $source_id" "Set default audio input device" >/dev/null 2>&1 || true
+      fi
     fi
     ;;
 

@@ -31,6 +31,17 @@ Rectangle {
   property string activeFile: ""
   property string activeDisplayFile: ""
 
+  property bool pendingRefreshLatest: false
+
+  // Reactive watcher for real-time diff file writes
+  FileView {
+    id: latestDiffWatcher
+    path: "/tmp/omarchy-control-panel/latest.json"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: root.refresh()
+  }
+
   onActiveCategoryChanged: {
     refreshCategoryFile()
   }
@@ -42,10 +53,13 @@ Rectangle {
   }
 
   function refreshLatest() {
-    if (!latestProcess.running && pluginPath.length > 0) {
-      latestProcess.command = [pluginPath + "/scripts/config-tracker.sh", "get-latest"]
-      latestProcess.running = true
+    if (pluginPath.length === 0) return
+    if (latestProcess.running) {
+      pendingRefreshLatest = true
+      return
     }
+    latestProcess.command = [pluginPath + "/scripts/config-tracker.sh", "get-latest"]
+    latestProcess.running = true
   }
 
   function refreshHistory() {
@@ -105,8 +119,17 @@ Rectangle {
             root.hasDiff = true
             root.activeFile = parsed.file || ""
             root.activeDisplayFile = parsed.displayFile || ""
+          } else if (parsed && !parsed.hasDiff) {
+            root.hasDiff = false
+            root.latestDiff = null
           }
         } catch (e) {}
+      }
+    }
+    onRunningChanged: {
+      if (!running && root.pendingRefreshLatest) {
+        root.pendingRefreshLatest = false
+        root.refreshLatest()
       }
     }
   }

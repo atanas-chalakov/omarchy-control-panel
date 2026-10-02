@@ -154,7 +154,14 @@ Item {
   // Set Theme Process
   Process {
     id: setThemeProcess
-    onRunningChanged: if (!running) root.refresh()
+    onRunningChanged: {
+      if (!running) {
+        root.refresh()
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
+      }
+    }
   }
 
   ColumnLayout {

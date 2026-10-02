@@ -20,10 +20,13 @@ CATEGORY_FILES = {
     "region": HOME / ".local/state/omarchy/toggles/hypr/keyboard-layout.lua",
     "power": HOME / ".config/omarchy/shell.json",
     "defaults": HOME / ".config/mimeapps.list",
-    "appearance": HOME / ".config/omarchy/shell.json",
+    "appearance": (HOME / ".local/state/omarchy/current/theme.name") if (HOME / ".local/state/omarchy/current/theme.name").exists() else (HOME / ".config/omarchy/shell.json"),
     "displays": HOME / ".config/hypr/monitors.lua",
     "shortcuts": HOME / ".config/hypr/bindings.lua",
     "notifications": HOME / ".config/omarchy/shell.json",
+    "sound": HOME / ".config/omarchy/shell.json",
+    "bluetooth": HOME / ".config/omarchy/shell.json",
+    "network": HOME / ".config/omarchy/shell.json",
     "updates": Path("/var/log/pacman.log"),
     "about": HOME / ".config/omarchy/shell.json",
 }
@@ -256,11 +259,15 @@ def main():
             sys.exit(1)
         cmd_record(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
     elif cmd == "record-command":
-        if len(sys.argv) < 5:
+        if len(sys.argv) < 6:
             print("Missing arguments for record-command: category title target command [note]")
             sys.exit(1)
-        note = sys.argv[5] if len(sys.argv) > 5 else ""
-        cmd_record_command(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[4] if len(sys.argv) <= 5 else sys.argv[4] + " " + sys.argv[5], note)
+        category = sys.argv[2]
+        title = sys.argv[3]
+        target = sys.argv[4]
+        command = sys.argv[5]
+        note = sys.argv[6] if len(sys.argv) > 6 else ""
+        cmd_record_command(category, title, target, command, note)
     elif cmd == "get-latest":
         cmd_get_latest()
     elif cmd == "get-history":

@@ -12,6 +12,7 @@ Item {
 
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
+  property var panelRoot: null
   property bool wifiEnabled: true
   property var activeConnection: null
   property var networks: []
@@ -169,7 +170,14 @@ Item {
   // Toggle Wi-Fi Process
   Process {
     id: toggleWifiProcess
-    onRunningChanged: if (!running) root.refresh()
+    onRunningChanged: {
+      if (!running) {
+        root.refresh()
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
+      }
+    }
   }
 
   // Rescan Process
@@ -181,13 +189,27 @@ Item {
   // Connect Process
   Process {
     id: connectProcess
-    onRunningChanged: if (!running) root.refresh()
+    onRunningChanged: {
+      if (!running) {
+        root.refresh()
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
+      }
+    }
   }
 
   // Disconnect Process
   Process {
     id: disconnectProcess
-    onRunningChanged: if (!running) root.refresh()
+    onRunningChanged: {
+      if (!running) {
+        root.refresh()
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
+      }
+    }
   }
 
   ScrollView {

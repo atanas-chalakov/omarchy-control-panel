@@ -18,7 +18,7 @@ Item {
   readonly property string pluginPath: manifest && manifest.__sourceDir ? manifest.__sourceDir : "/home/ac/.config/omarchy/plugins/ac.control-panel"
 
   function notifySettingChanged() {
-    if (diffInspectorLoader && diffInspectorLoader.item && root.showDiffInspector) {
+    if (diffInspectorLoader && diffInspectorLoader.item) {
       diffInspectorLoader.item.refresh()
     }
   }
@@ -126,8 +126,14 @@ Item {
         ensureSidebarCategoryVisible(idx)
       })
     }
-    if (diffInspectorLoader && diffInspectorLoader.item && root.showDiffInspector) {
+    if (diffInspectorLoader && diffInspectorLoader.item) {
       diffInspectorLoader.item.refreshCategoryFile()
+    }
+  }
+
+  onShowDiffInspectorChanged: {
+    if (showDiffInspector && diffInspectorLoader && diffInspectorLoader.item) {
+      diffInspectorLoader.item.refresh()
     }
   }
 
@@ -773,7 +779,7 @@ Item {
           Loader {
             id: diffInspectorLoader
             visible: root.showDiffInspector
-            active: root.showDiffInspector
+            active: true
             Layout.preferredWidth: root.showDiffInspector ? 360 : 0
             Layout.minimumWidth: root.showDiffInspector ? 360 : 0
             Layout.maximumWidth: root.showDiffInspector ? 380 : 0

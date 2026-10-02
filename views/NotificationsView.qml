@@ -12,6 +12,7 @@ Item {
 
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
+  property var panelRoot: null
 
   property bool activeFocusSection: false
   property int focusedRow: 0   // 0: DND Toggle, 1: Actions Row, 2+: History Items
@@ -180,7 +181,14 @@ Item {
   // Action Process
   Process {
     id: actionProcess
-    onRunningChanged: if (!running) root.refresh()
+    onRunningChanged: {
+      if (!running) {
+        root.refresh()
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
+      }
+    }
   }
 
   ScrollView {

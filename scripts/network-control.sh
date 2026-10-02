@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cmd="${1:-get-state}"
 
 case "$cmd" in
@@ -70,8 +71,13 @@ case "$cmd" in
     current=$(nmcli -t radio wifi 2>/dev/null || echo "disabled")
     if [[ "$current" == "enabled" ]]; then
       nmcli radio wifi off >/dev/null 2>&1 || true
+      action="off"
     else
       nmcli radio wifi on >/dev/null 2>&1 || true
+      action="on"
+    fi
+    if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+      "$SCRIPT_DIR/config-tracker.sh" record-command "network" "Wi-Fi Power ($action)" "NetworkManager" "nmcli radio wifi $action" "Turned Wi-Fi $action" >/dev/null 2>&1 || true
     fi
     ;;
 
@@ -88,6 +94,9 @@ case "$cmd" in
       else
         nmcli dev wifi connect "$ssid" >/dev/null 2>&1 || true
       fi
+      if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+        "$SCRIPT_DIR/config-tracker.sh" record-command "network" "Wi-Fi Connection ($ssid)" "NetworkManager" "nmcli dev wifi connect $ssid" "Connected to SSID $ssid" >/dev/null 2>&1 || true
+      fi
     fi
     ;;
 
@@ -95,6 +104,9 @@ case "$cmd" in
     active_dev=$(nmcli -t -f DEVICE,TYPE,STATE dev 2>/dev/null | awk -F: '$2=="wifi" && $3=="connected"{print $1; exit}' || echo "")
     if [[ -n "$active_dev" ]]; then
       nmcli dev disconnect "$active_dev" >/dev/null 2>&1 || true
+      if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+        "$SCRIPT_DIR/config-tracker.sh" record-command "network" "Wi-Fi Disconnect ($active_dev)" "NetworkManager" "nmcli dev disconnect $active_dev" "Disconnected from Wi-Fi" >/dev/null 2>&1 || true
+      fi
     fi
     ;;
 

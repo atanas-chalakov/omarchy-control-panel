@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cmd="${1:-get-state}"
 
 case "$cmd" in
@@ -55,8 +56,13 @@ case "$cmd" in
     powered=$(echo "$show_out" | grep -E "^[[:space:]]*Powered:" | awk '{print $2}' || echo "no")
     if [[ "$powered" == "yes" ]]; then
       bluetoothctl power off >/dev/null 2>&1 || true
+      action="off"
     else
       bluetoothctl power on >/dev/null 2>&1 || true
+      action="on"
+    fi
+    if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+      "$SCRIPT_DIR/config-tracker.sh" record-command "bluetooth" "Bluetooth Power ($action)" "bluetoothctl" "bluetoothctl power $action" "Turned Bluetooth $action" >/dev/null 2>&1 || true
     fi
     ;;
 
@@ -70,8 +76,13 @@ case "$cmd" in
     if [[ -n "$mac" ]]; then
       if bluetoothctl devices Connected 2>/dev/null | grep -q "$mac"; then
         bluetoothctl disconnect "$mac" >/dev/null 2>&1 || true
+        act="disconnect"
       else
         bluetoothctl connect "$mac" >/dev/null 2>&1 || true
+        act="connect"
+      fi
+      if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+        "$SCRIPT_DIR/config-tracker.sh" record-command "bluetooth" "Device Connection ($mac)" "bluetoothctl" "bluetoothctl $act $mac" "Triggered $act for $mac" >/dev/null 2>&1 || true
       fi
     fi
     ;;
@@ -82,6 +93,9 @@ case "$cmd" in
       bluetoothctl pair "$mac" >/dev/null 2>&1 || true
       bluetoothctl trust "$mac" >/dev/null 2>&1 || true
       bluetoothctl connect "$mac" >/dev/null 2>&1 || true
+      if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+        "$SCRIPT_DIR/config-tracker.sh" record-command "bluetooth" "Device Pairing ($mac)" "bluetoothctl" "bluetoothctl pair $mac" "Paired and connected $mac" >/dev/null 2>&1 || true
+      fi
     fi
     ;;
 
@@ -89,6 +103,9 @@ case "$cmd" in
     mac="${2:-}"
     if [[ -n "$mac" ]]; then
       bluetoothctl remove "$mac" >/dev/null 2>&1 || true
+      if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+        "$SCRIPT_DIR/config-tracker.sh" record-command "bluetooth" "Device Removal ($mac)" "bluetoothctl" "bluetoothctl remove $mac" "Removed device $mac" >/dev/null 2>&1 || true
+      fi
     fi
     ;;
 

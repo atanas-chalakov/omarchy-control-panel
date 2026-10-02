@@ -37,12 +37,11 @@ update_persist_lua() {
     snap=$("$SCRIPT_DIR/config-tracker.sh" snapshot "$PERSIST_LUA" 2>/dev/null || true)
   fi
 
-  # Read current hyprctl values
-  local nat_scroll=$(hyprctl getoption input:touchpad:natural_scroll -j 2>/dev/null | jq -r '.bool // false')
-  local clickfinger=$(hyprctl getoption input:touchpad:clickfinger_behavior -j 2>/dev/null | jq -r '.bool // true')
+  local nat_scroll=$(hyprctl getoption input:touchpad:natural_scroll -j 2>/dev/null | jq -r 'if .bool != null then .bool else false end')
+  local clickfinger=$(hyprctl getoption input:touchpad:clickfinger_behavior -j 2>/dev/null | jq -r 'if .bool != null then .bool else true end')
   local scroll_factor=$(hyprctl getoption input:touchpad:scroll_factor -j 2>/dev/null | jq -r '.float // 0.4')
-  local dwt=$(hyprctl getoption input:touchpad:disable_while_typing -j 2>/dev/null | jq -r '.bool // false')
-  local swipe_touch=$(hyprctl getoption gestures:workspace_swipe_touch -j 2>/dev/null | jq -r '.bool // false')
+  local dwt=$(hyprctl getoption input:touchpad:disable_while_typing -j 2>/dev/null | jq -r 'if .bool != null then .bool else false end')
+  local swipe_touch=$(hyprctl getoption gestures:workspace_swipe_touch -j 2>/dev/null | jq -r 'if .bool != null then .bool else false end')
   local sens=$(hyprctl getoption input:sensitivity -j 2>/dev/null | jq -r '.float // 0.0')
   local touch_out=$(hyprctl getoption input:touchdevice:output -j 2>/dev/null | jq -r '.str // "[[Auto]]"')
 
@@ -113,11 +112,11 @@ cmd_get_state() {
   fi
 
   # Options
-  local nat_scroll=$(hyprctl getoption input:touchpad:natural_scroll -j 2>/dev/null | jq -r '.bool // false')
-  local clickfinger=$(hyprctl getoption input:touchpad:clickfinger_behavior -j 2>/dev/null | jq -r '.bool // true')
+  local nat_scroll=$(hyprctl getoption input:touchpad:natural_scroll -j 2>/dev/null | jq -r 'if .bool != null then .bool else false end')
+  local clickfinger=$(hyprctl getoption input:touchpad:clickfinger_behavior -j 2>/dev/null | jq -r 'if .bool != null then .bool else true end')
   local scroll_factor=$(hyprctl getoption input:touchpad:scroll_factor -j 2>/dev/null | jq -r '.float // 0.4')
-  local dwt=$(hyprctl getoption input:touchpad:disable_while_typing -j 2>/dev/null | jq -r '.bool // false')
-  local swipe_touch=$(hyprctl getoption gestures:workspace_swipe_touch -j 2>/dev/null | jq -r '.bool // false')
+  local dwt=$(hyprctl getoption input:touchpad:disable_while_typing -j 2>/dev/null | jq -r 'if .bool != null then .bool else false end')
+  local swipe_touch=$(hyprctl getoption gestures:workspace_swipe_touch -j 2>/dev/null | jq -r 'if .bool != null then .bool else false end')
   local sens=$(hyprctl getoption input:sensitivity -j 2>/dev/null | jq -r '.float // 0.0')
   local touch_out=$(hyprctl getoption input:touchdevice:output -j 2>/dev/null | jq -r '.str // "[[Auto]]"')
 
@@ -183,6 +182,9 @@ case "${1:-get-state}" in
     elif command -v omarchy-toggle-input-device >/dev/null 2>&1; then
       omarchy-toggle-input-device touchscreen "$action"
     fi
+    if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+      "$SCRIPT_DIR/config-tracker.sh" record-command "input" "Toggle Touchscreen" "hyprland" "omarchy-toggle-input-device touchscreen $action" "Toggled touchscreen input" >/dev/null 2>&1 || true
+    fi
     cmd_get_state
     ;;
 
@@ -192,6 +194,9 @@ case "${1:-get-state}" in
       omarchy-toggle-touchpad "$action"
     elif command -v omarchy-toggle-input-device >/dev/null 2>&1; then
       omarchy-toggle-input-device touchpad "$action"
+    fi
+    if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+      "$SCRIPT_DIR/config-tracker.sh" record-command "input" "Toggle Touchpad" "hyprland" "omarchy-toggle-input-device touchpad $action" "Toggled touchpad input" >/dev/null 2>&1 || true
     fi
     cmd_get_state
     ;;

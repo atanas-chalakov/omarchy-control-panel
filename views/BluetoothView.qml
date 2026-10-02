@@ -12,6 +12,7 @@ Item {
 
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
+  property var panelRoot: null
   property bool powered: true
   property bool discovering: false
   property var adapter: ({ name: "Bluetooth Adapter", mac: "" })
@@ -185,7 +186,14 @@ Item {
   // Toggle Power Process
   Process {
     id: togglePowerProcess
-    onRunningChanged: if (!running) root.refresh()
+    onRunningChanged: {
+      if (!running) {
+        root.refresh()
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
+      }
+    }
   }
 
   // Scan Process
@@ -197,13 +205,27 @@ Item {
   // Device Toggle Process
   Process {
     id: deviceToggleProcess
-    onRunningChanged: if (!running) root.refresh()
+    onRunningChanged: {
+      if (!running) {
+        root.refresh()
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
+      }
+    }
   }
 
   // Device Pair Process
   Process {
     id: devicePairProcess
-    onRunningChanged: if (!running) root.refresh()
+    onRunningChanged: {
+      if (!running) {
+        root.refresh()
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
+      }
+    }
   }
 
   ScrollView {

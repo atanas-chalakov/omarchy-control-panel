@@ -12,6 +12,7 @@ Item {
 
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
+  property var panelRoot: null
   property int brightness: 100
   property var monitors: []
   property var activeMonitor: monitors.length > 0 ? monitors[0] : null
@@ -272,30 +273,63 @@ Item {
   // Set Brightness Process
   Process {
     id: setBrightnessProcess
+    onRunningChanged: {
+      if (!running && panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+        panelRoot.notifySettingChanged()
+      }
+    }
   }
 
   // Set Nightlight Toggle Process
   Process {
     id: setNightlightToggleProcess
-    onRunningChanged: if (!running) root.refresh()
+    onRunningChanged: {
+      if (!running) {
+        root.refresh()
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
+      }
+    }
   }
 
   // Set Nightlight Temp Process
   Process {
     id: setNightlightTempProcess
-    onRunningChanged: if (!running) root.refresh()
+    onRunningChanged: {
+      if (!running) {
+        root.refresh()
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
+      }
+    }
   }
 
   // Set Scale Process
   Process {
     id: setScaleProcess
-    onRunningChanged: if (!running) root.refresh()
+    onRunningChanged: {
+      if (!running) {
+        root.refresh()
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
+      }
+    }
   }
 
   // Set Mode Process
   Process {
     id: setModeProcess
-    onRunningChanged: if (!running) root.refresh()
+    onRunningChanged: {
+      if (!running) {
+        root.refresh()
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
+      }
+    }
   }
 
   ScrollView {
