@@ -157,8 +157,6 @@ Item {
     id: window
     title: "Control Panel"
     color: Color.background
-    width: root.showDiffInspector ? 1240 : 880
-    height: 640
     implicitWidth: root.showDiffInspector ? 1240 : 880
     implicitHeight: 640
     minimumSize: Qt.size(root.showDiffInspector ? 960 : 720, 520)

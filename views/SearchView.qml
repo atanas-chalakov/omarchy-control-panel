@@ -406,7 +406,9 @@ Item {
 
   Component.onCompleted: {
     Qt.callLater(function() {
-      focusToInput()
+      if (typeof root !== "undefined" && root && typeof root.focusToInput === "function") {
+        root.focusToInput()
+      }
     })
   }
 
