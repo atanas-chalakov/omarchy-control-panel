@@ -31,6 +31,17 @@ Item {
   property string customScaleError: ""
   property Item customScaleInputItem: null
 
+  property int scaleFocusIndex: -1
+  property int modeFocusIndex: -1
+
+  onCurrentScaleChanged: {
+    if (!customScaleOpen) scaleFocusIndex = currentScaleIndex()
+  }
+
+  onActiveMonitorChanged: {
+    if (!customModeOpen) modeFocusIndex = currentModeIndex()
+  }
+
   readonly property bool isCustomScaleActive: {
     for (var i = 0; i < scaleOptions.length; i++) {
       if (Math.abs(root.currentScale - Number(scaleOptions[i].value)) < 0.05) {
@@ -85,6 +96,8 @@ Item {
     root.customModeError = ""
     root.setMode(raw)
     root.customModeOpen = false
+    root.modeFocusIndex = root.displayModes.length
+    root.forceActiveFocus()
   }
 
   function applyCustomScale() {
@@ -107,19 +120,15 @@ Item {
     root.customScaleError = ""
     root.setScale(String(num))
     root.customScaleOpen = false
+    root.scaleFocusIndex = root.scaleOptions.length
+    root.forceActiveFocus()
   }
 
   readonly property var scaleOptions: [
     { label: "100%", value: "1" },
-    { label: "110%", value: "1.1" },
-    { label: "115%", value: "1.15" },
     { label: "125%", value: "1.25" },
-    { label: "133%", value: "1.33" },
     { label: "150%", value: "1.5" },
-    { label: "160%", value: "1.6" },
-    { label: "175%", value: "1.75" },
-    { label: "200%", value: "2" },
-    { label: "225%", value: "2.25" }
+    { label: "200%", value: "2" }
   ]
 
   readonly property var nightlightOptions: [
@@ -134,83 +143,74 @@ Item {
     { label: "6500K (Daylight)", temp: 6500 }
   ]
 
-  readonly property var standardResolutions: [
-    { label: "3840 × 2160 (4K UHD)", w: 3840, h: 2160, tag: "4K" },
-    { label: "3440 × 1440 (UWQHD 21:9)", w: 3440, h: 1440, tag: "UW" },
-    { label: "2560 × 1600 (WQXGA 16:10)", w: 2560, h: 1600, tag: "16:10" },
-    { label: "2560 × 1440 (QHD 2K)", w: 2560, h: 1440, tag: "2K" },
-    { label: "2560 × 1080 (UW-FHD 21:9)", w: 2560, h: 1080, tag: "UW" },
-    { label: "1920 × 1200 (WUXGA 16:10)", w: 1920, h: 1200, tag: "16:10" },
-    { label: "1920 × 1080 (FHD 1080p)", w: 1920, h: 1080, tag: "FHD" },
-    { label: "1680 × 1050 (WSXGA+ 16:10)", w: 1680, h: 1050, tag: "16:10" },
-    { label: "1600 × 900 (HD+)", w: 1600, h: 900, tag: "HD+" },
-    { label: "1440 × 900 (WXGA+ 16:10)", w: 1440, h: 900, tag: "16:10" },
-    { label: "1366 × 768 (FWXGA)", w: 1366, h: 768, tag: "WXGA" },
-    { label: "1280 × 800 (WXGA 16:10)", w: 1280, h: 800, tag: "16:10" },
-    { label: "1280 × 720 (HD 720p)", w: 1280, h: 720, tag: "HD" },
+  readonly property var commonFallbacks: [
+    { label: "2560 × 1440 (2K QHD)", w: 2560, h: 1440, tag: "2K" },
+    { label: "1920 × 1080 (FHD 1080p)", w: 1920, h: 1080, tag: "1080p" },
+    { label: "1280 × 720 (HD 720p)", w: 1280, h: 720, tag: "720p" },
     { label: "1024 × 768 (XGA 4:3)", w: 1024, h: 768, tag: "4:3" }
   ]
 
   readonly property var displayModes: {
     var list = []
     var seen = {}
-    var targetHz = (activeMonitor && activeMonitor.refreshRate) ? activeMonitor.refreshRate : 60
+    var targetHz = (activeMonitor && activeMonitor.refreshRate) ? Math.round(activeMonitor.refreshRate) : 60
+    var nativeW = 0
+    var nativeH = 0
 
-    if (activeMonitor && Array.isArray(activeMonitor.modes)) {
-      for (var i = 0; i < activeMonitor.modes.length; i++) {
-        var raw = String(activeMonitor.modes[i] || "").trim()
-        var clean = raw.replace(/Hz$/i, "")
-        var match = clean.match(/^(\d+)x(\d+)(?:@([\d.]+))?/)
-        if (match) {
-          var w = parseInt(match[1])
-          var h = parseInt(match[2])
-          var hz = match[3] ? Math.round(parseFloat(match[3])) : targetHz
-          var key = w + "x" + h
-          if (!seen[key]) {
-            seen[key] = true
-            list.push({
-              label: "★ Native (" + w + " × " + h + " @ " + hz + "Hz)",
-              mode: clean,
-              w: w,
-              h: h,
-              hz: hz,
-              isNative: true
-            })
-          }
-        }
+    // 1. Native display mode
+    if (activeMonitor && Array.isArray(activeMonitor.modes) && activeMonitor.modes.length > 0) {
+      var raw = String(activeMonitor.modes[0] || "").trim()
+      var clean = raw.replace(/Hz$/i, "")
+      var match = clean.match(/^(\d+)x(\d+)(?:@([\d.]+))?/)
+      if (match) {
+        nativeW = parseInt(match[1])
+        nativeH = parseInt(match[2])
+        var hz = match[3] ? Math.round(parseFloat(match[3])) : targetHz
+        var key = nativeW + "x" + nativeH
+        seen[key] = true
+        list.push({
+          label: "★ Native (" + nativeW + " × " + nativeH + " @ " + hz + "Hz)",
+          mode: clean,
+          w: nativeW,
+          h: nativeH,
+          hz: hz,
+          isNative: true
+        })
       }
     }
 
-    if (activeMonitor && (!Array.isArray(activeMonitor.modes) || activeMonitor.modes.length === 0) && activeMonitor.width && activeMonitor.height) {
-      var mw = activeMonitor.width
-      var mh = activeMonitor.height
+    if (list.length === 0 && activeMonitor && activeMonitor.width && activeMonitor.height) {
+      nativeW = activeMonitor.width
+      nativeH = activeMonitor.height
       var mhz = activeMonitor.refreshRate ? Math.round(activeMonitor.refreshRate) : targetHz
-      var mkey = mw + "x" + mh
+      var mkey = nativeW + "x" + nativeH
       seen[mkey] = true
       list.push({
-        label: "★ Native (" + mw + " × " + mh + " @ " + mhz + "Hz)",
-        mode: mw + "x" + mh + "@" + mhz,
-        w: mw,
-        h: mh,
+        label: "★ Native (" + nativeW + " × " + nativeH + " @ " + mhz + "Hz)",
+        mode: nativeW + "x" + nativeH + "@" + mhz,
+        w: nativeW,
+        h: nativeH,
         hz: mhz,
         isNative: true
       })
     }
 
-    for (var j = 0; j < standardResolutions.length; j++) {
-      var item = standardResolutions[j]
-      var k = item.w + "x" + item.h
-      if (!seen[k]) {
+    // 2. Add at most 1 or 2 standard lower fallback resolutions
+    var fallbacksAdded = 0
+    for (var j = 0; j < commonFallbacks.length && fallbacksAdded < 2; j++) {
+      var fb = commonFallbacks[j]
+      var k = fb.w + "x" + fb.h
+      if (!seen[k] && (!nativeW || (fb.w < nativeW && fb.h <= nativeH))) {
         seen[k] = true
-        var modeStr = item.w + "x" + item.h + "@" + targetHz
         list.push({
-          label: item.label,
-          mode: modeStr,
-          w: item.w,
-          h: item.h,
+          label: fb.label,
+          mode: fb.w + "x" + fb.h + "@" + targetHz,
+          w: fb.w,
+          h: fb.h,
           hz: targetHz,
           isNative: false
         })
+        fallbacksAdded++
       }
     }
 
@@ -244,23 +244,30 @@ Item {
   }
 
   function currentScaleIndex() {
+    if (customScaleOpen || isCustomScaleActive) {
+      return scaleOptions.length
+    }
     var best = 0
     var minDiff = 999
     for (var i = 0; i < scaleOptions.length; i++) {
       var diff = Math.abs(root.currentScale - Number(scaleOptions[i].value))
       if (diff < minDiff) { minDiff = diff; best = i }
     }
+    if (minDiff > 0.05) return scaleOptions.length
     return best
   }
 
   function currentModeIndex() {
+    if (customModeOpen || isCustomModeActive) {
+      return displayModes.length
+    }
     if (!activeMonitor) return 0
     for (var i = 0; i < displayModes.length; i++) {
       if (displayModes[i].w === activeMonitor.width && displayModes[i].h === activeMonitor.height) {
         return i
       }
     }
-    return 0
+    return displayModes.length
   }
 
   function currentNightlightIndex() {
@@ -274,15 +281,57 @@ Item {
   }
 
   function cycleScale(delta) {
-    var idx = currentScaleIndex()
-    var next = Math.max(0, Math.min(scaleOptions.length - 1, idx + delta))
-    setScale(scaleOptions[next].value)
+    var cur = (scaleFocusIndex >= 0) ? scaleFocusIndex : currentScaleIndex()
+    var next = Math.max(0, Math.min(scaleOptions.length, cur + delta))
+    scaleFocusIndex = next
+    if (next < scaleOptions.length) {
+      if (customScaleOpen) customScaleOpen = false
+      setScale(scaleOptions[next].value)
+    } else {
+      openCustomScale()
+    }
+  }
+
+  function openCustomScale() {
+    scaleFocusIndex = scaleOptions.length
+    customScaleOpen = true
+    customScaleError = ""
+    if (!customScaleText && currentScale > 0) {
+      customScaleText = Math.round(currentScale * 100) + "%"
+    }
+    Qt.callLater(function() {
+      if (customScaleInputItem) {
+        customScaleInputItem.forceActiveFocus()
+        customScaleInputItem.selectAll()
+      }
+    })
   }
 
   function cycleMode(delta) {
-    var idx = currentModeIndex()
-    var next = Math.max(0, Math.min(displayModes.length - 1, idx + delta))
-    setMode(displayModes[next].mode)
+    var cur = (modeFocusIndex >= 0) ? modeFocusIndex : currentModeIndex()
+    var next = Math.max(0, Math.min(displayModes.length, cur + delta))
+    modeFocusIndex = next
+    if (next < displayModes.length) {
+      if (customModeOpen) customModeOpen = false
+      setMode(displayModes[next].mode)
+    } else {
+      openCustomMode()
+    }
+  }
+
+  function openCustomMode() {
+    modeFocusIndex = displayModes.length
+    customModeOpen = true
+    customModeError = ""
+    if (!customModeText && activeMonitor) {
+      customModeText = activeMonitor.width + "x" + activeMonitor.height + "@" + Math.round(activeMonitor.refreshRate || 60)
+    }
+    Qt.callLater(function() {
+      if (customModeInputItem) {
+        customModeInputItem.forceActiveFocus()
+        customModeInputItem.selectAll()
+      }
+    })
   }
 
   function cycleNightlightTemp(delta) {
@@ -319,8 +368,21 @@ Item {
     if (focusedRow === 0) adjustBrightness(5)
     else if (focusedRow === 1) toggleNightlight()
     else if (focusedRow === 2) cycleNightlightTemp(1)
-    else if (focusedRow === 3) cycleScale(1)
-    else if (focusedRow === 4) cycleMode(1)
+    else if (focusedRow === 3) {
+      var curScale = (scaleFocusIndex >= 0) ? scaleFocusIndex : currentScaleIndex()
+      if (curScale === scaleOptions.length) {
+        openCustomScale()
+      } else {
+        cycleScale(1)
+      }
+    } else if (focusedRow === 4) {
+      var curMode = (modeFocusIndex >= 0) ? modeFocusIndex : currentModeIndex()
+      if (curMode === displayModes.length) {
+        openCustomMode()
+      } else {
+        cycleMode(1)
+      }
+    }
   }
 
   function handleTextKey(key) {
@@ -344,6 +406,14 @@ Item {
     } else if (key === "m" || key === "M") {
       focusedRow = 4
       return true
+    } else if (key === "c" || key === "C") {
+      if (focusedRow === 3) {
+        openCustomScale()
+        return true
+      } else if (focusedRow === 4) {
+        openCustomMode()
+        return true
+      }
     } else if (key === "h" || key === "H") {
       if (focusedRow === 0) adjustBrightness(-5)
       else if (focusedRow === 1) toggleNightlight()
@@ -1145,7 +1215,10 @@ Item {
                 width: scaleFlow.itemWidth
                 height: 34
                 radius: 6
-                readonly property bool isSelected: Math.abs(root.currentScale - Number(modelData.value)) < 0.05
+                readonly property bool isSelected: {
+                  var activeIdx = (root.scaleFocusIndex >= 0) ? root.scaleFocusIndex : root.currentScaleIndex()
+                  return activeIdx === index
+                }
                 color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
                 border.color: isSelected ? Color.accent : "transparent"
                 border.width: isSelected ? 1 : 0
@@ -1155,6 +1228,8 @@ Item {
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
                     root.focusedRow = 3
+                    root.scaleFocusIndex = index
+                    root.customScaleOpen = false
                     root.setScale(modelData.value)
                   }
                 }
@@ -1179,7 +1254,7 @@ Item {
               width: Math.max(scaleFlow.itemWidth, 90)
               height: 34
               radius: 6
-              readonly property bool isSelected: root.isCustomScaleActive || root.customScaleOpen
+              readonly property bool isSelected: root.isCustomScaleActive || root.customScaleOpen || ((root.scaleFocusIndex >= 0 ? root.scaleFocusIndex : root.currentScaleIndex()) === root.scaleOptions.length)
               color: customScaleChip.isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
               border.color: customScaleChip.isSelected ? Color.accent : "transparent"
               border.width: customScaleChip.isSelected ? 1 : 0
@@ -1189,17 +1264,11 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                   root.focusedRow = 3
-                  root.customScaleOpen = !root.customScaleOpen
+                  root.scaleFocusIndex = root.scaleOptions.length
                   if (root.customScaleOpen) {
-                    root.customScaleError = ""
-                    if (!root.customScaleText) {
-                      root.customScaleText = Math.round(root.currentScale * 100) + "%"
-                    }
-                    Qt.callLater(function() {
-                      if (root.customScaleInputItem) {
-                        root.customScaleInputItem.forceActiveFocus()
-                      }
-                    })
+                    root.customScaleOpen = false
+                  } else {
+                    root.openCustomScale()
                   }
                 }
               }
@@ -1292,6 +1361,7 @@ Item {
                     Keys.onEscapePressed: function(event) {
                       event.accepted = true
                       root.customScaleOpen = false
+                      root.forceActiveFocus()
                     }
 
                     Keys.onTabPressed: function(event) {
@@ -1496,8 +1566,8 @@ Item {
                 height: 34
                 radius: 6
                 readonly property bool isSelected: {
-                  if (!activeMonitor) return false
-                  return activeMonitor.width === modelData.w && activeMonitor.height === modelData.h
+                  var activeIdx = (root.modeFocusIndex >= 0) ? root.modeFocusIndex : root.currentModeIndex()
+                  return activeIdx === index
                 }
                 color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
                 border.color: isSelected ? Color.accent : (modelData.isNative ? Color.pickAlpha("accent.subtle", "#304036") : "transparent")
@@ -1508,6 +1578,8 @@ Item {
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
                     root.focusedRow = 4
+                    root.modeFocusIndex = index
+                    root.customModeOpen = false
                     root.setMode(modelData.mode)
                   }
                 }
@@ -1545,7 +1617,7 @@ Item {
               width: Math.max(modeFlow.itemWidth, 140)
               height: 34
               radius: 6
-              readonly property bool isSelected: root.isCustomModeActive || root.customModeOpen
+              readonly property bool isSelected: root.isCustomModeActive || root.customModeOpen || ((root.modeFocusIndex >= 0 ? root.modeFocusIndex : root.currentModeIndex()) === root.displayModes.length)
               color: customModeChip.isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
               border.color: customModeChip.isSelected ? Color.accent : "transparent"
               border.width: customModeChip.isSelected ? 1 : 0
@@ -1555,17 +1627,11 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                   root.focusedRow = 4
-                  root.customModeOpen = !root.customModeOpen
+                  root.modeFocusIndex = root.displayModes.length
                   if (root.customModeOpen) {
-                    root.customModeError = ""
-                    if (!root.customModeText && activeMonitor) {
-                      root.customModeText = activeMonitor.width + "x" + activeMonitor.height + (activeMonitor.refreshRate ? ("@" + activeMonitor.refreshRate) : "")
-                    }
-                    Qt.callLater(function() {
-                      if (root.customModeInputItem) {
-                        root.customModeInputItem.forceActiveFocus()
-                      }
-                    })
+                    root.customModeOpen = false
+                  } else {
+                    root.openCustomMode()
                   }
                 }
               }
@@ -1658,6 +1724,7 @@ Item {
                     Keys.onEscapePressed: function(event) {
                       event.accepted = true
                       root.customModeOpen = false
+                      root.forceActiveFocus()
                     }
 
                     Keys.onTabPressed: function(event) {

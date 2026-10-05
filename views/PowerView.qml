@@ -33,6 +33,17 @@ Item {
   property string customLockError: ""
   property Item customLockInputItem: null
 
+  property int screensaverFocusIndex: -1
+  property int lockFocusIndex: -1
+
+  onScreensaverTimeoutChanged: {
+    if (!customScreensaverOpen) screensaverFocusIndex = currentScreensaverIndex()
+  }
+
+  onLockTimeoutChanged: {
+    if (!customLockOpen) lockFocusIndex = currentLockIndex()
+  }
+
   readonly property bool isCustomScreensaverActive: {
     for (var i = 0; i < screensaverOptions.length; i++) {
       if (screensaverOptions[i].seconds === root.screensaverTimeout) return false
@@ -84,6 +95,8 @@ Item {
     root.customScreensaverError = ""
     root.setIdle(sec, root.lockTimeout)
     root.customScreensaverOpen = false
+    root.screensaverFocusIndex = root.screensaverOptions.length
+    root.forceActiveFocus()
   }
 
   function applyCustomLock() {
@@ -110,6 +123,8 @@ Item {
     root.customLockError = ""
     root.setIdle(root.screensaverTimeout, sec)
     root.customLockOpen = false
+    root.lockFocusIndex = root.lockOptions.length
+    root.forceActiveFocus()
   }
 
   readonly property var powerProfiles: [
@@ -135,31 +150,17 @@ Item {
 
   readonly property var screensaverOptions: [
     { label: "1 min", seconds: 60 },
-    { label: "2 min", seconds: 120 },
-    { label: "2.5 min", seconds: 150 },
-    { label: "3 min", seconds: 180 },
     { label: "5 min", seconds: 300 },
-    { label: "10 min", seconds: 600 },
     { label: "15 min", seconds: 900 },
-    { label: "20 min", seconds: 1200 },
     { label: "30 min", seconds: 1800 },
-    { label: "45 min", seconds: 2700 },
-    { label: "1 hr", seconds: 3600 },
     { label: "Never", seconds: 0 }
   ]
 
   readonly property var lockOptions: [
-    { label: "1 min", seconds: 60 },
     { label: "2 min", seconds: 120 },
-    { label: "3 min", seconds: 180 },
     { label: "5 min", seconds: 300 },
-    { label: "10 min", seconds: 600 },
     { label: "15 min", seconds: 900 },
-    { label: "20 min", seconds: 1200 },
     { label: "30 min", seconds: 1800 },
-    { label: "45 min", seconds: 2700 },
-    { label: "1 hr", seconds: 3600 },
-    { label: "2 hrs", seconds: 7200 },
     { label: "Never", seconds: 0 }
   ]
 
@@ -211,25 +212,23 @@ Item {
   }
 
   function currentScreensaverIndex() {
-    var best = 0
-    var minDiff = 999999
+    if (customScreensaverOpen || isCustomScreensaverActive) {
+      return screensaverOptions.length
+    }
     for (var i = 0; i < screensaverOptions.length; i++) {
       if (screensaverOptions[i].seconds === root.screensaverTimeout) return i
-      var diff = Math.abs(screensaverOptions[i].seconds - root.screensaverTimeout)
-      if (diff < minDiff) { minDiff = diff; best = i }
     }
-    return best
+    return screensaverOptions.length
   }
 
   function currentLockIndex() {
-    var best = 0
-    var minDiff = 999999
+    if (customLockOpen || isCustomLockActive) {
+      return lockOptions.length
+    }
     for (var i = 0; i < lockOptions.length; i++) {
       if (lockOptions[i].seconds === root.lockTimeout) return i
-      var diff = Math.abs(lockOptions[i].seconds - root.lockTimeout)
-      if (diff < minDiff) { minDiff = diff; best = i }
     }
-    return best
+    return lockOptions.length
   }
 
   function cycleProfile(delta) {
@@ -239,15 +238,57 @@ Item {
   }
 
   function cycleScreensaver(delta) {
-    var idx = currentScreensaverIndex()
-    var next = Math.max(0, Math.min(screensaverOptions.length - 1, idx + delta))
-    setIdle(screensaverOptions[next].seconds, root.lockTimeout)
+    var cur = (screensaverFocusIndex >= 0) ? screensaverFocusIndex : currentScreensaverIndex()
+    var next = Math.max(0, Math.min(screensaverOptions.length, cur + delta))
+    screensaverFocusIndex = next
+    if (next < screensaverOptions.length) {
+      if (customScreensaverOpen) customScreensaverOpen = false
+      setIdle(screensaverOptions[next].seconds, root.lockTimeout)
+    } else {
+      openCustomScreensaver()
+    }
+  }
+
+  function openCustomScreensaver() {
+    screensaverFocusIndex = screensaverOptions.length
+    customScreensaverOpen = true
+    customScreensaverError = ""
+    if (!customScreensaverText && root.screensaverTimeout > 0) {
+      customScreensaverText = String(Math.round(root.screensaverTimeout / 60 * 10) / 10)
+    }
+    Qt.callLater(function() {
+      if (customScreensaverInputItem) {
+        customScreensaverInputItem.forceActiveFocus()
+        customScreensaverInputItem.selectAll()
+      }
+    })
   }
 
   function cycleLock(delta) {
-    var idx = currentLockIndex()
-    var next = Math.max(0, Math.min(lockOptions.length - 1, idx + delta))
-    setIdle(root.screensaverTimeout, lockOptions[next].seconds)
+    var cur = (lockFocusIndex >= 0) ? lockFocusIndex : currentLockIndex()
+    var next = Math.max(0, Math.min(lockOptions.length, cur + delta))
+    lockFocusIndex = next
+    if (next < lockOptions.length) {
+      if (customLockOpen) customLockOpen = false
+      setIdle(root.screensaverTimeout, lockOptions[next].seconds)
+    } else {
+      openCustomLock()
+    }
+  }
+
+  function openCustomLock() {
+    lockFocusIndex = lockOptions.length
+    customLockOpen = true
+    customLockError = ""
+    if (!customLockText && root.lockTimeout > 0) {
+      customLockText = String(Math.round(root.lockTimeout / 60 * 10) / 10)
+    }
+    Qt.callLater(function() {
+      if (customLockInputItem) {
+        customLockInputItem.forceActiveFocus()
+        customLockInputItem.selectAll()
+      }
+    })
   }
 
   function handleMove(dx, dy) {
@@ -271,33 +312,67 @@ Item {
     if (hasActiveInput) return
     if (focusedRow === 0) cycleProfile(1)
     else if (focusedRow === 1) toggleStayAwake()
-    else if (focusedRow === 2) cycleScreensaver(1)
-    else if (focusedRow === 3) cycleLock(1)
+    else if (focusedRow === 2) {
+      var curSs = (screensaverFocusIndex >= 0) ? screensaverFocusIndex : currentScreensaverIndex()
+      if (curSs === screensaverOptions.length) {
+        openCustomScreensaver()
+      } else {
+        cycleScreensaver(1)
+      }
+    } else if (focusedRow === 3) {
+      var curLk = (lockFocusIndex >= 0) ? lockFocusIndex : currentLockIndex()
+      if (curLk === lockOptions.length) {
+        openCustomLock()
+      } else {
+        cycleLock(1)
+      }
+    }
   }
 
   function handleTextKey(key) {
     if (hasActiveInput) return false
     if (key === "r" || key === "R") {
       refresh()
+      return true
     } else if (key === "p" || key === "P") {
       focusedRow = 0
+      return true
     } else if (key === "a" || key === "A") {
       focusedRow = 1
       toggleStayAwake()
+      return true
     } else if (key === "s" || key === "S") {
       focusedRow = 2
+      return true
     } else if (key === "l" || key === "L") {
       focusedRow = 3
+      return true
+    } else if (key === "c" || key === "C") {
+      if (focusedRow === 2) {
+        openCustomScreensaver()
+        return true
+      } else if (focusedRow === 3) {
+        openCustomLock()
+        return true
+      }
     } else if (key >= "1" && key <= "5") {
       var n = parseInt(key) - 1
       if (focusedRow === 0 && n < powerProfiles.length) {
         setProfile(powerProfiles[n].id)
+        return true
       } else if (focusedRow === 2 && n < screensaverOptions.length) {
+        screensaverFocusIndex = n
+        customScreensaverOpen = false
         setIdle(screensaverOptions[n].seconds, root.lockTimeout)
+        return true
       } else if (focusedRow === 3 && n < lockOptions.length) {
+        lockFocusIndex = n
+        customLockOpen = false
         setIdle(root.screensaverTimeout, lockOptions[n].seconds)
+        return true
       }
     }
+    return false
   }
 
   function refresh() {
@@ -980,7 +1055,10 @@ Item {
                 width: screensaverFlow.itemWidth
                 height: 34
                 radius: 6
-                readonly property bool isSelected: root.screensaverTimeout === modelData.seconds
+                readonly property bool isSelected: {
+                  var activeIdx = (root.screensaverFocusIndex >= 0) ? root.screensaverFocusIndex : root.currentScreensaverIndex()
+                  return activeIdx === index
+                }
                 color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
                 border.color: isSelected ? Color.accent : "transparent"
                 border.width: isSelected ? 1 : 0
@@ -990,6 +1068,8 @@ Item {
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
                     root.focusedRow = 2
+                    root.screensaverFocusIndex = index
+                    root.customScreensaverOpen = false
                     root.setIdle(modelData.seconds, root.lockTimeout)
                   }
                 }
@@ -1014,7 +1094,7 @@ Item {
               width: Math.max(screensaverFlow.itemWidth, 80)
               height: 34
               radius: 6
-              readonly property bool isSelected: root.isCustomScreensaverActive || root.customScreensaverOpen
+              readonly property bool isSelected: root.isCustomScreensaverActive || root.customScreensaverOpen || ((root.screensaverFocusIndex >= 0 ? root.screensaverFocusIndex : root.currentScreensaverIndex()) === root.screensaverOptions.length)
               color: customScreensaverChip.isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
               border.color: customScreensaverChip.isSelected ? Color.accent : "transparent"
               border.width: customScreensaverChip.isSelected ? 1 : 0
@@ -1024,17 +1104,11 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                   root.focusedRow = 2
-                  root.customScreensaverOpen = !root.customScreensaverOpen
+                  root.screensaverFocusIndex = root.screensaverOptions.length
                   if (root.customScreensaverOpen) {
-                    root.customScreensaverError = ""
-                    if (!root.customScreensaverText && root.screensaverTimeout > 0) {
-                      root.customScreensaverText = String(Math.round(root.screensaverTimeout / 60 * 10) / 10)
-                    }
-                    Qt.callLater(function() {
-                      if (root.customScreensaverInputItem) {
-                        root.customScreensaverInputItem.forceActiveFocus()
-                      }
-                    })
+                    root.customScreensaverOpen = false
+                  } else {
+                    root.openCustomScreensaver()
                   }
                 }
               }
@@ -1115,6 +1189,7 @@ Item {
                     Keys.onEscapePressed: function(event) {
                       event.accepted = true
                       root.customScreensaverOpen = false
+                      root.forceActiveFocus()
                     }
 
                     Keys.onTabPressed: function(event) {
@@ -1317,7 +1392,10 @@ Item {
                 width: lockFlow.itemWidth
                 height: 34
                 radius: 6
-                readonly property bool isSelected: root.lockTimeout === modelData.seconds
+                readonly property bool isSelected: {
+                  var activeIdx = (root.lockFocusIndex >= 0) ? root.lockFocusIndex : root.currentLockIndex()
+                  return activeIdx === index
+                }
                 color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
                 border.color: isSelected ? Color.accent : "transparent"
                 border.width: isSelected ? 1 : 0
@@ -1327,6 +1405,8 @@ Item {
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
                     root.focusedRow = 3
+                    root.lockFocusIndex = index
+                    root.customLockOpen = false
                     root.setIdle(root.screensaverTimeout, modelData.seconds)
                   }
                 }
@@ -1351,7 +1431,7 @@ Item {
               width: Math.max(lockFlow.itemWidth, 80)
               height: 34
               radius: 6
-              readonly property bool isSelected: root.isCustomLockActive || root.customLockOpen
+              readonly property bool isSelected: root.isCustomLockActive || root.customLockOpen || ((root.lockFocusIndex >= 0 ? root.lockFocusIndex : root.currentLockIndex()) === root.lockOptions.length)
               color: customLockChip.isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
               border.color: customLockChip.isSelected ? Color.accent : "transparent"
               border.width: customLockChip.isSelected ? 1 : 0
@@ -1361,17 +1441,11 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                   root.focusedRow = 3
-                  root.customLockOpen = !root.customLockOpen
+                  root.lockFocusIndex = root.lockOptions.length
                   if (root.customLockOpen) {
-                    root.customLockError = ""
-                    if (!root.customLockText && root.lockTimeout > 0) {
-                      root.customLockText = String(Math.round(root.lockTimeout / 60 * 10) / 10)
-                    }
-                    Qt.callLater(function() {
-                      if (root.customLockInputItem) {
-                        root.customLockInputItem.forceActiveFocus()
-                      }
-                    })
+                    root.customLockOpen = false
+                  } else {
+                    root.openCustomLock()
                   }
                 }
               }
@@ -1452,6 +1526,7 @@ Item {
                     Keys.onEscapePressed: function(event) {
                       event.accepted = true
                       root.customLockOpen = false
+                      root.forceActiveFocus()
                     }
 
                     Keys.onTabPressed: function(event) {
