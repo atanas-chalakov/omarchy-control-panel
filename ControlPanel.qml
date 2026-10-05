@@ -17,6 +17,36 @@ Item {
   property bool showDiffInspector: false
   readonly property string pluginPath: manifest && manifest.__sourceDir ? manifest.__sourceDir : "/home/ac/.config/omarchy/plugins/ac.control-panel"
 
+  function toggleFocusSection() {
+    root.focusSection = (root.focusSection === "sidebar" ? "content" : "sidebar")
+  }
+
+  onFocusSectionChanged: {
+    if (focusSection === "sidebar") {
+      if (categoryLoader.item) {
+        if (typeof categoryLoader.item.blurInput === "function") {
+          categoryLoader.item.blurInput()
+        }
+        if (categoryLoader.item.searchField) {
+          categoryLoader.item.searchField.focus = false
+        }
+        if (categoryLoader.item.cityField) {
+          categoryLoader.item.cityField.focus = false
+        }
+        if (categoryLoader.item.customLayoutField) {
+          categoryLoader.item.customLayoutField.focus = false
+        }
+      }
+      returnFocusToKeyCatcher()
+    } else {
+      if (categoryLoader.item && typeof categoryLoader.item.focusToInput === "function") {
+        categoryLoader.item.focusToInput()
+      } else {
+        returnFocusToKeyCatcher()
+      }
+    }
+  }
+
   function notifySettingChanged() {
     if (diffInspectorLoader && diffInspectorLoader.item) {
       diffInspectorLoader.item.refresh()
@@ -73,8 +103,12 @@ Item {
     Qt.callLater(function() {
       if (root.focusSection === "sidebar" && keyCatcher) {
         keyCatcher.forceActiveFocus()
-      } else if (root.focusSection === "content" && categoryLoader.item && categoryLoader.item.searchField) {
-        categoryLoader.item.searchField.forceActiveFocus()
+      } else if (root.focusSection === "content") {
+        if (categoryLoader.item && typeof categoryLoader.item.focusToInput === "function") {
+          categoryLoader.item.focusToInput()
+        } else if (keyCatcher) {
+          keyCatcher.forceActiveFocus()
+        }
       }
     })
   }
@@ -157,6 +191,11 @@ Item {
 
   function returnFocusToKeyCatcher() {
     if (keyCatcher) keyCatcher.forceActiveFocus()
+    Qt.callLater(function() {
+      if (keyCatcher && root.focusSection === "sidebar") {
+        keyCatcher.forceActiveFocus()
+      }
+    })
   }
 
   FloatingWindow {
@@ -167,13 +206,18 @@ Item {
     implicitHeight: window.screen ? Math.min(880, Math.max(640, window.screen.height - 100)) : 680
     minimumSize: Qt.size(root.showDiffInspector ? 960 : 720, 520)
 
+
     onVisibleChanged: {
       if (visible) {
         Qt.callLater(function() {
           if (root.focusSection === "sidebar" && keyCatcher) {
             keyCatcher.forceActiveFocus()
-          } else if (root.focusSection === "content" && categoryLoader.item && categoryLoader.item.searchField) {
-            categoryLoader.item.searchField.forceActiveFocus()
+          } else if (root.focusSection === "content") {
+            if (categoryLoader.item && typeof categoryLoader.item.focusToInput === "function") {
+              categoryLoader.item.focusToInput()
+            } else if (keyCatcher) {
+              keyCatcher.forceActiveFocus()
+            }
           }
         })
       } else if (!root.closingFromHost && root.shell && typeof root.shell.hide === "function") {
@@ -184,6 +228,12 @@ Item {
     Item {
       id: scrollKeyHandler
       Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
+          root.toggleFocusSection()
+          event.accepted = true
+          return
+        }
+
         if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_D)) {
           root.showDiffInspector = !root.showDiffInspector
           if (root.showDiffInspector && diffInspectorLoader && diffInspectorLoader.item) {
@@ -267,18 +317,17 @@ Item {
       onCloseRequested: root.dismiss()
 
       onTabRequested: function(direction) {
-        if (root.focusSection === "sidebar") {
-          root.focusSection = "content"
-          if (categoryLoader.item && typeof categoryLoader.item.focusToInput === "function") {
-            categoryLoader.item.focusToInput()
-          }
-        } else {
-          if (categoryLoader.item && typeof categoryLoader.item.handleTab === "function") {
-            var handled = categoryLoader.item.handleTab(direction)
-            if (handled === true) return
-          }
-          root.focusSection = "sidebar"
-        }
+        root.toggleFocusSection()
+      }
+
+      Keys.onTabPressed: function(event) {
+        event.accepted = true
+        root.toggleFocusSection()
+      }
+
+      Keys.onBacktabPressed: function(event) {
+        event.accepted = true
+        root.toggleFocusSection()
       }
 
       onMoveRequested: function(dx, dy) {
@@ -812,7 +861,7 @@ Item {
           Text {
             Layout.fillWidth: true
             elide: Text.ElideRight
-            text: "⌨ Shortcuts: [Tab] Switch Panels  •  [↑/↓ or j/k] Select  •  [Enter] Activate  •  [S or /] Search  •  [Ctrl+D] Diff  •  [Esc] Close"
+            text: "⌨ Shortcuts: [Tab] Switch Sidebar / Settings  •  [↑/↓ or j/k] Select  •  [Enter] Activate  •  [S or /] Search  •  [Ctrl+D] Diff  •  [Esc] Close"
             font.family: Style.font.family
             font.pixelSize: 11
             color: Color.muted

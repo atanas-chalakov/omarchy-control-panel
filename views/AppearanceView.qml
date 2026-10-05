@@ -30,6 +30,19 @@ Item {
     }
   }
 
+  function focusToInput() {
+    focusTarget = "search"
+    if (searchField) {
+      searchField.forceActiveFocus()
+    }
+  }
+
+  function blurInput() {
+    if (searchField) {
+      searchField.focus = false
+    }
+  }
+
   readonly property var filteredThemes: {
     var query = searchField.text.trim().toLowerCase()
     if (!query) return themes
@@ -338,14 +351,28 @@ Item {
           }
 
           Keys.onTabPressed: function(event) {
-            if (root.filteredThemes.length > 0) {
-              root.focusTarget = "list"
-              searchField.focus = false
-              if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+            event.accepted = true
+            searchField.focus = false
+            if (root.panelRoot && typeof root.panelRoot.toggleFocusSection === "function") {
+              root.panelRoot.toggleFocusSection()
+            } else if (root.panelRoot) {
+              root.panelRoot.focusSection = "sidebar"
+              if (typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
                 root.panelRoot.returnFocusToKeyCatcher()
               }
-              root.ensureVisible(root.focusedIndex)
-              event.accepted = true
+            }
+          }
+
+          Keys.onBacktabPressed: function(event) {
+            event.accepted = true
+            searchField.focus = false
+            if (root.panelRoot && typeof root.panelRoot.toggleFocusSection === "function") {
+              root.panelRoot.toggleFocusSection()
+            } else if (root.panelRoot) {
+              root.panelRoot.focusSection = "sidebar"
+              if (typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                root.panelRoot.returnFocusToKeyCatcher()
+              }
             }
           }
 

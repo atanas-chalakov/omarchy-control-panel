@@ -16,6 +16,24 @@ Item {
   property bool activeFocusSection: false
   property bool hasActiveInput: searchField.activeFocus
   property string statusMessage: ""
+
+  onActiveFocusSectionChanged: {
+    if (!activeFocusSection) {
+      blurInput()
+    }
+  }
+
+  function focusToInput() {
+    if (searchField) {
+      searchField.forceActiveFocus()
+    }
+  }
+
+  function blurInput() {
+    if (searchField) {
+      searchField.focus = false
+    }
+  }
   property string searchQuery: ""
   property string activeCategory: "all" // "all", "windows", "apps", "workspaces", "media", "system"
 
@@ -365,6 +383,32 @@ Item {
               focus = false
               if (panelRoot && typeof panelRoot.returnFocusToKeyCatcher === "function") {
                 panelRoot.returnFocusToKeyCatcher()
+              }
+            }
+
+            Keys.onTabPressed: function(event) {
+              event.accepted = true
+              searchField.focus = false
+              if (panelRoot && typeof panelRoot.toggleFocusSection === "function") {
+                panelRoot.toggleFocusSection()
+              } else if (panelRoot) {
+                panelRoot.focusSection = "sidebar"
+                if (typeof panelRoot.returnFocusToKeyCatcher === "function") {
+                  panelRoot.returnFocusToKeyCatcher()
+                }
+              }
+            }
+
+            Keys.onBacktabPressed: function(event) {
+              event.accepted = true
+              searchField.focus = false
+              if (panelRoot && typeof panelRoot.toggleFocusSection === "function") {
+                panelRoot.toggleFocusSection()
+              } else if (panelRoot) {
+                panelRoot.focusSection = "sidebar"
+                if (typeof panelRoot.returnFocusToKeyCatcher === "function") {
+                  panelRoot.returnFocusToKeyCatcher()
+                }
               }
             }
           }

@@ -20,6 +20,17 @@ Item {
 
   readonly property bool hasActiveInput: (cityField && cityField.activeFocus) || (customLayoutField && customLayoutField.activeFocus)
 
+  onActiveFocusSectionChanged: {
+    if (!activeFocusSection) {
+      blurInput()
+    }
+  }
+
+  function blurInput() {
+    if (cityField) cityField.focus = false
+    if (customLayoutField) customLayoutField.focus = false
+  }
+
   property string statusMessage: ""
 
   // State properties
@@ -1219,21 +1230,29 @@ Item {
               }
 
               Keys.onTabPressed: function(event) {
-                if (root.matchingCities.length > 0) {
-                  var item = root.matchingCities[root.selectedCitySuggestionIndex]
-                  if (item) {
-                    root.selectCitySuggestion(item.name)
-                    event.accepted = true
-                    return
+                event.accepted = true
+                cityField.focus = false
+                if (root.panelRoot && typeof root.panelRoot.toggleFocusSection === "function") {
+                  root.panelRoot.toggleFocusSection()
+                } else if (root.panelRoot) {
+                  root.panelRoot.focusSection = "sidebar"
+                  if (typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                    root.panelRoot.returnFocusToKeyCatcher()
                   }
                 }
-                cityField.focus = false
-                root.focusedCard = 5
-                if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
-                  root.panelRoot.returnFocusToKeyCatcher()
-                }
-                root.ensureCardVisible(5)
+              }
+
+              Keys.onBacktabPressed: function(event) {
                 event.accepted = true
+                cityField.focus = false
+                if (root.panelRoot && typeof root.panelRoot.toggleFocusSection === "function") {
+                  root.panelRoot.toggleFocusSection()
+                } else if (root.panelRoot) {
+                  root.panelRoot.focusSection = "sidebar"
+                  if (typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                    root.panelRoot.returnFocusToKeyCatcher()
+                  }
+                }
               }
             }
 
@@ -1372,7 +1391,7 @@ Item {
                   Item { Layout.fillWidth: true }
 
                   Text {
-                    text: (index === root.selectedCitySuggestionIndex) ? "Press [Enter] or [Tab] to Select 󰅂" : "Click to select"
+                    text: (index === root.selectedCitySuggestionIndex) ? "Press [Enter] to Select 󰅂" : "Click to select"
                     font.family: Style.font.family
                     font.pixelSize: 10
                     color: (index === root.selectedCitySuggestionIndex) ? Color.accent : Color.muted
@@ -1814,13 +1833,29 @@ Item {
               }
 
               Keys.onTabPressed: function(event) {
-                customLayoutField.focus = false
-                root.focusedCard = 9
-                if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
-                  root.panelRoot.returnFocusToKeyCatcher()
-                }
-                root.ensureCardVisible(9)
                 event.accepted = true
+                customLayoutField.focus = false
+                if (root.panelRoot && typeof root.panelRoot.toggleFocusSection === "function") {
+                  root.panelRoot.toggleFocusSection()
+                } else if (root.panelRoot) {
+                  root.panelRoot.focusSection = "sidebar"
+                  if (typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                    root.panelRoot.returnFocusToKeyCatcher()
+                  }
+                }
+              }
+
+              Keys.onBacktabPressed: function(event) {
+                event.accepted = true
+                customLayoutField.focus = false
+                if (root.panelRoot && typeof root.panelRoot.toggleFocusSection === "function") {
+                  root.panelRoot.toggleFocusSection()
+                } else if (root.panelRoot) {
+                  root.panelRoot.focusSection = "sidebar"
+                  if (typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                    root.panelRoot.returnFocusToKeyCatcher()
+                  }
+                }
               }
             }
 

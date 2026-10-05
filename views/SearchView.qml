@@ -182,6 +182,12 @@ Item {
     }
   }
 
+  function blurInput() {
+    if (searchField) {
+      searchField.focus = false
+    }
+  }
+
   function activateResult(index) {
     if (index >= 0 && index < searchResults.length) {
       var item = searchResults[index]
@@ -338,51 +344,6 @@ Item {
     }
   }
 
-  function handleTab(direction) {
-    if (searchResults.length > 0 || (searchField && searchField.text.trim().length > 0)) {
-      if (focusZone === "input") {
-        focusZone = "results"
-        selectedResultIndex = 0
-        if (searchField) searchField.focus = false
-        ensureResultVisible(0)
-        if (panelRoot && typeof panelRoot.returnFocusToKeyCatcher === "function") {
-          panelRoot.returnFocusToKeyCatcher()
-        }
-        return true
-      } else {
-        return false
-      }
-    }
-
-    if (direction < 0) {
-      if (focusZone === "tiles") {
-        focusZone = "chips"
-        return true
-      } else if (focusZone === "chips") {
-        focusToInput()
-        return true
-      } else {
-        return false
-      }
-    } else {
-      if (focusZone === "input") {
-        focusZone = "chips"
-        selectedChipIndex = 0
-        if (searchField) searchField.focus = false
-        if (panelRoot && typeof panelRoot.returnFocusToKeyCatcher === "function") {
-          panelRoot.returnFocusToKeyCatcher()
-        }
-        return true
-      } else if (focusZone === "chips") {
-        focusZone = "tiles"
-        selectedTileIndex = 0
-        ensureTileVisible(0)
-        return true
-      } else {
-        return false
-      }
-    }
-  }
 
   function handleTextKey(key) {
     if (focusZone === "input") return false
@@ -498,29 +459,27 @@ Item {
 
           Keys.onTabPressed: function(event) {
             event.accepted = true
-            if (event.modifiers & Qt.ShiftModifier) {
-              Qt.callLater(function() {
-                searchField.focus = false
-                if (root.panelRoot) root.panelRoot.focusSection = "sidebar"
-                if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
-                  root.panelRoot.returnFocusToKeyCatcher()
-                }
-              })
-            } else {
-              if (root.searchResults.length > 0) {
-                root.focusZone = "results"
-                root.selectedResultIndex = 0
-                root.ensureResultVisible(0)
-              } else {
-                root.focusZone = "chips"
-                root.selectedChipIndex = 0
+            searchField.focus = false
+            if (root.panelRoot && typeof root.panelRoot.toggleFocusSection === "function") {
+              root.panelRoot.toggleFocusSection()
+            } else if (root.panelRoot) {
+              root.panelRoot.focusSection = "sidebar"
+              if (typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                root.panelRoot.returnFocusToKeyCatcher()
               }
-              Qt.callLater(function() {
-                searchField.focus = false
-                if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
-                  root.panelRoot.returnFocusToKeyCatcher()
-                }
-              })
+            }
+          }
+
+          Keys.onBacktabPressed: function(event) {
+            event.accepted = true
+            searchField.focus = false
+            if (root.panelRoot && typeof root.panelRoot.toggleFocusSection === "function") {
+              root.panelRoot.toggleFocusSection()
+            } else if (root.panelRoot) {
+              root.panelRoot.focusSection = "sidebar"
+              if (typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                root.panelRoot.returnFocusToKeyCatcher()
+              }
             }
           }
 
