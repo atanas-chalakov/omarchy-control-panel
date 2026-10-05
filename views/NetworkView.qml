@@ -25,7 +25,11 @@ Item {
   property bool isConnecting: false
   property string connectingSsid: ""
   property Item activePasswordInput: null
-  readonly property bool hasActiveInput: passwordSsid !== "" && activePasswordInput !== null && activePasswordInput.activeFocus
+  property Item activeShowPwBtn: null
+  property Item activeConnectBtn: null
+  property Item activeCancelBtn: null
+  property int promptFocusIndex: 0 // 0: Password Input, 1: Show/Hide, 2: Connect, 3: Cancel
+  readonly property bool hasActiveInput: passwordSsid !== ""
 
   onActiveFocusSectionChanged: {
     if (!activeFocusSection) {
@@ -33,16 +37,43 @@ Item {
     }
   }
 
+  function setPromptFocus(idx) {
+    if (passwordSsid === "") return
+    promptFocusIndex = (idx % 4 + 4) % 4
+    if (promptFocusIndex === 0) {
+      if (activePasswordInput) {
+        activePasswordInput.focus = true
+        activePasswordInput.forceActiveFocus()
+      }
+    } else if (promptFocusIndex === 1) {
+      if (activeShowPwBtn) {
+        activeShowPwBtn.focus = true
+        activeShowPwBtn.forceActiveFocus()
+      }
+    } else if (promptFocusIndex === 2) {
+      if (activeConnectBtn) {
+        activeConnectBtn.focus = true
+        activeConnectBtn.forceActiveFocus()
+      }
+    } else if (promptFocusIndex === 3) {
+      if (activeCancelBtn) {
+        activeCancelBtn.focus = true
+        activeCancelBtn.forceActiveFocus()
+      }
+    }
+  }
+
   function focusToInput() {
-    if (activePasswordInput && passwordSsid !== "") {
-      activePasswordInput.forceActiveFocus()
+    if (passwordSsid !== "") {
+      setPromptFocus(promptFocusIndex)
     }
   }
 
   function blurInput() {
-    if (activePasswordInput) {
-      activePasswordInput.focus = false
-    }
+    if (activePasswordInput) activePasswordInput.focus = false
+    if (activeShowPwBtn) activeShowPwBtn.focus = false
+    if (activeConnectBtn) activeConnectBtn.focus = false
+    if (activeCancelBtn) activeCancelBtn.focus = false
   }
 
   function openPasswordPrompt(ssid) {
@@ -52,6 +83,7 @@ Item {
       showPasswordText = false
     }
     passwordSsid = ssid
+    promptFocusIndex = 0
     for (var i = 0; i < root.networks.length; i++) {
       if (root.networks[i].ssid === ssid) {
         root.focusedRow = i + 1
@@ -68,7 +100,11 @@ Item {
     passwordText = ""
     passwordError = ""
     showPasswordText = false
+    promptFocusIndex = 0
     activePasswordInput = null
+    activeShowPwBtn = null
+    activeConnectBtn = null
+    activeCancelBtn = null
   }
 
   function submitPasswordConnect() {
@@ -582,6 +618,33 @@ Item {
             Layout.fillWidth: true
             readonly property bool isPasswordOpen: root.passwordSsid !== "" && root.passwordSsid === modelData.ssid
             property alias passwordField: passwordInput
+
+            onIsPasswordOpenChanged: {
+              if (isPasswordOpen) {
+                root.activePasswordInput = passwordInput
+                root.activeShowPwBtn = showPwBtn
+                root.activeConnectBtn = connectBtn
+                root.activeCancelBtn = cancelBtn
+                root.promptFocusIndex = 0
+                Qt.callLater(function() {
+                  if (passwordInput) passwordInput.forceActiveFocus()
+                })
+              }
+            }
+
+            Component.onCompleted: {
+              if (isPasswordOpen) {
+                root.activePasswordInput = passwordInput
+                root.activeShowPwBtn = showPwBtn
+                root.activeConnectBtn = connectBtn
+                root.activeCancelBtn = cancelBtn
+                root.promptFocusIndex = 0
+                Qt.callLater(function() {
+                  if (passwordInput) passwordInput.forceActiveFocus()
+                })
+              }
+            }
+
             implicitHeight: Math.max(52, cardColumn.implicitHeight + 16)
             Layout.preferredHeight: implicitHeight
             radius: Style.cornerRadius || 6
@@ -789,8 +852,8 @@ Item {
                     Layout.preferredHeight: 36
                     radius: 6
                     color: Color.pickAlpha("surface.selected", "#1a1f24")
-                    border.color: (passwordInput.activeFocus) ? Color.accent : Color.pickAlpha("border.subtle", "#2a3036")
-                    border.width: (passwordInput.activeFocus) ? 2 : 1
+                    border.color: (passwordInput.activeFocus || root.promptFocusIndex === 0) ? Color.accent : Color.pickAlpha("border.subtle", "#2a3036")
+                    border.width: (passwordInput.activeFocus || root.promptFocusIndex === 0) ? 2 : 1
 
                     RowLayout {
                       anchors.fill: parent
@@ -802,7 +865,7 @@ Item {
                         text: "󰌾"
                         font.family: Style.font.family
                         font.pixelSize: 14
-                        color: passwordInput.activeFocus ? Color.accent : Color.muted
+                        color: (passwordInput.activeFocus || root.promptFocusIndex === 0) ? Color.accent : Color.muted
                       }
 
                       TextField {
@@ -826,16 +889,7 @@ Item {
 
                         onActiveFocusChanged: {
                           if (activeFocus && delegateCard.isPasswordOpen) {
-                            root.activePasswordInput = passwordInput
-                          }
-                        }
-
-                        onVisibleChanged: {
-                          if (visible && delegateCard.isPasswordOpen) {
-                            root.activePasswordInput = passwordInput
-                            Qt.callLater(function() {
-                              passwordInput.forceActiveFocus()
-                            })
+                            root.promptFocusIndex = 0
                           }
                         }
 
@@ -843,28 +897,110 @@ Item {
 
                         Keys.onTabPressed: function(event) {
                           event.accepted = true
-                          passwordInput.focus = false
-                          if (root.panelRoot && typeof root.panelRoot.toggleFocusSection === "function") {
-                            root.panelRoot.toggleFocusSection()
-                          } else if (root.panelRoot) {
-                            root.panelRoot.focusSection = "sidebar"
-                            if (typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
-                              root.panelRoot.returnFocusToKeyCatcher()
-                            }
-                          }
+                          root.setPromptFocus(1)
                         }
 
                         Keys.onBacktabPressed: function(event) {
                           event.accepted = true
-                          passwordInput.focus = false
-                          if (root.panelRoot && typeof root.panelRoot.toggleFocusSection === "function") {
-                            root.panelRoot.toggleFocusSection()
-                          } else if (root.panelRoot) {
-                            root.panelRoot.focusSection = "sidebar"
-                            if (typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
-                              root.panelRoot.returnFocusToKeyCatcher()
-                            }
+                          root.setPromptFocus(3)
+                        }
+
+                        Keys.onDownPressed: function(event) {
+                          event.accepted = true
+                          root.setPromptFocus(2) // Jump directly to Connect button
+                        }
+
+                        Keys.onEscapePressed: function(event) {
+                          event.accepted = true
+                          root.cancelPasswordPrompt()
+                          if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                            root.panelRoot.returnFocusToKeyCatcher()
                           }
+                        }
+
+                        Keys.onPressed: function(event) {
+                          if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_H || event.key === Qt.Key_P)) {
+                            event.accepted = true
+                            root.showPasswordText = !root.showPasswordText
+                          }
+                        }
+                      }
+
+                      // Show / Hide Password Button
+                      Rectangle {
+                        id: showPwBtn
+                        width: 28
+                        height: 28
+                        radius: 4
+                        focus: root.promptFocusIndex === 1
+                        color: (root.promptFocusIndex === 1 || showPwMouse.containsMouse)
+                          ? Color.pickAlpha("surface.hover", "#2a3036")
+                          : "transparent"
+                        border.color: (root.promptFocusIndex === 1) ? Color.accent : "transparent"
+                        border.width: (root.promptFocusIndex === 1) ? 1.5 : 0
+
+                        Text {
+                          anchors.centerIn: parent
+                          text: root.showPasswordText ? "󰈈" : "󰈉"
+                          font.family: Style.font.family
+                          font.pixelSize: 14
+                          color: (root.showPasswordText || root.promptFocusIndex === 1) ? Color.accent : Color.muted
+                        }
+
+                        MouseArea {
+                          id: showPwMouse
+                          anchors.fill: parent
+                          hoverEnabled: true
+                          cursorShape: Qt.PointingHandCursor
+                          onClicked: {
+                            root.setPromptFocus(1)
+                            root.showPasswordText = !root.showPasswordText
+                          }
+                        }
+
+                        Keys.onTabPressed: function(event) {
+                          event.accepted = true
+                          root.setPromptFocus(2)
+                        }
+
+                        Keys.onBacktabPressed: function(event) {
+                          event.accepted = true
+                          root.setPromptFocus(0)
+                        }
+
+                        Keys.onLeftPressed: function(event) {
+                          event.accepted = true
+                          root.setPromptFocus(0)
+                        }
+
+                        Keys.onRightPressed: function(event) {
+                          event.accepted = true
+                          root.setPromptFocus(2)
+                        }
+
+                        Keys.onUpPressed: function(event) {
+                          event.accepted = true
+                          root.setPromptFocus(0)
+                        }
+
+                        Keys.onDownPressed: function(event) {
+                          event.accepted = true
+                          root.setPromptFocus(2)
+                        }
+
+                        Keys.onReturnPressed: function(event) {
+                          event.accepted = true
+                          root.showPasswordText = !root.showPasswordText
+                        }
+
+                        Keys.onEnterPressed: function(event) {
+                          event.accepted = true
+                          root.showPasswordText = !root.showPasswordText
+                        }
+
+                        Keys.onSpacePressed: function(event) {
+                          event.accepted = true
+                          root.showPasswordText = !root.showPasswordText
                         }
 
                         Keys.onEscapePressed: function(event) {
@@ -875,42 +1011,24 @@ Item {
                           }
                         }
                       }
-
-                      // Show / Hide Password Button
-                      Rectangle {
-                        width: 26
-                        height: 26
-                        radius: 4
-                        color: showPwMouse.containsMouse ? Color.pickAlpha("surface.hover", "#2a3036") : "transparent"
-
-                        Text {
-                          anchors.centerIn: parent
-                          text: root.showPasswordText ? "󰈈" : "󰈉"
-                          font.family: Style.font.family
-                          font.pixelSize: 14
-                          color: root.showPasswordText ? Color.accent : Color.muted
-                        }
-
-                        MouseArea {
-                          id: showPwMouse
-                          anchors.fill: parent
-                          hoverEnabled: true
-                          cursorShape: Qt.PointingHandCursor
-                          onClicked: root.showPasswordText = !root.showPasswordText
-                        }
-                      }
                     }
                   }
 
                   // Connect Button
                   Rectangle {
+                    id: connectBtn
                     Layout.preferredWidth: 84
                     Layout.preferredHeight: 36
                     radius: 6
+                    focus: root.promptFocusIndex === 2
                     color: (root.passwordText.length > 0 && !root.isConnecting)
                       ? Color.accent
                       : Color.pickAlpha("surface.selected", "#22272e")
                     opacity: (root.passwordText.length > 0 && !root.isConnecting) ? 1.0 : 0.6
+                    border.color: (root.promptFocusIndex === 2)
+                      ? (root.passwordText.length > 0 ? Color.foreground : Color.accent)
+                      : "transparent"
+                    border.width: (root.promptFocusIndex === 2) ? 2 : 0
 
                     Text {
                       anchors.centerIn: parent
@@ -922,28 +1040,88 @@ Item {
                     }
 
                     MouseArea {
+                      id: connectMouse
                       anchors.fill: parent
+                      hoverEnabled: true
                       enabled: root.passwordText.length > 0 && !root.isConnecting
-                      cursorShape: Qt.PointingHandCursor
-                      onClicked: root.submitPasswordConnect()
+                      cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                      onClicked: {
+                        root.setPromptFocus(2)
+                        root.submitPasswordConnect()
+                      }
+                    }
+
+                    Keys.onTabPressed: function(event) {
+                      event.accepted = true
+                      root.setPromptFocus(3)
+                    }
+
+                    Keys.onBacktabPressed: function(event) {
+                      event.accepted = true
+                      root.setPromptFocus(1)
+                    }
+
+                    Keys.onLeftPressed: function(event) {
+                      event.accepted = true
+                      root.setPromptFocus(1)
+                    }
+
+                    Keys.onRightPressed: function(event) {
+                      event.accepted = true
+                      root.setPromptFocus(3)
+                    }
+
+                    Keys.onUpPressed: function(event) {
+                      event.accepted = true
+                      root.setPromptFocus(0)
+                    }
+
+                    Keys.onDownPressed: function(event) {
+                      event.accepted = true
+                      root.setPromptFocus(3)
+                    }
+
+                    Keys.onReturnPressed: function(event) {
+                      event.accepted = true
+                      root.submitPasswordConnect()
+                    }
+
+                    Keys.onEnterPressed: function(event) {
+                      event.accepted = true
+                      root.submitPasswordConnect()
+                    }
+
+                    Keys.onSpacePressed: function(event) {
+                      event.accepted = true
+                      root.submitPasswordConnect()
+                    }
+
+                    Keys.onEscapePressed: function(event) {
+                      event.accepted = true
+                      root.cancelPasswordPrompt()
+                      if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                        root.panelRoot.returnFocusToKeyCatcher()
+                      }
                     }
                   }
 
                   // Cancel Button
                   Rectangle {
+                    id: cancelBtn
                     Layout.preferredWidth: 70
                     Layout.preferredHeight: 36
                     radius: 6
+                    focus: root.promptFocusIndex === 3
                     color: cancelMouse.containsMouse ? Color.pickAlpha("surface.hover", "#2a3036") : Color.pickAlpha("surface.subtle", "#181b1d")
-                    border.color: Color.pickAlpha("border.subtle", "#2a3036")
-                    border.width: 1
+                    border.color: (root.promptFocusIndex === 3) ? Color.accent : Color.pickAlpha("border.subtle", "#2a3036")
+                    border.width: (root.promptFocusIndex === 3) ? 2 : 1
 
                     Text {
                       anchors.centerIn: parent
                       text: "Cancel"
                       font.family: Style.font.family
                       font.pixelSize: 11
-                      color: Color.muted
+                      color: (root.promptFocusIndex === 3) ? Color.accent : Color.muted
                     }
 
                     MouseArea {
@@ -952,10 +1130,73 @@ Item {
                       hoverEnabled: true
                       cursorShape: Qt.PointingHandCursor
                       onClicked: {
+                        root.setPromptFocus(3)
                         root.cancelPasswordPrompt()
                         if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
                           root.panelRoot.returnFocusToKeyCatcher()
                         }
+                      }
+                    }
+
+                    Keys.onTabPressed: function(event) {
+                      event.accepted = true
+                      root.setPromptFocus(0)
+                    }
+
+                    Keys.onBacktabPressed: function(event) {
+                      event.accepted = true
+                      root.setPromptFocus(2)
+                    }
+
+                    Keys.onLeftPressed: function(event) {
+                      event.accepted = true
+                      root.setPromptFocus(2)
+                    }
+
+                    Keys.onRightPressed: function(event) {
+                      event.accepted = true
+                      root.setPromptFocus(0)
+                    }
+
+                    Keys.onUpPressed: function(event) {
+                      event.accepted = true
+                      root.setPromptFocus(0)
+                    }
+
+                    Keys.onDownPressed: function(event) {
+                      event.accepted = true
+                      root.setPromptFocus(0)
+                    }
+
+                    Keys.onReturnPressed: function(event) {
+                      event.accepted = true
+                      root.cancelPasswordPrompt()
+                      if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                        root.panelRoot.returnFocusToKeyCatcher()
+                      }
+                    }
+
+                    Keys.onEnterPressed: function(event) {
+                      event.accepted = true
+                      root.cancelPasswordPrompt()
+                      if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                        root.panelRoot.returnFocusToKeyCatcher()
+                      }
+                    }
+
+                    Keys.onSpacePressed: function(event) {
+                      event.accepted = true
+                      root.cancelPasswordPrompt()
+                      if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                        root.panelRoot.returnFocusToKeyCatcher()
+                      }
+                    }
+
+                    Keys.onEscapePressed: function(event) {
+                      event.accepted = true
+                      root.cancelPasswordPrompt()
+                      if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                        root.panelRoot.returnFocusToKeyCatcher()
                       }
                     }
                   }
