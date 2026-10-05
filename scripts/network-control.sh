@@ -41,6 +41,7 @@ case "$cmd" in
 
     networks_json="[]"
     if [[ "$wifi_enabled" == "true" ]]; then
+      saved_json=$(nmcli -t -f NAME,TYPE connection show 2>/dev/null | awk -F: '$2=="802-11-wireless"{print $1}' | jq -R . | jq -s . 2>/dev/null || echo "[]")
       networks_json=$(nmcli -t -f in-use,ssid,signal,security dev wifi list --rescan no 2>/dev/null | awk -F: '
         {
           in_use = ($1 ~ /\*/) ? "true" : "false"
@@ -53,7 +54,16 @@ case "$cmd" in
           seen_signal[ssid] = signal
           printf "%s\t%s\t%s\t%s\n", in_use, ssid, signal, security
         }
-      ' | jq -R 'split("\t") | {inUse: (.[0] == "true"), ssid: .[1], signal: (.[2] | tonumber), security: .[3]}' | jq -s 'sort_by(-.signal)' || echo "[]")
+      ' | jq -R --argjson saved "${saved_json:-[]}" '
+        split("\t") as $fields | {
+          inUse: ($fields[0] == "true"),
+          ssid: $fields[1],
+          signal: ($fields[2] | tonumber),
+          security: $fields[3],
+          requiresPassword: ($fields[3] != "" and $fields[3] != "--"),
+          isKnown: ($saved | contains([$fields[1]]))
+        }
+      ' | jq -s 'sort_by(-.signal)' 2>/dev/null || echo "[]")
     fi
 
     jq -n \
@@ -89,14 +99,29 @@ case "$cmd" in
     ssid="${2:-}"
     pass="${3:-}"
     if [[ -n "$ssid" ]]; then
+      set +e
       if [[ -n "$pass" ]]; then
-        nmcli dev wifi connect "$ssid" password "$pass" >/dev/null 2>&1 || true
+        out=$(nmcli dev wifi connect "$ssid" password "$pass" 2>&1)
+        res=$?
       else
-        nmcli dev wifi connect "$ssid" >/dev/null 2>&1 || true
+        out=$(nmcli dev wifi connect "$ssid" 2>&1)
+        res=$?
       fi
-      if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
-        "$SCRIPT_DIR/config-tracker.sh" record-command "network" "Wi-Fi Connection ($ssid)" "NetworkManager" "nmcli dev wifi connect $ssid" "Connected to SSID $ssid" >/dev/null 2>&1 || true
+      set -e
+      if [[ $res -eq 0 ]]; then
+        if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+          "$SCRIPT_DIR/config-tracker.sh" record-command "network" "Wi-Fi Connection ($ssid)" "NetworkManager" "nmcli dev wifi connect $ssid" "Connected to SSID $ssid" >/dev/null 2>&1 || true
+        fi
+        echo "{\"success\":true,\"message\":\"$ssid\"}"
+        exit 0
+      else
+        clean_err=$(echo "$out" | sed 's/^Error: *//' | tr '\n' ' ' | sed 's/ *$//')
+        echo "{\"success\":false,\"error\":\"$clean_err\"}"
+        exit 1
       fi
+    else
+      echo "{\"success\":false,\"error\":\"No SSID specified\"}"
+      exit 1
     fi
     ;;
 
