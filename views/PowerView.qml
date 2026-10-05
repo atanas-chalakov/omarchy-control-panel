@@ -23,6 +23,95 @@ Item {
   property bool stayAwake: false
   property string statusMessage: ""
 
+  property bool customScreensaverOpen: false
+  property string customScreensaverText: ""
+  property string customScreensaverError: ""
+  property Item customScreensaverInputItem: null
+
+  property bool customLockOpen: false
+  property string customLockText: ""
+  property string customLockError: ""
+  property Item customLockInputItem: null
+
+  readonly property bool isCustomScreensaverActive: {
+    for (var i = 0; i < screensaverOptions.length; i++) {
+      if (screensaverOptions[i].seconds === root.screensaverTimeout) return false
+    }
+    return true
+  }
+
+  readonly property bool isCustomLockActive: {
+    for (var j = 0; j < lockOptions.length; j++) {
+      if (lockOptions[j].seconds === root.lockTimeout) return false
+    }
+    return true
+  }
+
+  readonly property bool hasActiveInput: (customScreensaverOpen && customScreensaverInputItem && customScreensaverInputItem.activeFocus) || (customLockOpen && customLockInputItem && customLockInputItem.activeFocus)
+
+  onActiveFocusSectionChanged: {
+    if (!activeFocusSection) {
+      blurInput()
+    }
+  }
+
+  function focusToInput() {
+    if (customScreensaverOpen && customScreensaverInputItem) {
+      customScreensaverInputItem.forceActiveFocus()
+    } else if (customLockOpen && customLockInputItem) {
+      customLockInputItem.forceActiveFocus()
+    }
+  }
+
+  function blurInput() {
+    if (customScreensaverInputItem) customScreensaverInputItem.focus = false
+    if (customLockInputItem) customLockInputItem.focus = false
+  }
+
+  function applyCustomScreensaver() {
+    var raw = root.customScreensaverText.trim().toLowerCase()
+    if (raw === "") {
+      root.customScreensaverError = "Please enter timeout minutes (e.g. 12 or 45)"
+      return
+    }
+    var clean = raw.replace(/mins?|minutes?/g, "").trim()
+    var mins = parseFloat(clean)
+    if (isNaN(mins) || mins <= 0 || mins > 1440) {
+      root.customScreensaverError = "Enter valid minutes between 0.5 and 1440 (24h)"
+      return
+    }
+    var sec = Math.round(mins * 60)
+    root.customScreensaverError = ""
+    root.setIdle(sec, root.lockTimeout)
+    root.customScreensaverOpen = false
+  }
+
+  function applyCustomLock() {
+    var raw = root.customLockText.trim().toLowerCase()
+    if (raw === "") {
+      root.customLockError = "Please enter timeout minutes (e.g. 25 or 90)"
+      return
+    }
+    var clean = raw.replace(/mins?|minutes?|hrs?|hours?/g, function(match) {
+      return match.startsWith("h") ? " * 60" : ""
+    }).trim()
+    var mins = 0
+    if (clean.includes("* 60")) {
+      var parts = clean.split("*")
+      mins = parseFloat(parts[0].trim()) * 60
+    } else {
+      mins = parseFloat(clean)
+    }
+    if (isNaN(mins) || mins <= 0 || mins > 1440) {
+      root.customLockError = "Enter valid minutes between 1 and 1440 (24h)"
+      return
+    }
+    var sec = Math.round(mins * 60)
+    root.customLockError = ""
+    root.setIdle(root.screensaverTimeout, sec)
+    root.customLockOpen = false
+  }
+
   readonly property var powerProfiles: [
     {
       id: "power-saver",
@@ -162,6 +251,7 @@ Item {
   }
 
   function handleMove(dx, dy) {
+    if (hasActiveInput) return true
     if (dy !== 0) {
       focusedRow = Math.max(0, Math.min(3, focusedRow + dy))
       ensureRowVisible(focusedRow)
@@ -178,6 +268,7 @@ Item {
   }
 
   function handleActivate() {
+    if (hasActiveInput) return
     if (focusedRow === 0) cycleProfile(1)
     else if (focusedRow === 1) toggleStayAwake()
     else if (focusedRow === 2) cycleScreensaver(1)
@@ -185,6 +276,7 @@ Item {
   }
 
   function handleTextKey(key) {
+    if (hasActiveInput) return false
     if (key === "r" || key === "R") {
       refresh()
     } else if (key === "p" || key === "P") {
@@ -876,7 +968,7 @@ Item {
             width: parent.width
             spacing: 8
 
-            readonly property int count: root.screensaverOptions.length
+            readonly property int count: root.screensaverOptions.length + 1
             readonly property int minItemWidth: 65
             readonly property int cols: Math.max(1, Math.min(count, Math.floor((width + spacing) / (minItemWidth + spacing))))
             readonly property real itemWidth: Math.max(48, Math.floor((width - (cols - 1) * spacing) / cols))
@@ -914,6 +1006,168 @@ Item {
                   color: isSelected ? Color.accent : Color.foreground
                 }
               }
+            }
+
+            // Custom Screensaver Option Card
+            Rectangle {
+              id: customScreensaverChip
+              width: Math.max(screensaverFlow.itemWidth, 80)
+              height: 34
+              radius: 6
+              readonly property bool isSelected: root.isCustomScreensaverActive || root.customScreensaverOpen
+              color: customScreensaverChip.isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
+              border.color: customScreensaverChip.isSelected ? Color.accent : "transparent"
+              border.width: customScreensaverChip.isSelected ? 1 : 0
+
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  root.focusedRow = 2
+                  root.customScreensaverOpen = !root.customScreensaverOpen
+                  if (root.customScreensaverOpen) {
+                    root.customScreensaverError = ""
+                    if (!root.customScreensaverText && root.screensaverTimeout > 0) {
+                      root.customScreensaverText = String(Math.round(root.screensaverTimeout / 60 * 10) / 10)
+                    }
+                    Qt.callLater(function() {
+                      if (root.customScreensaverInputItem) {
+                        root.customScreensaverInputItem.forceActiveFocus()
+                      }
+                    })
+                  }
+                }
+              }
+
+              Text {
+                anchors.centerIn: parent
+                width: Math.min(implicitWidth, parent.width - 8)
+                elide: Text.ElideRight
+                horizontalAlignment: Text.AlignHCenter
+                text: root.isCustomScreensaverActive ? ("Custom: " + root.formatDuration(root.screensaverTimeout)) : "+ Custom..."
+                font.family: Style.font.family
+                font.pixelSize: 11
+                font.bold: customScreensaverChip.isSelected
+                color: customScreensaverChip.isSelected ? Color.accent : Color.foreground
+              }
+            }
+          }
+
+          // Expandable Custom Screensaver Input
+          ColumnLayout {
+            visible: root.customScreensaverOpen
+            Layout.fillWidth: true
+            spacing: 6
+
+            Rectangle {
+              Layout.fillWidth: true
+              height: 1
+              color: Color.pickAlpha("border.subtle", "#262b30")
+              opacity: 0.5
+            }
+
+            RowLayout {
+              Layout.fillWidth: true
+              spacing: 8
+
+              Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 34
+                radius: 6
+                color: Color.pickAlpha("surface.selected", "#1a1f24")
+                border.color: (customScreensaverInput.activeFocus) ? Color.accent : Color.pickAlpha("border.subtle", "#2a3036")
+                border.width: (customScreensaverInput.activeFocus) ? 2 : 1
+
+                RowLayout {
+                  anchors.fill: parent
+                  anchors.leftMargin: 10
+                  anchors.rightMargin: 8
+                  spacing: 8
+
+                  Text {
+                    text: "󰍹"
+                    font.family: Style.font.family
+                    font.pixelSize: 13
+                    color: customScreensaverInput.activeFocus ? Color.accent : Color.muted
+                  }
+
+                  TextField {
+                    id: customScreensaverInput
+                    Layout.fillWidth: true
+                    placeholderText: "Enter custom minutes (e.g. 12, 25, 40)... [Enter to Set]"
+                    placeholderTextColor: Color.muted
+                    color: Color.foreground
+                    font.family: Style.font.family
+                    font.pixelSize: 12
+                    background: Item {}
+                    text: root.customScreensaverText
+
+                    Component.onCompleted: root.customScreensaverInputItem = customScreensaverInput
+                    onTextChanged: {
+                      if (root.customScreensaverText !== text) {
+                        root.customScreensaverText = text
+                        root.customScreensaverError = ""
+                      }
+                    }
+
+                    onAccepted: root.applyCustomScreensaver()
+
+                    Keys.onEscapePressed: function(event) {
+                      event.accepted = true
+                      root.customScreensaverOpen = false
+                    }
+
+                    Keys.onTabPressed: function(event) {
+                      event.accepted = true
+                      if (root.panelRoot && typeof root.panelRoot.toggleFocusSection === "function") {
+                        root.panelRoot.toggleFocusSection()
+                      }
+                    }
+
+                    Keys.onBacktabPressed: function(event) {
+                      event.accepted = true
+                      if (root.panelRoot && typeof root.panelRoot.toggleFocusSection === "function") {
+                        root.panelRoot.toggleFocusSection()
+                      }
+                    }
+                  }
+                }
+              }
+
+              Button {
+                text: "Set"
+                implicitHeight: 34
+                implicitWidth: 60
+                bordered: true
+                onClicked: root.applyCustomScreensaver()
+              }
+
+              Button {
+                text: "Cancel"
+                implicitHeight: 34
+                implicitWidth: 65
+                bordered: true
+                onClicked: {
+                  root.customScreensaverOpen = false
+                  root.customScreensaverError = ""
+                }
+              }
+            }
+
+            Text {
+              visible: root.customScreensaverError.length > 0
+              text: root.customScreensaverError
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: "#ff5555"
+            }
+
+            Text {
+              visible: root.customScreensaverError.length === 0
+              text: "Set exact minutes before display powers down or activates screensaver (e.g. 12, 45, 90)."
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: Color.muted
             }
           }
         }
@@ -1051,7 +1305,7 @@ Item {
             width: parent.width
             spacing: 8
 
-            readonly property int count: root.lockOptions.length
+            readonly property int count: root.lockOptions.length + 1
             readonly property int minItemWidth: 65
             readonly property int cols: Math.max(1, Math.min(count, Math.floor((width + spacing) / (minItemWidth + spacing))))
             readonly property real itemWidth: Math.max(48, Math.floor((width - (cols - 1) * spacing) / cols))
@@ -1089,6 +1343,168 @@ Item {
                   color: isSelected ? Color.accent : Color.foreground
                 }
               }
+            }
+
+            // Custom Lock Option Card
+            Rectangle {
+              id: customLockChip
+              width: Math.max(lockFlow.itemWidth, 80)
+              height: 34
+              radius: 6
+              readonly property bool isSelected: root.isCustomLockActive || root.customLockOpen
+              color: customLockChip.isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
+              border.color: customLockChip.isSelected ? Color.accent : "transparent"
+              border.width: customLockChip.isSelected ? 1 : 0
+
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  root.focusedRow = 3
+                  root.customLockOpen = !root.customLockOpen
+                  if (root.customLockOpen) {
+                    root.customLockError = ""
+                    if (!root.customLockText && root.lockTimeout > 0) {
+                      root.customLockText = String(Math.round(root.lockTimeout / 60 * 10) / 10)
+                    }
+                    Qt.callLater(function() {
+                      if (root.customLockInputItem) {
+                        root.customLockInputItem.forceActiveFocus()
+                      }
+                    })
+                  }
+                }
+              }
+
+              Text {
+                anchors.centerIn: parent
+                width: Math.min(implicitWidth, parent.width - 8)
+                elide: Text.ElideRight
+                horizontalAlignment: Text.AlignHCenter
+                text: root.isCustomLockActive ? ("Custom: " + root.formatDuration(root.lockTimeout)) : "+ Custom..."
+                font.family: Style.font.family
+                font.pixelSize: 11
+                font.bold: customLockChip.isSelected
+                color: customLockChip.isSelected ? Color.accent : Color.foreground
+              }
+            }
+          }
+
+          // Expandable Custom Lock Input
+          ColumnLayout {
+            visible: root.customLockOpen
+            Layout.fillWidth: true
+            spacing: 6
+
+            Rectangle {
+              Layout.fillWidth: true
+              height: 1
+              color: Color.pickAlpha("border.subtle", "#262b30")
+              opacity: 0.5
+            }
+
+            RowLayout {
+              Layout.fillWidth: true
+              spacing: 8
+
+              Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 34
+                radius: 6
+                color: Color.pickAlpha("surface.selected", "#1a1f24")
+                border.color: (customLockInput.activeFocus) ? Color.accent : Color.pickAlpha("border.subtle", "#2a3036")
+                border.width: (customLockInput.activeFocus) ? 2 : 1
+
+                RowLayout {
+                  anchors.fill: parent
+                  anchors.leftMargin: 10
+                  anchors.rightMargin: 8
+                  spacing: 8
+
+                  Text {
+                    text: ""
+                    font.family: Style.font.family
+                    font.pixelSize: 13
+                    color: customLockInput.activeFocus ? Color.accent : Color.muted
+                  }
+
+                  TextField {
+                    id: customLockInput
+                    Layout.fillWidth: true
+                    placeholderText: "Enter custom minutes (e.g. 15, 45, 90)... [Enter to Set]"
+                    placeholderTextColor: Color.muted
+                    color: Color.foreground
+                    font.family: Style.font.family
+                    font.pixelSize: 12
+                    background: Item {}
+                    text: root.customLockText
+
+                    Component.onCompleted: root.customLockInputItem = customLockInput
+                    onTextChanged: {
+                      if (root.customLockText !== text) {
+                        root.customLockText = text
+                        root.customLockError = ""
+                      }
+                    }
+
+                    onAccepted: root.applyCustomLock()
+
+                    Keys.onEscapePressed: function(event) {
+                      event.accepted = true
+                      root.customLockOpen = false
+                    }
+
+                    Keys.onTabPressed: function(event) {
+                      event.accepted = true
+                      if (root.panelRoot && typeof root.panelRoot.toggleFocusSection === "function") {
+                        root.panelRoot.toggleFocusSection()
+                      }
+                    }
+
+                    Keys.onBacktabPressed: function(event) {
+                      event.accepted = true
+                      if (root.panelRoot && typeof root.panelRoot.toggleFocusSection === "function") {
+                        root.panelRoot.toggleFocusSection()
+                      }
+                    }
+                  }
+                }
+              }
+
+              Button {
+                text: "Set"
+                implicitHeight: 34
+                implicitWidth: 60
+                bordered: true
+                onClicked: root.applyCustomLock()
+              }
+
+              Button {
+                text: "Cancel"
+                implicitHeight: 34
+                implicitWidth: 65
+                bordered: true
+                onClicked: {
+                  root.customLockOpen = false
+                  root.customLockError = ""
+                }
+              }
+            }
+
+            Text {
+              visible: root.customLockError.length > 0
+              text: root.customLockError
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: "#ff5555"
+            }
+
+            Text {
+              visible: root.customLockError.length === 0
+              text: "Set exact minutes before desktop automatically locks (e.g. 25, 60, 90)."
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: Color.muted
             }
           }
         }

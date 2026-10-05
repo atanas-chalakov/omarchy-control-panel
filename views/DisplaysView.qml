@@ -21,6 +21,94 @@ Item {
   property int nightlightTemp: 4000
   property string statusMessage: ""
 
+  property bool customModeOpen: false
+  property string customModeText: ""
+  property string customModeError: ""
+  property Item customModeInputItem: null
+
+  property bool customScaleOpen: false
+  property string customScaleText: ""
+  property string customScaleError: ""
+  property Item customScaleInputItem: null
+
+  readonly property bool isCustomScaleActive: {
+    for (var i = 0; i < scaleOptions.length; i++) {
+      if (Math.abs(root.currentScale - Number(scaleOptions[i].value)) < 0.05) {
+        return false
+      }
+    }
+    return true
+  }
+
+  readonly property bool isCustomModeActive: {
+    if (!activeMonitor) return false
+    for (var i = 0; i < displayModes.length; i++) {
+      if (activeMonitor.width === displayModes[i].w && activeMonitor.height === displayModes[i].h) {
+        return false
+      }
+    }
+    return true
+  }
+
+  readonly property bool hasActiveInput: (customModeOpen && customModeInputItem && customModeInputItem.activeFocus) || (customScaleOpen && customScaleInputItem && customScaleInputItem.activeFocus)
+
+  onActiveFocusSectionChanged: {
+    if (!activeFocusSection) {
+      blurInput()
+    }
+  }
+
+  function focusToInput() {
+    if (customModeOpen && customModeInputItem) {
+      customModeInputItem.forceActiveFocus()
+    } else if (customScaleOpen && customScaleInputItem) {
+      customScaleInputItem.forceActiveFocus()
+    }
+  }
+
+  function blurInput() {
+    if (customModeInputItem) customModeInputItem.focus = false
+    if (customScaleInputItem) customScaleInputItem.focus = false
+  }
+
+  function applyCustomMode() {
+    var raw = root.customModeText.trim()
+    if (raw === "") {
+      root.customModeError = "Please enter a resolution mode (e.g. 1920x1080@144 or preferred)"
+      return
+    }
+    var valid = (raw === "preferred" || raw === "highrr" || raw === "highres" || /^(\d+)x(\d+)(?:@([\d.]+))?$/.test(raw))
+    if (!valid) {
+      root.customModeError = "Invalid mode format. Use WIDTHxHEIGHT[@HZ] (e.g. 1920x1080@144) or 'preferred'"
+      return
+    }
+    root.customModeError = ""
+    root.setMode(raw)
+    root.customModeOpen = false
+  }
+
+  function applyCustomScale() {
+    var raw = root.customScaleText.trim()
+    if (raw === "") {
+      root.customScaleError = "Please enter a scale factor (e.g. 1.25 or 125%)"
+      return
+    }
+    var num = NaN
+    if (raw.endsWith("%")) {
+      num = parseFloat(raw.replace("%", "")) / 100.0
+    } else {
+      num = parseFloat(raw)
+    }
+    if (isNaN(num) || num < 0.25 || num > 4.0) {
+      root.customScaleError = "Scale must be between 0.25 (25%) and 4.0 (400%)"
+      return
+    }
+    num = Math.round(num * 100) / 100
+    root.customScaleError = ""
+    root.setScale(String(num))
+    root.customScaleOpen = false
+  }
+
   readonly property var scaleOptions: [
     { label: "100%", value: "1" },
     { label: "110%", value: "1.1" },
@@ -81,7 +169,7 @@ Item {
           if (!seen[key]) {
             seen[key] = true
             list.push({
-              label: w + " × " + h + " (" + hz + "Hz Native)",
+              label: "★ Native (" + w + " × " + h + " @ " + hz + "Hz)",
               mode: clean,
               w: w,
               h: h,
@@ -91,6 +179,22 @@ Item {
           }
         }
       }
+    }
+
+    if (activeMonitor && (!Array.isArray(activeMonitor.modes) || activeMonitor.modes.length === 0) && activeMonitor.width && activeMonitor.height) {
+      var mw = activeMonitor.width
+      var mh = activeMonitor.height
+      var mhz = activeMonitor.refreshRate ? Math.round(activeMonitor.refreshRate) : targetHz
+      var mkey = mw + "x" + mh
+      seen[mkey] = true
+      list.push({
+        label: "★ Native (" + mw + " × " + mh + " @ " + mhz + "Hz)",
+        mode: mw + "x" + mh + "@" + mhz,
+        w: mw,
+        h: mh,
+        hz: mhz,
+        isNative: true
+      })
     }
 
     for (var j = 0; j < standardResolutions.length; j++) {
@@ -193,6 +297,7 @@ Item {
   }
 
   function handleMove(dx, dy) {
+    if (hasActiveInput) return true
     if (dy !== 0) {
       focusedRow = Math.max(0, Math.min(4, focusedRow + dy))
       ensureRowVisible(focusedRow)
@@ -210,6 +315,7 @@ Item {
   }
 
   function handleActivate() {
+    if (hasActiveInput) return
     if (focusedRow === 0) adjustBrightness(5)
     else if (focusedRow === 1) toggleNightlight()
     else if (focusedRow === 2) cycleNightlightTemp(1)
@@ -218,6 +324,7 @@ Item {
   }
 
   function handleTextKey(key) {
+    if (hasActiveInput) return false
     if (key === "r" || key === "R") {
       refresh()
       return true
@@ -1026,7 +1133,7 @@ Item {
             width: parent.width
             spacing: 8
 
-            readonly property int count: root.scaleOptions.length
+            readonly property int count: root.scaleOptions.length + 1
             readonly property int minItemWidth: 64
             readonly property int cols: Math.max(1, Math.min(count, Math.floor((width + spacing) / (minItemWidth + spacing))))
             readonly property real itemWidth: Math.max(48, Math.floor((width - (cols - 1) * spacing) / cols))
@@ -1064,6 +1171,180 @@ Item {
                   color: isSelected ? Color.accent : Color.foreground
                 }
               }
+            }
+
+            // Custom Scale Option Card
+            Rectangle {
+              id: customScaleChip
+              width: Math.max(scaleFlow.itemWidth, 90)
+              height: 34
+              radius: 6
+              readonly property bool isSelected: root.isCustomScaleActive || root.customScaleOpen
+              color: customScaleChip.isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
+              border.color: customScaleChip.isSelected ? Color.accent : "transparent"
+              border.width: customScaleChip.isSelected ? 1 : 0
+
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  root.focusedRow = 3
+                  root.customScaleOpen = !root.customScaleOpen
+                  if (root.customScaleOpen) {
+                    root.customScaleError = ""
+                    if (!root.customScaleText) {
+                      root.customScaleText = Math.round(root.currentScale * 100) + "%"
+                    }
+                    Qt.callLater(function() {
+                      if (root.customScaleInputItem) {
+                        root.customScaleInputItem.forceActiveFocus()
+                      }
+                    })
+                  }
+                }
+              }
+
+              RowLayout {
+                anchors.centerIn: parent
+                width: Math.min(implicitWidth, parent.width - 8)
+                spacing: 4
+
+                Text {
+                  text: "󰍹"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: customScaleChip.isSelected ? Color.accent : Color.muted
+                }
+
+                Text {
+                  Layout.fillWidth: true
+                  elide: Text.ElideRight
+                  horizontalAlignment: Text.AlignHCenter
+                  text: root.isCustomScaleActive ? ("Custom: " + Math.round(root.currentScale * 100) + "%") : "Custom..."
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: customScaleChip.isSelected
+                  color: customScaleChip.isSelected ? Color.accent : Color.foreground
+                }
+              }
+            }
+          }
+
+          // Expandable Custom Scale Input
+          ColumnLayout {
+            visible: root.customScaleOpen
+            Layout.fillWidth: true
+            spacing: 6
+
+            Rectangle {
+              Layout.fillWidth: true
+              height: 1
+              color: Color.pickAlpha("border.subtle", "#262b30")
+              opacity: 0.5
+            }
+
+            RowLayout {
+              Layout.fillWidth: true
+              spacing: 8
+
+              Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 34
+                radius: 6
+                color: Color.pickAlpha("surface.selected", "#1a1f24")
+                border.color: (customScaleInput.activeFocus) ? Color.accent : Color.pickAlpha("border.subtle", "#2a3036")
+                border.width: (customScaleInput.activeFocus) ? 2 : 1
+
+                RowLayout {
+                  anchors.fill: parent
+                  anchors.leftMargin: 10
+                  anchors.rightMargin: 8
+                  spacing: 8
+
+                  Text {
+                    text: "󰘵"
+                    font.family: Style.font.family
+                    font.pixelSize: 13
+                    color: customScaleInput.activeFocus ? Color.accent : Color.muted
+                  }
+
+                  TextField {
+                    id: customScaleInput
+                    Layout.fillWidth: true
+                    placeholderText: "e.g. 1.25, 118%, 1.35... [Enter to Apply]"
+                    placeholderTextColor: Color.muted
+                    color: Color.foreground
+                    font.family: Style.font.family
+                    font.pixelSize: 12
+                    background: Item {}
+                    text: root.customScaleText
+
+                    Component.onCompleted: root.customScaleInputItem = customScaleInput
+                    onTextChanged: {
+                      if (root.customScaleText !== text) {
+                        root.customScaleText = text
+                        root.customScaleError = ""
+                      }
+                    }
+
+                    onAccepted: root.applyCustomScale()
+
+                    Keys.onEscapePressed: function(event) {
+                      event.accepted = true
+                      root.customScaleOpen = false
+                    }
+
+                    Keys.onTabPressed: function(event) {
+                      event.accepted = true
+                      if (root.panelRoot && typeof root.panelRoot.toggleFocusSection === "function") {
+                        root.panelRoot.toggleFocusSection()
+                      }
+                    }
+
+                    Keys.onBacktabPressed: function(event) {
+                      event.accepted = true
+                      if (root.panelRoot && typeof root.panelRoot.toggleFocusSection === "function") {
+                        root.panelRoot.toggleFocusSection()
+                      }
+                    }
+                  }
+                }
+              }
+
+              Button {
+                text: "Apply"
+                implicitHeight: 34
+                implicitWidth: 70
+                bordered: true
+                onClicked: root.applyCustomScale()
+              }
+
+              Button {
+                text: "Cancel"
+                implicitHeight: 34
+                implicitWidth: 70
+                bordered: true
+                onClicked: {
+                  root.customScaleOpen = false
+                  root.customScaleError = ""
+                }
+              }
+            }
+
+            Text {
+              visible: root.customScaleError.length > 0
+              text: root.customScaleError
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: "#ff5555"
+            }
+
+            Text {
+              visible: root.customScaleError.length === 0
+              text: "Enter custom scaling factor: decimal (e.g. 1.18, 1.35) or percentage (e.g. 118%, 135%)"
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: Color.muted
             }
           }
         }
@@ -1202,7 +1483,7 @@ Item {
             width: parent.width
             spacing: 8
 
-            readonly property int count: root.displayModes.length
+            readonly property int count: root.displayModes.length + 1
             readonly property int minItemWidth: 155
             readonly property int cols: Math.max(1, Math.min(count, Math.floor((width + spacing) / (minItemWidth + spacing))))
             readonly property real itemWidth: Math.max(90, Math.floor((width - (cols - 1) * spacing) / cols))
@@ -1219,8 +1500,8 @@ Item {
                   return activeMonitor.width === modelData.w && activeMonitor.height === modelData.h
                 }
                 color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
-                border.color: isSelected ? Color.accent : "transparent"
-                border.width: isSelected ? 1 : 0
+                border.color: isSelected ? Color.accent : (modelData.isNative ? Color.pickAlpha("accent.subtle", "#304036") : "transparent")
+                border.width: isSelected ? 1 : (modelData.isNative ? 1 : 0)
 
                 MouseArea {
                   anchors.fill: parent
@@ -1231,18 +1512,205 @@ Item {
                   }
                 }
 
-                Text {
+                RowLayout {
                   anchors.centerIn: parent
                   width: Math.min(implicitWidth, parent.width - 8)
-                  elide: Text.ElideRight
-                  horizontalAlignment: Text.AlignHCenter
-                  text: modelData.label
-                  font.family: Style.font.family
-                  font.pixelSize: 11
-                  font.bold: isSelected
-                  color: isSelected ? Color.accent : Color.foreground
+                  spacing: 4
+
+                  Text {
+                    visible: modelData.isNative
+                    text: "★"
+                    font.family: Style.font.family
+                    font.pixelSize: 11
+                    color: isSelected ? Color.accent : "#e5c890"
+                  }
+
+                  Text {
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                    horizontalAlignment: modelData.isNative ? Text.AlignLeft : Text.AlignHCenter
+                    text: modelData.label
+                    font.family: Style.font.family
+                    font.pixelSize: 11
+                    font.bold: isSelected || modelData.isNative
+                    color: isSelected ? Color.accent : (modelData.isNative ? Color.foreground : Color.muted)
+                  }
                 }
               }
+            }
+
+            // Custom Mode Option Card
+            Rectangle {
+              id: customModeChip
+              width: Math.max(modeFlow.itemWidth, 140)
+              height: 34
+              radius: 6
+              readonly property bool isSelected: root.isCustomModeActive || root.customModeOpen
+              color: customModeChip.isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
+              border.color: customModeChip.isSelected ? Color.accent : "transparent"
+              border.width: customModeChip.isSelected ? 1 : 0
+
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  root.focusedRow = 4
+                  root.customModeOpen = !root.customModeOpen
+                  if (root.customModeOpen) {
+                    root.customModeError = ""
+                    if (!root.customModeText && activeMonitor) {
+                      root.customModeText = activeMonitor.width + "x" + activeMonitor.height + (activeMonitor.refreshRate ? ("@" + activeMonitor.refreshRate) : "")
+                    }
+                    Qt.callLater(function() {
+                      if (root.customModeInputItem) {
+                        root.customModeInputItem.forceActiveFocus()
+                      }
+                    })
+                  }
+                }
+              }
+
+              RowLayout {
+                anchors.centerIn: parent
+                width: Math.min(implicitWidth, parent.width - 8)
+                spacing: 5
+
+                Text {
+                  text: "󰒓"
+                  font.family: Style.font.family
+                  font.pixelSize: 12
+                  color: customModeChip.isSelected ? Color.accent : Color.muted
+                }
+
+                Text {
+                  Layout.fillWidth: true
+                  elide: Text.ElideRight
+                  horizontalAlignment: Text.AlignHCenter
+                  text: root.isCustomModeActive ? ("Custom: " + (activeMonitor ? (activeMonitor.width + "×" + activeMonitor.height) : "Active")) : "Custom Mode..."
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: customModeChip.isSelected
+                  color: customModeChip.isSelected ? Color.accent : Color.foreground
+                }
+              }
+            }
+          }
+
+          // Expandable Custom Mode Input
+          ColumnLayout {
+            visible: root.customModeOpen
+            Layout.fillWidth: true
+            spacing: 6
+
+            Rectangle {
+              Layout.fillWidth: true
+              height: 1
+              color: Color.pickAlpha("border.subtle", "#262b30")
+              opacity: 0.5
+            }
+
+            RowLayout {
+              Layout.fillWidth: true
+              spacing: 8
+
+              Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 34
+                radius: 6
+                color: Color.pickAlpha("surface.selected", "#1a1f24")
+                border.color: (customModeInput.activeFocus) ? Color.accent : Color.pickAlpha("border.subtle", "#2a3036")
+                border.width: (customModeInput.activeFocus) ? 2 : 1
+
+                RowLayout {
+                  anchors.fill: parent
+                  anchors.leftMargin: 10
+                  anchors.rightMargin: 8
+                  spacing: 8
+
+                  Text {
+                    text: "󰹑"
+                    font.family: Style.font.family
+                    font.pixelSize: 13
+                    color: customModeInput.activeFocus ? Color.accent : Color.muted
+                  }
+
+                  TextField {
+                    id: customModeInput
+                    Layout.fillWidth: true
+                    placeholderText: "e.g. 1920x1080@144, 2560x1440, preferred, highrr... [Enter to Apply]"
+                    placeholderTextColor: Color.muted
+                    color: Color.foreground
+                    font.family: Style.font.family
+                    font.pixelSize: 12
+                    background: Item {}
+                    text: root.customModeText
+
+                    Component.onCompleted: root.customModeInputItem = customModeInput
+                    onTextChanged: {
+                      if (root.customModeText !== text) {
+                        root.customModeText = text
+                        root.customModeError = ""
+                      }
+                    }
+
+                    onAccepted: root.applyCustomMode()
+
+                    Keys.onEscapePressed: function(event) {
+                      event.accepted = true
+                      root.customModeOpen = false
+                    }
+
+                    Keys.onTabPressed: function(event) {
+                      event.accepted = true
+                      if (root.panelRoot && typeof root.panelRoot.toggleFocusSection === "function") {
+                        root.panelRoot.toggleFocusSection()
+                      }
+                    }
+
+                    Keys.onBacktabPressed: function(event) {
+                      event.accepted = true
+                      if (root.panelRoot && typeof root.panelRoot.toggleFocusSection === "function") {
+                        root.panelRoot.toggleFocusSection()
+                      }
+                    }
+                  }
+                }
+              }
+
+              Button {
+                text: "Apply"
+                implicitHeight: 34
+                implicitWidth: 70
+                bordered: true
+                onClicked: root.applyCustomMode()
+              }
+
+              Button {
+                text: "Cancel"
+                implicitHeight: 34
+                implicitWidth: 70
+                bordered: true
+                onClicked: {
+                  root.customModeOpen = false
+                  root.customModeError = ""
+                }
+              }
+            }
+
+            Text {
+              visible: root.customModeError.length > 0
+              text: root.customModeError
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: "#ff5555"
+            }
+
+            Text {
+              visible: root.customModeError.length === 0
+              text: "Enter custom resolution mode: WIDTHxHEIGHT[@REFRESH] (e.g. 1920x1080@144) or 'preferred' / 'highrr'"
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: Color.muted
             }
           }
         }
