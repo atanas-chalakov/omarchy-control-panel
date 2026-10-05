@@ -46,19 +46,47 @@ Item {
 
   readonly property var screensaverOptions: [
     { label: "1 min", seconds: 60 },
+    { label: "2 min", seconds: 120 },
     { label: "2.5 min", seconds: 150 },
+    { label: "3 min", seconds: 180 },
     { label: "5 min", seconds: 300 },
     { label: "10 min", seconds: 600 },
+    { label: "15 min", seconds: 900 },
+    { label: "20 min", seconds: 1200 },
+    { label: "30 min", seconds: 1800 },
+    { label: "45 min", seconds: 2700 },
+    { label: "1 hr", seconds: 3600 },
     { label: "Never", seconds: 0 }
   ]
 
   readonly property var lockOptions: [
+    { label: "1 min", seconds: 60 },
     { label: "2 min", seconds: 120 },
+    { label: "3 min", seconds: 180 },
     { label: "5 min", seconds: 300 },
     { label: "10 min", seconds: 600 },
     { label: "15 min", seconds: 900 },
+    { label: "20 min", seconds: 1200 },
+    { label: "30 min", seconds: 1800 },
+    { label: "45 min", seconds: 2700 },
+    { label: "1 hr", seconds: 3600 },
+    { label: "2 hrs", seconds: 7200 },
     { label: "Never", seconds: 0 }
   ]
+
+  function formatDuration(sec) {
+    if (sec === 0 || sec >= 86400) return "Never"
+    if (sec < 60) return sec + "s"
+    var mins = Math.floor(sec / 60)
+    var rem = sec % 60
+    if (mins >= 60) {
+      var hrs = (mins / 60).toFixed(1)
+      if (hrs.endsWith(".0")) hrs = String(Math.floor(mins / 60))
+      return hrs + " hr" + (hrs === "1" ? "" : "s")
+    }
+    if (rem > 0) return mins + "m " + rem + "s"
+    return mins + " min"
+  }
 
   property bool activeFocusSection: false
   property int focusedRow: 0   // 0: Profiles, 1: Stay Awake, 2: Screen Off, 3: Lock Screen
@@ -94,17 +122,25 @@ Item {
   }
 
   function currentScreensaverIndex() {
+    var best = 0
+    var minDiff = 999999
     for (var i = 0; i < screensaverOptions.length; i++) {
       if (screensaverOptions[i].seconds === root.screensaverTimeout) return i
+      var diff = Math.abs(screensaverOptions[i].seconds - root.screensaverTimeout)
+      if (diff < minDiff) { minDiff = diff; best = i }
     }
-    return 1
+    return best
   }
 
   function currentLockIndex() {
+    var best = 0
+    var minDiff = 999999
     for (var i = 0; i < lockOptions.length; i++) {
       if (lockOptions[i].seconds === root.lockTimeout) return i
+      var diff = Math.abs(lockOptions[i].seconds - root.lockTimeout)
+      if (diff < minDiff) { minDiff = diff; best = i }
     }
-    return 1
+    return best
   }
 
   function cycleProfile(delta) {
@@ -763,6 +799,25 @@ Item {
                   color: Color.foreground
                 }
 
+                Rectangle {
+                  height: 20
+                  width: activeScreensaverText.implicitWidth + 12
+                  radius: 4
+                  color: Color.pickAlpha("accent.subtle", "#1f3b30")
+                  border.color: Color.accent
+                  border.width: 1
+
+                  Text {
+                    id: activeScreensaverText
+                    anchors.centerIn: parent
+                    text: root.formatDuration(root.screensaverTimeout)
+                    font.family: Style.font.family
+                    font.pixelSize: 10
+                    font.bold: true
+                    color: Color.accent
+                  }
+                }
+
                 Text {
                   visible: screensaverCard.isFocused
                   text: "• Use [←/→ or h/l] to cycle"
@@ -917,6 +972,25 @@ Item {
                   font.pixelSize: Style.font.subtitle || 14
                   font.bold: true
                   color: Color.foreground
+                }
+
+                Rectangle {
+                  height: 20
+                  width: activeLockText.implicitWidth + 12
+                  radius: 4
+                  color: Color.pickAlpha("accent.subtle", "#1f3b30")
+                  border.color: Color.accent
+                  border.width: 1
+
+                  Text {
+                    id: activeLockText
+                    anchors.centerIn: parent
+                    text: root.formatDuration(root.lockTimeout)
+                    font.family: Style.font.family
+                    font.pixelSize: 10
+                    font.bold: true
+                    color: Color.accent
+                  }
                 }
 
                 Text {

@@ -23,26 +23,95 @@ Item {
 
   readonly property var scaleOptions: [
     { label: "100%", value: "1" },
+    { label: "110%", value: "1.1" },
+    { label: "115%", value: "1.15" },
     { label: "125%", value: "1.25" },
+    { label: "133%", value: "1.33" },
     { label: "150%", value: "1.5" },
     { label: "160%", value: "1.6" },
-    { label: "200%", value: "2" }
+    { label: "175%", value: "1.75" },
+    { label: "200%", value: "2" },
+    { label: "225%", value: "2.25" }
   ]
 
   readonly property var nightlightOptions: [
+    { label: "2500K (Candle)", temp: 2500 },
+    { label: "3000K (Amber)", temp: 3000 },
     { label: "3500K (Warmest)", temp: 3500 },
     { label: "4000K (Warm)", temp: 4000 },
     { label: "4500K (Mild)", temp: 4500 },
     { label: "5000K (Normal)", temp: 5000 },
-    { label: "6000K (Cool)", temp: 6000 }
+    { label: "5500K (Neutral)", temp: 5500 },
+    { label: "6000K (Cool)", temp: 6000 },
+    { label: "6500K (Daylight)", temp: 6500 }
   ]
 
-  readonly property var commonModes: [
-    { label: "1920 × 1080 (FHD)", mode: "1920x1080@60.008" },
-    { label: "1600 × 900", mode: "1600x900@60" },
-    { label: "1366 × 768", mode: "1366x768@60" },
-    { label: "1280 × 720 (HD)", mode: "1280x720@60" }
+  readonly property var standardResolutions: [
+    { label: "3840 × 2160 (4K UHD)", w: 3840, h: 2160, tag: "4K" },
+    { label: "3440 × 1440 (UWQHD 21:9)", w: 3440, h: 1440, tag: "UW" },
+    { label: "2560 × 1600 (WQXGA 16:10)", w: 2560, h: 1600, tag: "16:10" },
+    { label: "2560 × 1440 (QHD 2K)", w: 2560, h: 1440, tag: "2K" },
+    { label: "2560 × 1080 (UW-FHD 21:9)", w: 2560, h: 1080, tag: "UW" },
+    { label: "1920 × 1200 (WUXGA 16:10)", w: 1920, h: 1200, tag: "16:10" },
+    { label: "1920 × 1080 (FHD 1080p)", w: 1920, h: 1080, tag: "FHD" },
+    { label: "1680 × 1050 (WSXGA+ 16:10)", w: 1680, h: 1050, tag: "16:10" },
+    { label: "1600 × 900 (HD+)", w: 1600, h: 900, tag: "HD+" },
+    { label: "1440 × 900 (WXGA+ 16:10)", w: 1440, h: 900, tag: "16:10" },
+    { label: "1366 × 768 (FWXGA)", w: 1366, h: 768, tag: "WXGA" },
+    { label: "1280 × 800 (WXGA 16:10)", w: 1280, h: 800, tag: "16:10" },
+    { label: "1280 × 720 (HD 720p)", w: 1280, h: 720, tag: "HD" },
+    { label: "1024 × 768 (XGA 4:3)", w: 1024, h: 768, tag: "4:3" }
   ]
+
+  readonly property var displayModes: {
+    var list = []
+    var seen = {}
+    var targetHz = (activeMonitor && activeMonitor.refreshRate) ? activeMonitor.refreshRate : 60
+
+    if (activeMonitor && Array.isArray(activeMonitor.modes)) {
+      for (var i = 0; i < activeMonitor.modes.length; i++) {
+        var raw = String(activeMonitor.modes[i] || "").trim()
+        var clean = raw.replace(/Hz$/i, "")
+        var match = clean.match(/^(\d+)x(\d+)(?:@([\d.]+))?/)
+        if (match) {
+          var w = parseInt(match[1])
+          var h = parseInt(match[2])
+          var hz = match[3] ? Math.round(parseFloat(match[3])) : targetHz
+          var key = w + "x" + h
+          if (!seen[key]) {
+            seen[key] = true
+            list.push({
+              label: w + " × " + h + " (" + hz + "Hz Native)",
+              mode: clean,
+              w: w,
+              h: h,
+              hz: hz,
+              isNative: true
+            })
+          }
+        }
+      }
+    }
+
+    for (var j = 0; j < standardResolutions.length; j++) {
+      var item = standardResolutions[j]
+      var k = item.w + "x" + item.h
+      if (!seen[k]) {
+        seen[k] = true
+        var modeStr = item.w + "x" + item.h + "@" + targetHz
+        list.push({
+          label: item.label,
+          mode: modeStr,
+          w: item.w,
+          h: item.h,
+          hz: targetHz,
+          isNative: false
+        })
+      }
+    }
+
+    return list
+  }
 
   property bool activeFocusSection: false
   property int focusedRow: 0   // 0: Brightness, 1: Night Light Toggle, 2: Warmth, 3: Scale, 4: Resolution
@@ -82,9 +151,10 @@ Item {
 
   function currentModeIndex() {
     if (!activeMonitor) return 0
-    var resPrefix = activeMonitor.width + "x" + activeMonitor.height
-    for (var i = 0; i < commonModes.length; i++) {
-      if (commonModes[i].mode.indexOf(resPrefix) === 0) return i
+    for (var i = 0; i < displayModes.length; i++) {
+      if (displayModes[i].w === activeMonitor.width && displayModes[i].h === activeMonitor.height) {
+        return i
+      }
     }
     return 0
   }
@@ -107,8 +177,8 @@ Item {
 
   function cycleMode(delta) {
     var idx = currentModeIndex()
-    var next = Math.max(0, Math.min(commonModes.length - 1, idx + delta))
-    setMode(commonModes[next].mode)
+    var next = Math.max(0, Math.min(displayModes.length - 1, idx + delta))
+    setMode(displayModes[next].mode)
   }
 
   function cycleNightlightTemp(delta) {
@@ -1054,6 +1124,26 @@ Item {
                   color: Color.foreground
                 }
 
+                Rectangle {
+                  visible: activeMonitor !== null
+                  height: 20
+                  width: activeResLabel.implicitWidth + 12
+                  radius: 4
+                  color: Color.pickAlpha("accent.subtle", "#1f3b30")
+                  border.color: Color.accent
+                  border.width: 1
+
+                  Text {
+                    id: activeResLabel
+                    anchors.centerIn: parent
+                    text: activeMonitor ? (activeMonitor.width + " × " + activeMonitor.height + (activeMonitor.refreshRate ? (" @ " + activeMonitor.refreshRate + "Hz") : "")) : ""
+                    font.family: Style.font.family
+                    font.pixelSize: 10
+                    font.bold: true
+                    color: Color.accent
+                  }
+                }
+
                 Text {
                   visible: modeCard.isFocused
                   text: "• Use [←/→ or h/l] to cycle"
@@ -1112,13 +1202,13 @@ Item {
             width: parent.width
             spacing: 8
 
-            readonly property int count: root.commonModes.length
-            readonly property int minItemWidth: 125
+            readonly property int count: root.displayModes.length
+            readonly property int minItemWidth: 155
             readonly property int cols: Math.max(1, Math.min(count, Math.floor((width + spacing) / (minItemWidth + spacing))))
-            readonly property real itemWidth: Math.max(80, Math.floor((width - (cols - 1) * spacing) / cols))
+            readonly property real itemWidth: Math.max(90, Math.floor((width - (cols - 1) * spacing) / cols))
 
             Repeater {
-              model: root.commonModes
+              model: root.displayModes
 
               delegate: Rectangle {
                 width: modeFlow.itemWidth
@@ -1126,8 +1216,7 @@ Item {
                 radius: 6
                 readonly property bool isSelected: {
                   if (!activeMonitor) return false
-                  var resPrefix = activeMonitor.width + "x" + activeMonitor.height
-                  return modelData.mode.indexOf(resPrefix) === 0
+                  return activeMonitor.width === modelData.w && activeMonitor.height === modelData.h
                 }
                 color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
                 border.color: isSelected ? Color.accent : "transparent"

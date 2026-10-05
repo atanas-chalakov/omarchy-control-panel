@@ -59,18 +59,20 @@ Item {
 
   readonly property var gapPresets: [
     { label: "None (0px)", inGap: 0, outGap: 0 },
+    { label: "Subtle (2px)", inGap: 2, outGap: 4 },
     { label: "Compact (4px)", inGap: 3, outGap: 6 },
     { label: "Default (8px)", inGap: 5, outGap: 10 },
     { label: "Spacious (14px)", inGap: 8, outGap: 14 },
-    { label: "Expansive (20px)", inGap: 12, outGap: 20 }
+    { label: "Expansive (20px)", inGap: 12, outGap: 20 },
+    { label: "Maximal (28px)", inGap: 16, outGap: 28 }
   ]
 
-  readonly property var roundingOptions: [0, 4, 8, 12, 16]
-  readonly property var borderOptions: [0, 1, 2, 3, 4]
-  readonly property var opacityOptions: [1.0, 0.95, 0.90, 0.85, 0.80]
+  readonly property var roundingOptions: [0, 2, 4, 6, 8, 10, 12, 16, 20, 24]
+  readonly property var borderOptions: [0, 1, 2, 3, 4, 5, 6, 8]
+  readonly property var opacityOptions: [1.0, 0.95, 0.90, 0.85, 0.80, 0.75, 0.70, 0.65, 0.60]
 
   function currentGapIndex() {
-    var best = 2
+    var best = 3
     var minDiff = 999
     for (var i = 0; i < gapPresets.length; i++) {
       var diff = Math.abs(gapPresets[i].inGap - root.gapsIn)
@@ -96,10 +98,14 @@ Item {
   }
 
   function currentBorderIndex() {
+    var best = 2
+    var minDiff = 999
     for (var i = 0; i < borderOptions.length; i++) {
       if (borderOptions[i] === root.borderSize) return i
+      var diff = Math.abs(borderOptions[i] - root.borderSize)
+      if (diff < minDiff) { minDiff = diff; best = i }
     }
-    return 2
+    return best
   }
 
   function currentOpacityIndex() {
