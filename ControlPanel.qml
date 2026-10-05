@@ -47,10 +47,48 @@ Item {
     }
   }
 
+  readonly property bool isCompactScreen: window.screen ? (window.screen.height < 650 || window.screen.width < 1000) : false
+  property int lastScreenWidth: 0
+  property int lastScreenHeight: 0
+
+  function fitWindowToScreen(forceReset) {
+    if (!window.screen) return
+    var scrW = window.screen.width
+    var scrH = window.screen.height
+    if (scrW <= 0 || scrH <= 0) return
+
+    var screenChanged = (lastScreenWidth !== 0 && lastScreenHeight !== 0) && (lastScreenWidth !== scrW || lastScreenHeight !== scrH)
+    lastScreenWidth = scrW
+    lastScreenHeight = scrH
+
+    var marginH = scrW < 800 ? 16 : 34
+    var marginV = scrH < 600 ? 48 : (scrH < 800 ? 64 : 80)
+
+    var maxW = Math.max(320, scrW - marginH)
+    var maxH = Math.max(260, scrH - marginV)
+
+    var targetW = Math.min(1886, maxW)
+    var targetH = Math.min(880, maxH)
+
+    if (forceReset || screenChanged || window.width > maxW || window.height > maxH || window.width <= 0 || window.height <= 0) {
+      window.width = targetW
+      window.height = targetH
+    }
+  }
+
+  Timer {
+    id: screenRefitTimer
+    interval: 300
+    repeat: false
+    onTriggered: root.fitWindowToScreen(true)
+  }
+
   function notifySettingChanged() {
     if (diffInspectorLoader && diffInspectorLoader.item) {
       diffInspectorLoader.item.refresh()
     }
+    root.fitWindowToScreen(true)
+    screenRefitTimer.restart()
   }
 
   readonly property var categories: [
@@ -74,6 +112,7 @@ Item {
 
   function open(payloadJson) {
     closingFromHost = false
+    root.fitWindowToScreen(false)
     window.visible = true
     if (payloadJson) {
       try {
@@ -169,6 +208,13 @@ Item {
     if (showDiffInspector && diffInspectorLoader && diffInspectorLoader.item) {
       diffInspectorLoader.item.refresh()
     }
+    if (showDiffInspector) {
+      var minWWithDiff = Math.min(window.screen ? (window.screen.width - 24) : 960, 840)
+      if (window.width < minWWithDiff) {
+        window.width = minWWithDiff
+      }
+    }
+    root.fitWindowToScreen(false)
   }
 
   function navigateToSetting(categoryId, cardIndex) {
@@ -202,13 +248,50 @@ Item {
     id: window
     title: "Control Panel"
     color: Color.background
-    implicitWidth: window.screen ? Math.max(960, window.screen.width - 34) : 1886
-    implicitHeight: window.screen ? Math.min(880, Math.max(640, window.screen.height - 100)) : 680
-    minimumSize: Qt.size(root.showDiffInspector ? 960 : 720, 520)
+    implicitWidth: window.screen ? Math.max(480, Math.min(1886, window.screen.width - (window.screen.width < 800 ? 16 : 34))) : 1280
+    implicitHeight: window.screen ? Math.max(260, Math.min(880, window.screen.height - (window.screen.height < 600 ? 48 : (window.screen.height < 800 ? 64 : 80)))) : 680
+    minimumSize: {
+      var scrW = window.screen ? window.screen.width : 1280
+      var scrH = window.screen ? window.screen.height : 720
+      var minW = Math.min(scrW - 16, root.showDiffInspector ? (root.isCompactScreen ? 680 : 760) : 480)
+      var minH = Math.min(scrH - 30, 320)
+      return Qt.size(Math.max(300, minW), Math.max(220, minH))
+    }
+    maximumSize: {
+      var scrW = window.screen ? window.screen.width : 1920
+      var scrH = window.screen ? window.screen.height : 1080
+      return Qt.size(scrW, scrH)
+    }
 
+    onScreenChanged: {
+      root.fitWindowToScreen(true)
+    }
+
+    Connections {
+      target: window.screen ? window.screen : null
+      ignoreUnknownSignals: true
+      function onWidthChanged() {
+        root.fitWindowToScreen(true)
+      }
+      function onHeightChanged() {
+        root.fitWindowToScreen(true)
+      }
+      function onScaleChanged() {
+        root.fitWindowToScreen(true)
+      }
+    }
+
+    Connections {
+      target: Quickshell
+      ignoreUnknownSignals: true
+      function onScreensChanged() {
+        root.fitWindowToScreen(true)
+      }
+    }
 
     onVisibleChanged: {
       if (visible) {
+        root.fitWindowToScreen(false)
         Qt.callLater(function() {
           if (root.focusSection === "sidebar" && keyCatcher) {
             keyCatcher.forceActiveFocus()
@@ -419,8 +502,8 @@ Item {
 
       ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 18
-        spacing: 12
+        anchors.margins: root.isCompactScreen ? 12 : 18
+        spacing: root.isCompactScreen ? 8 : 12
 
         // Window Header
         RowLayout {
@@ -589,30 +672,29 @@ Item {
           id: mainRow
           Layout.fillWidth: true
           Layout.preferredWidth: 0
-          Layout.maximumWidth: parent.width
           Layout.fillHeight: true
-          spacing: 16
+          spacing: root.isCompactScreen ? 10 : 16
 
           // Left Sidebar (Touch-scrollable)
           ScrollView {
             id: sidebarScroll
-            Layout.preferredWidth: 220
-            Layout.minimumWidth: 190
+            Layout.preferredWidth: root.isCompactScreen ? 190 : 220
+            Layout.minimumWidth: 170
             Layout.fillHeight: true
             clip: true
             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
             ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
             ColumnLayout {
-              width: sidebarScroll.availableWidth > 0 ? (sidebarScroll.availableWidth - 4) : 216
-              spacing: 6
+              width: sidebarScroll.availableWidth > 0 ? (sidebarScroll.availableWidth - 4) : (root.isCompactScreen ? 186 : 216)
+              spacing: root.isCompactScreen ? 4 : 6
 
               Repeater {
                 model: root.categories
 
                 delegate: Rectangle {
                   Layout.fillWidth: true
-                  Layout.preferredHeight: 44
+                  Layout.preferredHeight: root.isCompactScreen ? 38 : 44
                   radius: Style.cornerRadius || 6
                   color: (root.currentCategory === modelData.id)
                     ? (root.focusSection === "sidebar" ? Color.pickAlpha("surface.selected", "#2a3036") : Color.pickAlpha("surface.subtle", "#20252b"))
@@ -702,7 +784,7 @@ Item {
             id: rightPanelView
             Layout.fillWidth: true
             Layout.preferredWidth: 0
-            Layout.minimumWidth: 320
+            Layout.minimumWidth: root.isCompactScreen ? 240 : 320
             Layout.fillHeight: true
             clip: true
             color: "transparent"
@@ -838,9 +920,9 @@ Item {
             id: diffInspectorLoader
             visible: root.showDiffInspector
             active: true
-            Layout.preferredWidth: root.showDiffInspector ? 360 : 0
-            Layout.minimumWidth: root.showDiffInspector ? 360 : 0
-            Layout.maximumWidth: root.showDiffInspector ? 380 : 0
+            Layout.preferredWidth: root.showDiffInspector ? (root.isCompactScreen ? 280 : 360) : 0
+            Layout.minimumWidth: root.showDiffInspector ? (root.isCompactScreen ? 240 : 300) : 0
+            Layout.maximumWidth: root.showDiffInspector ? (root.isCompactScreen ? 320 : 380) : 0
             Layout.fillHeight: true
             source: "views/DiffInspector.qml"
 
@@ -861,11 +943,13 @@ Item {
           height: 1
           color: Color.muted
           opacity: 0.2
+          visible: !root.isCompactScreen || (window.height > 440)
         }
 
         RowLayout {
           Layout.fillWidth: true
           spacing: 12
+          visible: !root.isCompactScreen || (window.height > 440)
 
           Text {
             Layout.fillWidth: true

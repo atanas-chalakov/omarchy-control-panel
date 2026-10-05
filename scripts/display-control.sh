@@ -78,13 +78,51 @@ case "$cmd" in
 
   set-scale)
     scale="${2:-}"
+    monitor="${3:-}"
+    if [[ -z "$monitor" ]]; then
+      monitor=$(hyprctl monitors -j 2>/dev/null | jq -r '(.[] | select(.focused == true) | .name) // .[0].name // empty' | head -n1)
+    fi
     if [[ -n "$scale" ]]; then
       lua_file="$HOME/.config/hypr/monitors.lua"
       snap=""
       if [[ -x "$SCRIPT_DIR/config-tracker.sh" && -f "$lua_file" ]]; then
         snap=$("$SCRIPT_DIR/config-tracker.sh" snapshot "$lua_file" 2>/dev/null || true)
       fi
+
+      # 1. Omarchy scaling utility sets GDK_SCALE and writes to audit logs
       omarchy hyprland monitor scaling "$scale" >/dev/null 2>&1 || true
+
+      # 2. Get current active mode for this monitor so we can evaluate hl.monitor cleanly
+      mode=$(hyprctl monitors -j 2>/dev/null | jq -r --arg m "$monitor" '
+        (.[] | select(.name == $m) | (.availableModes[0] // "\(.width)x\(.height)") | sub("Hz$"; "")) // "preferred"
+      ' | head -n1)
+      if [[ -z "$mode" || "$mode" == "@" ]]; then
+        mode="preferred"
+      fi
+
+      # 3. Modern Hyprland eval for Lua configuration
+      if [[ -n "$monitor" ]]; then
+        hyprctl eval "hl.monitor({ output = \"$monitor\", mode = \"$mode\", position = \"auto\", scale = $scale })" >/dev/null 2>&1 || true
+      fi
+
+      # 4. Persist to monitors.lua specifically for this monitor so subsequent reloads don't revert to scale 1
+      if [[ -f "$lua_file" && -n "$monitor" ]]; then
+        if grep -q "output = \"$monitor\"" "$lua_file" 2>/dev/null; then
+          sed -i -E "s|hl\.monitor\(\{[^}]*output = \"$monitor\"[^}]*\}.*|hl.monitor({ output = \"$monitor\", mode = \"$mode\", position = \"auto\", scale = $scale })|g" "$lua_file"
+        else
+          echo "hl.monitor({ output = \"$monitor\", mode = \"$mode\", position = \"auto\", scale = $scale })" >> "$lua_file"
+        fi
+      fi
+
+      # 5. Keep omarchy_monitor_scale and omarchy_gdk_scale in sync if present
+      if [[ -f "$lua_file" ]] && grep -q '^local omarchy_monitor_scale = ' "$lua_file"; then
+        gdk_scale=$(awk -v s="$scale" 'BEGIN { printf "%d", int(s + 0.5) }')
+        sed -i -E \
+          -e "s|^local omarchy_monitor_scale = .*|local omarchy_monitor_scale = ${scale}|" \
+          -e "s|^local omarchy_gdk_scale = .*|local omarchy_gdk_scale = ${gdk_scale}|" \
+          "$lua_file"
+      fi
+
       if [[ -n "$snap" && -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
         "$SCRIPT_DIR/config-tracker.sh" record "displays" "Display Scaling ($scale)" "$lua_file" "$snap" >/dev/null 2>&1 || true
       elif [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
@@ -96,7 +134,14 @@ case "$cmd" in
   set-mode)
     monitor="${2:-}"
     mode="${3:-}"
-    scale="${4:-1}"
+    scale="${4:-}"
+    if [[ -z "$monitor" ]]; then
+      monitor=$(hyprctl monitors -j 2>/dev/null | jq -r '(.[] | select(.focused == true) | .name) // .[0].name // empty' | head -n1)
+    fi
+    if [[ -z "$scale" ]]; then
+      scale=$(hyprctl monitors -j 2>/dev/null | jq -r --arg m "$monitor" '(.[] | select(.name == $m) | .scale) // empty' | head -n1)
+      [[ -z "$scale" || "$scale" == "null" ]] && scale="1"
+    fi
     if [[ -n "$monitor" && -n "$mode" ]]; then
       # Modern Hyprland eval for Lua configuration
       hyprctl eval "hl.monitor({ output = \"$monitor\", mode = \"$mode\", position = \"auto\", scale = $scale })" >/dev/null 2>&1 || true
@@ -110,7 +155,7 @@ case "$cmd" in
         snap=$("$SCRIPT_DIR/config-tracker.sh" snapshot "$lua_file" 2>/dev/null || true)
       fi
       if grep -q "output = \"$monitor\"" "$lua_file" 2>/dev/null; then
-        sed -i -E "s|hl\.monitor\(\{ output = \"$monitor\", mode = \"[^\"]+\"|hl.monitor({ output = \"$monitor\", mode = \"$mode\"|" "$lua_file"
+        sed -i -E "s|hl\.monitor\(\{[^}]*output = \"$monitor\"[^}]*\}.*|hl.monitor({ output = \"$monitor\", mode = \"$mode\", position = \"auto\", scale = $scale })|g" "$lua_file"
       else
         echo "hl.monitor({ output = \"$monitor\", mode = \"$mode\", position = \"auto\", scale = $scale })" >> "$lua_file"
       fi

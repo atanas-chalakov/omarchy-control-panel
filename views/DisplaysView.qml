@@ -486,7 +486,8 @@ Item {
   }
 
   function setScale(scaleVal) {
-    setScaleProcess.command = [pluginPath + "/scripts/display-control.sh", "set-scale", String(scaleVal)]
+    var mon = activeMonitor ? activeMonitor.name : ""
+    setScaleProcess.command = [pluginPath + "/scripts/display-control.sh", "set-scale", String(scaleVal), mon]
     setScaleProcess.running = true
     notifyStatus("Scale set to " + scaleVal + "x")
   }
@@ -514,6 +515,18 @@ Item {
     interval: 3000
     repeat: false
     onTriggered: root.statusMessage = ""
+  }
+
+  Timer {
+    id: scaleRefreshTimer
+    interval: 250
+    repeat: false
+    onTriggered: {
+      root.refresh()
+      if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+        panelRoot.notifySettingChanged()
+      }
+    }
   }
 
   Component.onCompleted: refresh()
@@ -583,6 +596,7 @@ Item {
     onRunningChanged: {
       if (!running) {
         root.refresh()
+        scaleRefreshTimer.restart()
         if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
           panelRoot.notifySettingChanged()
         }
@@ -596,6 +610,7 @@ Item {
     onRunningChanged: {
       if (!running) {
         root.refresh()
+        scaleRefreshTimer.restart()
         if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
           panelRoot.notifySettingChanged()
         }
