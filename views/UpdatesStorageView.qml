@@ -105,12 +105,18 @@ Item {
 
   function handleMove(dx, dy) {
     if (dx !== 0) {
-      currentTab = (currentTab + (dx > 0 ? 1 : -1) + 2) % 2
+      if (dx < 0 && currentTab === 0) return false
+      var nextTab = Math.max(0, Math.min(1, currentTab + (dx > 0 ? 1 : -1)))
+      if (nextTab === currentTab) return true
+      currentTab = nextTab
       ensureActionVisible(focusedAction)
+      return true
     } else if (dy !== 0) {
       focusedAction = Math.max(0, Math.min(3, focusedAction + dy))
       ensureActionVisible(focusedAction)
+      return true
     }
+    return false
   }
 
   function handleActivate() {
@@ -126,7 +132,11 @@ Item {
 
   function handleTextKey(key) {
     var k = key.toLowerCase()
-    if (k === "u") {
+    if (k === "h") {
+      return handleMove(-1, 0)
+    } else if (k === "l") {
+      return handleMove(1, 0)
+    } else if (k === "u") {
       launchUpdate()
       return true
     } else if (k === "p") {

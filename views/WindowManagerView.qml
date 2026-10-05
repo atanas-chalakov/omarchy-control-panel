@@ -123,26 +123,38 @@ Item {
 
   function cycleGaps(delta) {
     var idx = currentGapIndex()
+    if (delta < 0 && idx === 0) return false
     var next = Math.max(0, Math.min(gapPresets.length - 1, idx + delta))
+    if (next === idx) return false
     setGaps(gapPresets[next].inGap, gapPresets[next].outGap)
+    return true
   }
 
   function cycleRounding(delta) {
     var idx = currentRoundingIndex()
+    if (delta < 0 && idx === 0) return false
     var next = Math.max(0, Math.min(roundingOptions.length - 1, idx + delta))
+    if (next === idx) return false
     setRounding(roundingOptions[next])
+    return true
   }
 
   function cycleBorder(delta) {
     var idx = currentBorderIndex()
+    if (delta < 0 && idx === 0) return false
     var next = Math.max(0, Math.min(borderOptions.length - 1, idx + delta))
+    if (next === idx) return false
     setBorderSize(borderOptions[next])
+    return true
   }
 
   function cycleOpacity(delta) {
     var idx = currentOpacityIndex()
+    if (delta < 0 && idx === 0) return false
     var next = Math.max(0, Math.min(opacityOptions.length - 1, idx + delta))
+    if (next === idx) return false
     setInactiveOpacity(opacityOptions[next])
+    return true
   }
 
   function cycleBarPosition() {
@@ -247,19 +259,49 @@ Item {
     if (dy !== 0) {
       focusedCard = Math.max(0, Math.min(10, focusedCard + dy))
       ensureCardVisible(focusedCard)
+      return true
     } else if (dx !== 0) {
-      if (focusedCard === 0) toggleAnimations()
-      else if (focusedCard === 1) cycleGaps(dx)
-      else if (focusedCard === 2) toggleSingleWindowAspect()
-      else if (focusedCard === 3) cycleRounding(dx)
-      else if (focusedCard === 4) cycleBorder(dx)
-      else if (focusedCard === 5) cycleOpacity(dx)
-      else if (focusedCard === 6) toggleBlur()
-      else if (focusedCard === 7) toggleBar()
-      else if (focusedCard === 8) cycleBarPosition()
-      else if (focusedCard === 9) toggleBarTransparent()
-      else if (focusedCard === 10) toggleWorkspaceLayout()
+      if (focusedCard === 0) {
+        if (dx < 0) return false
+        toggleAnimations()
+        return true
+      }
+      else if (focusedCard === 1) return cycleGaps(dx)
+      else if (focusedCard === 2) {
+        if (dx < 0) return false
+        toggleSingleWindowAspect()
+        return true
+      }
+      else if (focusedCard === 3) return cycleRounding(dx)
+      else if (focusedCard === 4) return cycleBorder(dx)
+      else if (focusedCard === 5) return cycleOpacity(dx)
+      else if (focusedCard === 6) {
+        if (dx < 0) return false
+        toggleBlur()
+        return true
+      }
+      else if (focusedCard === 7) {
+        if (dx < 0) return false
+        toggleBar()
+        return true
+      }
+      else if (focusedCard === 8) {
+        if (dx < 0 && root.barPosition === "top") return false
+        cycleBarPosition()
+        return true
+      }
+      else if (focusedCard === 9) {
+        if (dx < 0) return false
+        toggleBarTransparent()
+        return true
+      }
+      else if (focusedCard === 10) {
+        if (dx < 0) return false
+        toggleWorkspaceLayout()
+        return true
+      }
     }
+    return false
   }
 
   function handleActivate() {
@@ -278,7 +320,11 @@ Item {
 
   function handleTextKey(key) {
     var k = key.toLowerCase()
-    if (k === "a") {
+    if (k === "h") {
+      return handleMove(-1, 0)
+    } else if (k === "l") {
+      return handleMove(1, 0)
+    } else if (k === "a") {
       focusedCard = 0
       toggleAnimations()
       return true
@@ -301,10 +347,6 @@ Item {
     } else if (k === "d") {
       focusedCard = 5
       cycleOpacity(1)
-      return true
-    } else if (k === "l") {
-      focusedCard = 6
-      toggleBlur()
       return true
     } else if (k === "t") {
       focusedCard = 7

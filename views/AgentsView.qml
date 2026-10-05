@@ -60,10 +60,14 @@ Item {
   }
 
   function cycleAgent(delta) {
-    if (agents.length === 0) return
-    selectedAgentIdx = (selectedAgentIdx + delta + agents.length) % agents.length
+    if (agents.length === 0) return false
+    if (delta < 0 && selectedAgentIdx === 0) return false
+    var next = Math.max(0, Math.min(agents.length - 1, selectedAgentIdx + delta))
+    if (next === selectedAgentIdx) return false
+    selectedAgentIdx = next
     var target = agents[selectedAgentIdx]
     setDefault(target.id, target.name)
+    return true
   }
 
   function setDefault(id, name) {
@@ -116,8 +120,9 @@ Item {
     }
     if (dx !== 0) {
       if (focusedRow === 0) {
-        cycleAgent(dx)
-        return true
+        return cycleAgent(dx)
+      } else if (dx < 0) {
+        return false
       }
     }
     return false
@@ -136,17 +141,23 @@ Item {
   }
 
   function handleTextKey(key) {
-    if (key === "r" || key === "R") {
+    if (key === "h" || key === "H") {
+      return handleMove(-1, 0)
+    } else if (key === "r" || key === "R") {
       refreshUsage()
+      return true
     } else if (key === "l" || key === "L") {
       launchAgent()
+      return true
     } else if (key >= "1" && key <= "7") {
       var idx = parseInt(key) - 1
       if (idx >= 0 && idx < agents.length) {
         selectedAgentIdx = idx
         setDefault(agents[idx].id, agents[idx].name)
+        return true
       }
     }
+    return false
   }
 
   Component.onCompleted: refresh()

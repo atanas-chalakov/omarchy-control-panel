@@ -359,19 +359,26 @@ Item {
   }
 
   function cycleLayoutPreset(delta) {
+    if (layoutPresets.length === 0) return false
     var idx = currentPresetIndex()
-    if (idx < 0) idx = (delta > 0 ? -1 : 0)
-    var next = (idx + delta + layoutPresets.length) % layoutPresets.length
+    if (delta < 0 && idx <= 0) return false
+    var next = Math.max(0, Math.min(layoutPresets.length - 1, (idx < 0 ? 0 : idx) + delta))
+    if (next === idx) return false
     applyLayoutPreset(layoutPresets[next])
+    return true
   }
 
   function cycleSwitchShortcut(delta) {
+    if (shortcutOptions.length === 0) return false
     var idx = currentShortcutIndex()
-    var next = (idx + delta + shortcutOptions.length) % shortcutOptions.length
+    if (delta < 0 && idx === 0) return false
+    var next = Math.max(0, Math.min(shortcutOptions.length - 1, idx + delta))
+    if (next === idx) return false
     var chosen = shortcutOptions[next]
     actionProcess.command = [pluginPath + "/scripts/region-control.sh", "set-keyboard-config", root.kbLayout, root.kbVariant, chosen.code]
     actionProcess.running = true
     notifyStatus("Switch shortcut: " + chosen.label)
+    return true
   }
 
   function setCustomKeyboardConfig(layouts, variants) {
@@ -394,15 +401,38 @@ Item {
       ensureCardVisible(focusedCard)
       return true
     } else if (dx !== 0) {
-      if (focusedCard === 0) setTimeFormat(root.is24Hour ? "12" : "24")
-      else if (focusedCard === 1) toggleSeconds()
-      else if (focusedCard === 2) openTimezoneMenu()
-      else if (focusedCard === 3) toggleAutoLocation()
-      else if (focusedCard === 5) switchActiveLayout()
-      else if (focusedCard === 6) cycleLayoutPreset(dx)
-      else if (focusedCard === 7) cycleSwitchShortcut(dx)
-      else if (focusedCard === 9) launchFcitx5Config()
-      return true
+      if (focusedCard === 0) {
+        if (dx < 0) return false
+        setTimeFormat(root.is24Hour ? "12" : "24")
+        return true
+      }
+      else if (focusedCard === 1) {
+        if (dx < 0) return false
+        toggleSeconds()
+        return true
+      }
+      else if (focusedCard === 2) {
+        if (dx < 0) return false
+        openTimezoneMenu()
+        return true
+      }
+      else if (focusedCard === 3) {
+        if (dx < 0) return false
+        toggleAutoLocation()
+        return true
+      }
+      else if (focusedCard === 5) {
+        if (dx < 0) return false
+        switchActiveLayout()
+        return true
+      }
+      else if (focusedCard === 6) return cycleLayoutPreset(dx)
+      else if (focusedCard === 7) return cycleSwitchShortcut(dx)
+      else if (focusedCard === 9) {
+        if (dx < 0) return false
+        launchFcitx5Config()
+        return true
+      }
     }
     return false
   }

@@ -148,6 +148,7 @@ Item {
       return true
     }
     if (dx !== 0) {
+      if (dx < 0) return false
       if (focusedRow === 0) {
         toggleWifi()
       } else {
@@ -175,18 +176,22 @@ Item {
 
   function handleTextKey(key) {
     if (hasActiveInput) return false
-    if (key === "r" || key === "R") {
+    if (key === "h" || key === "H") {
+      return handleMove(-1, 0)
+    } else if (key === "l" || key === "L") {
+      return handleMove(1, 0)
+    } else if (key === "r" || key === "R") {
       rescan()
+      return true
     } else if (key === "w" || key === "W") {
       focusedRow = 0
       toggleWifi()
+      return true
     } else if (key === "d" || key === "D") {
       disconnectActive()
-    } else if (key === "h" || key === "H") {
-      handleMove(-1, 0)
-    } else if (key === "l" || key === "L") {
-      handleMove(1, 0)
+      return true
     }
+    return false
   }
 
   function refresh() {

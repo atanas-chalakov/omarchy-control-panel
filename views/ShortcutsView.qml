@@ -130,7 +130,9 @@ Item {
       var ids = categoryList.map(function(c) { return c.id })
       var idx = ids.indexOf(activeCategory)
       if (idx < 0) idx = 0
-      var nextIdx = (idx + (dx > 0 ? 1 : -1) + ids.length) % ids.length
+      if (dx < 0 && idx === 0) return false
+      var nextIdx = Math.max(0, Math.min(ids.length - 1, idx + (dx > 0 ? 1 : -1)))
+      if (nextIdx === idx) return false
       activeCategory = ids[nextIdx]
       return true
     }
@@ -142,31 +144,46 @@ Item {
   }
 
   function handleTextKey(key) {
-    if (hasActiveInput) return
+    if (hasActiveInput) return false
 
     var k = key.toLowerCase()
-    if (k === "m") {
+    if (k === "h") {
+      return handleMove(-1, 0)
+    } else if (k === "l") {
+      return handleMove(1, 0)
+    } else if (k === "m") {
       openMenu()
+      return true
     } else if (k === "e") {
       openConfig()
+      return true
     } else if (k === "r") {
       refresh()
       notifyStatus("Refreshed keybindings")
+      return true
     } else if (k === "s") {
       searchField.forceActiveFocus()
+      return true
     } else if (key === "1") {
       activeCategory = "all"
+      return true
     } else if (key === "2") {
       activeCategory = "windows"
+      return true
     } else if (key === "3") {
       activeCategory = "apps"
+      return true
     } else if (key === "4") {
       activeCategory = "workspaces"
+      return true
     } else if (key === "5") {
       activeCategory = "media"
+      return true
     } else if (key === "6") {
       activeCategory = "system"
+      return true
     }
+    return false
   }
 
   Component.onCompleted: refresh()

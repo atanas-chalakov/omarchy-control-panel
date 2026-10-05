@@ -59,15 +59,21 @@ Item {
   }
 
   function cycleSink(delta) {
-    if (sinks.length === 0) return
+    if (sinks.length === 0) return false
     var idx = currentSinkIndex()
-    var next = (idx + delta + sinks.length) % sinks.length
+    if (delta < 0 && idx === 0) return false
+    var next = Math.max(0, Math.min(sinks.length - 1, idx + delta))
+    if (next === idx) return false
     setDefaultSink(sinks[next].id, sinks[next].name)
+    return true
   }
 
   function adjustVolume(delta) {
+    if (delta < 0 && root.volume <= 0) return false
     var v = Math.max(0, Math.min(100, root.volume + delta))
+    if (v === root.volume) return false
     setVolume(v)
+    return true
   }
 
   function currentSourceIndex() {
@@ -78,25 +84,35 @@ Item {
   }
 
   function cycleSource(delta) {
-    if (sources.length === 0) return
+    if (sources.length === 0) return false
     var idx = currentSourceIndex()
-    var next = (idx + delta + sources.length) % sources.length
+    if (delta < 0 && idx === 0) return false
+    var next = Math.max(0, Math.min(sources.length - 1, idx + delta))
+    if (next === idx) return false
     setDefaultSource(sources[next].id, sources[next].name)
+    return true
   }
 
   function adjustInputVolume(delta) {
+    if (delta < 0 && root.inputVolume <= 0) return false
     var v = Math.max(0, Math.min(100, root.inputVolume + delta))
+    if (v === root.inputVolume) return false
     setInputVolume(v)
+    return true
   }
 
   function adjustAppVolume(id, delta, name) {
     for (var i = 0; i < root.apps.length; i++) {
       if (root.apps[i].id === id) {
-        var newV = Math.max(0, Math.min(100, (root.apps[i].volume || 100) + delta))
+        var curV = root.apps[i].volume || 100
+        if (delta < 0 && curV <= 0) return false
+        var newV = Math.max(0, Math.min(100, curV + delta))
+        if (newV === curV) return false
         setAppVolume(id, newV, name)
-        break
+        return true
       }
     }
+    return false
   }
 
   function handleMove(dx, dy) {
@@ -107,19 +123,26 @@ Item {
       return true
     }
     if (dx !== 0) {
-      if (focusedRow === 0) adjustVolume(dx * 5)
-      else if (focusedRow === 1) toggleMute()
-      else if (focusedRow === 2) cycleSink(dx)
-      else if (focusedRow === 3) adjustInputVolume(dx * 5)
-      else if (focusedRow === 4) toggleInputMute()
-      else if (focusedRow === 5) cycleSource(dx)
+      if (focusedRow === 0) return adjustVolume(dx * 5)
+      else if (focusedRow === 1) {
+        if (dx < 0) return false
+        toggleMute()
+        return true
+      }
+      else if (focusedRow === 2) return cycleSink(dx)
+      else if (focusedRow === 3) return adjustInputVolume(dx * 5)
+      else if (focusedRow === 4) {
+        if (dx < 0) return false
+        toggleInputMute()
+        return true
+      }
+      else if (focusedRow === 5) return cycleSource(dx)
       else if (focusedRow >= 6) {
         var appIdx = focusedRow - 6
         if (appIdx >= 0 && appIdx < root.apps.length) {
-          adjustAppVolume(root.apps[appIdx].id, dx * 5, root.apps[appIdx].name)
+          return adjustAppVolume(root.apps[appIdx].id, dx * 5, root.apps[appIdx].name)
         }
       }
-      return true
     }
     return false
   }
@@ -164,31 +187,9 @@ Item {
     } else if (key === "a" || key === "A") {
       if (root.apps.length > 0) focusedRow = 6
     } else if (key === "h" || key === "H") {
-      if (focusedRow === 0) adjustVolume(-5)
-      else if (focusedRow === 1) toggleMute()
-      else if (focusedRow === 2) cycleSink(-1)
-      else if (focusedRow === 3) adjustInputVolume(-5)
-      else if (focusedRow === 4) toggleInputMute()
-      else if (focusedRow === 5) cycleSource(-1)
-      else if (focusedRow >= 6) {
-        var appIdx = focusedRow - 6
-        if (appIdx >= 0 && appIdx < root.apps.length) {
-          adjustAppVolume(root.apps[appIdx].id, -5, root.apps[appIdx].name)
-        }
-      }
+      return handleMove(-1, 0)
     } else if (key === "l" || key === "L") {
-      if (focusedRow === 0) adjustVolume(5)
-      else if (focusedRow === 1) toggleMute()
-      else if (focusedRow === 2) cycleSink(1)
-      else if (focusedRow === 3) adjustInputVolume(5)
-      else if (focusedRow === 4) toggleInputMute()
-      else if (focusedRow === 5) cycleSource(1)
-      else if (focusedRow >= 6) {
-        var appIdx = focusedRow - 6
-        if (appIdx >= 0 && appIdx < root.apps.length) {
-          adjustAppVolume(root.apps[appIdx].id, 5, root.apps[appIdx].name)
-        }
-      }
+      return handleMove(1, 0)
     }
   }
 

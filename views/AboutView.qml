@@ -24,6 +24,7 @@ Item {
   property bool activeFocusSection: false
 
   function handleMove(dx, dy) {
+    if (dx < 0) return false
     return true
   }
 
@@ -32,11 +33,16 @@ Item {
   }
 
   function handleTextKey(key) {
-    if (key === "r" || key === "R") {
+    if (key === "h" || key === "H") {
+      return handleMove(-1, 0)
+    } else if (key === "r" || key === "R") {
       refresh()
+      return true
     } else if (key === "t" || key === "T") {
       openTimezonePicker()
+      return true
     }
+    return false
   }
 
   function openTimezonePicker() {

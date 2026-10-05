@@ -55,6 +55,7 @@ Item {
       return true
     }
     if (dx !== 0) {
+      if (dx < 0) return false
       if (focusedRow === 0) {
         togglePower()
       } else if (focusedRow === 1) {
@@ -84,19 +85,23 @@ Item {
   }
 
   function handleTextKey(key) {
-    if (key === "r" || key === "R") {
+    if (key === "h" || key === "H") {
+      return handleMove(-1, 0)
+    } else if (key === "l" || key === "L") {
+      return handleMove(1, 0)
+    } else if (key === "r" || key === "R") {
       refresh()
+      return true
     } else if (key === "b" || key === "B") {
       focusedRow = 0
       togglePower()
+      return true
     } else if (key === "s" || key === "S") {
       focusedRow = 1
       triggerScan()
-    } else if (key === "h" || key === "H") {
-      handleMove(-1, 0)
-    } else if (key === "l" || key === "L") {
-      handleMove(1, 0)
+      return true
     }
+    return false
   }
 
   function refresh() {

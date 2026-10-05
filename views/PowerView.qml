@@ -96,7 +96,11 @@ Item {
     root.setIdle(sec, root.lockTimeout)
     root.customScreensaverOpen = false
     root.screensaverFocusIndex = root.screensaverOptions.length
-    root.forceActiveFocus()
+    if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+      root.panelRoot.returnFocusToKeyCatcher()
+    } else {
+      root.forceActiveFocus()
+    }
   }
 
   function applyCustomLock() {
@@ -124,7 +128,11 @@ Item {
     root.setIdle(root.screensaverTimeout, sec)
     root.customLockOpen = false
     root.lockFocusIndex = root.lockOptions.length
-    root.forceActiveFocus()
+    if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+      root.panelRoot.returnFocusToKeyCatcher()
+    } else {
+      root.forceActiveFocus()
+    }
   }
 
   readonly property var powerProfiles: [
@@ -233,20 +241,26 @@ Item {
 
   function cycleProfile(delta) {
     var idx = currentProfileIndex()
-    var next = (idx + delta + powerProfiles.length) % powerProfiles.length
+    if (delta < 0 && idx === 0) return false
+    var next = Math.max(0, Math.min(powerProfiles.length - 1, idx + delta))
+    if (next === idx) return false
     setProfile(powerProfiles[next].id)
+    return true
   }
 
   function cycleScreensaver(delta) {
     var cur = (screensaverFocusIndex >= 0) ? screensaverFocusIndex : currentScreensaverIndex()
+    if (delta < 0 && cur === 0) return false
     var next = Math.max(0, Math.min(screensaverOptions.length, cur + delta))
+    if (next === cur) return false
     screensaverFocusIndex = next
     if (next < screensaverOptions.length) {
       if (customScreensaverOpen) customScreensaverOpen = false
       setIdle(screensaverOptions[next].seconds, root.lockTimeout)
     } else {
-      openCustomScreensaver()
+      if (customScreensaverOpen) customScreensaverOpen = false
     }
+    return true
   }
 
   function openCustomScreensaver() {
@@ -266,14 +280,17 @@ Item {
 
   function cycleLock(delta) {
     var cur = (lockFocusIndex >= 0) ? lockFocusIndex : currentLockIndex()
+    if (delta < 0 && cur === 0) return false
     var next = Math.max(0, Math.min(lockOptions.length, cur + delta))
+    if (next === cur) return false
     lockFocusIndex = next
     if (next < lockOptions.length) {
       if (customLockOpen) customLockOpen = false
       setIdle(root.screensaverTimeout, lockOptions[next].seconds)
     } else {
-      openCustomLock()
+      if (customLockOpen) customLockOpen = false
     }
+    return true
   }
 
   function openCustomLock() {
@@ -299,11 +316,14 @@ Item {
       return true
     }
     if (dx !== 0) {
-      if (focusedRow === 0) cycleProfile(dx)
-      else if (focusedRow === 1) toggleStayAwake()
-      else if (focusedRow === 2) cycleScreensaver(dx)
-      else if (focusedRow === 3) cycleLock(dx)
-      return true
+      if (focusedRow === 0) return cycleProfile(dx)
+      else if (focusedRow === 1) {
+        if (dx < 0) return false
+        toggleStayAwake()
+        return true
+      }
+      else if (focusedRow === 2) return cycleScreensaver(dx)
+      else if (focusedRow === 3) return cycleLock(dx)
     }
     return false
   }
@@ -315,14 +335,22 @@ Item {
     else if (focusedRow === 2) {
       var curSs = (screensaverFocusIndex >= 0) ? screensaverFocusIndex : currentScreensaverIndex()
       if (curSs === screensaverOptions.length) {
-        openCustomScreensaver()
+        if (customScreensaverOpen) {
+          applyCustomScreensaver()
+        } else {
+          openCustomScreensaver()
+        }
       } else {
         cycleScreensaver(1)
       }
     } else if (focusedRow === 3) {
       var curLk = (lockFocusIndex >= 0) ? lockFocusIndex : currentLockIndex()
       if (curLk === lockOptions.length) {
-        openCustomLock()
+        if (customLockOpen) {
+          applyCustomLock()
+        } else {
+          openCustomLock()
+        }
       } else {
         cycleLock(1)
       }
@@ -349,12 +377,18 @@ Item {
       return true
     } else if (key === "c" || key === "C") {
       if (focusedRow === 2) {
+        screensaverFocusIndex = screensaverOptions.length
         openCustomScreensaver()
         return true
       } else if (focusedRow === 3) {
+        lockFocusIndex = lockOptions.length
         openCustomLock()
         return true
       }
+    } else if (key === "h" || key === "H") {
+      return handleMove(-1, 0)
+    } else if (key === "l" || key === "L") {
+      return handleMove(1, 0)
     } else if (key >= "1" && key <= "5") {
       var n = parseInt(key) - 1
       if (focusedRow === 0 && n < powerProfiles.length) {
@@ -1189,7 +1223,11 @@ Item {
                     Keys.onEscapePressed: function(event) {
                       event.accepted = true
                       root.customScreensaverOpen = false
-                      root.forceActiveFocus()
+                      if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                        root.panelRoot.returnFocusToKeyCatcher()
+                      } else {
+                        root.forceActiveFocus()
+                      }
                     }
 
                     Keys.onTabPressed: function(event) {
@@ -1225,6 +1263,9 @@ Item {
                 onClicked: {
                   root.customScreensaverOpen = false
                   root.customScreensaverError = ""
+                  if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                    root.panelRoot.returnFocusToKeyCatcher()
+                  }
                 }
               }
             }
@@ -1526,7 +1567,11 @@ Item {
                     Keys.onEscapePressed: function(event) {
                       event.accepted = true
                       root.customLockOpen = false
-                      root.forceActiveFocus()
+                      if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                        root.panelRoot.returnFocusToKeyCatcher()
+                      } else {
+                        root.forceActiveFocus()
+                      }
                     }
 
                     Keys.onTabPressed: function(event) {
@@ -1562,6 +1607,9 @@ Item {
                 onClicked: {
                   root.customLockOpen = false
                   root.customLockError = ""
+                  if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                    root.panelRoot.returnFocusToKeyCatcher()
+                  }
                 }
               }
             }

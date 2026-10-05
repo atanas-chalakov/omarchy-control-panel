@@ -84,31 +84,43 @@ Item {
   }
 
   function cycleBrowser(delta) {
-    if (installedBrowsers.length === 0) return
+    if (installedBrowsers.length === 0) return false
     var idx = currentBrowserIndex()
-    var next = (idx + delta + installedBrowsers.length) % installedBrowsers.length
+    if (delta < 0 && idx === 0) return false
+    var next = Math.max(0, Math.min(installedBrowsers.length - 1, idx + delta))
+    if (next === idx) return false
     setBrowser(installedBrowsers[next].id, installedBrowsers[next].name)
+    return true
   }
 
   function cycleEditor(delta) {
-    if (installedEditors.length === 0) return
+    if (installedEditors.length === 0) return false
     var idx = currentEditorIndex()
-    var next = (idx + delta + installedEditors.length) % installedEditors.length
+    if (delta < 0 && idx === 0) return false
+    var next = Math.max(0, Math.min(installedEditors.length - 1, idx + delta))
+    if (next === idx) return false
     setEditor(installedEditors[next].code, installedEditors[next].id, installedEditors[next].name)
+    return true
   }
 
   function cycleTerminal(delta) {
-    if (installedTerminals.length === 0) return
+    if (installedTerminals.length === 0) return false
     var idx = currentTerminalIndex()
-    var next = (idx + delta + installedTerminals.length) % installedTerminals.length
+    if (delta < 0 && idx === 0) return false
+    var next = Math.max(0, Math.min(installedTerminals.length - 1, idx + delta))
+    if (next === idx) return false
     setTerminal(installedTerminals[next].id, installedTerminals[next].name)
+    return true
   }
 
   function cycleFileManager(delta) {
-    if (installedFileManagers.length === 0) return
+    if (installedFileManagers.length === 0) return false
     var idx = currentFileManagerIndex()
-    var next = (idx + delta + installedFileManagers.length) % installedFileManagers.length
+    if (delta < 0 && idx === 0) return false
+    var next = Math.max(0, Math.min(installedFileManagers.length - 1, idx + delta))
+    if (next === idx) return false
     setFileManager(installedFileManagers[next].id, installedFileManagers[next].name)
+    return true
   }
 
   function refresh() {
@@ -170,11 +182,10 @@ Item {
       ensureCardVisible(focusedCard)
       return true
     } else if (dx !== 0) {
-      if (focusedCard === 0) cycleBrowser(dx)
-      else if (focusedCard === 1) cycleEditor(dx)
-      else if (focusedCard === 2) cycleTerminal(dx)
-      else if (focusedCard === 3) cycleFileManager(dx)
-      return true
+      if (focusedCard === 0) return cycleBrowser(dx)
+      else if (focusedCard === 1) return cycleEditor(dx)
+      else if (focusedCard === 2) return cycleTerminal(dx)
+      else if (focusedCard === 3) return cycleFileManager(dx)
     }
     return false
   }
@@ -188,22 +199,32 @@ Item {
 
   function handleTextKey(key) {
     var k = key.toLowerCase()
-    if (k === "b") {
+    if (k === "h") {
+      return handleMove(-1, 0)
+    } else if (k === "l") {
+      return handleMove(1, 0)
+    } else if (k === "b") {
       focusedCard = 0
       cycleBrowser(1)
+      return true
     } else if (k === "e") {
       focusedCard = 1
       cycleEditor(1)
+      return true
     } else if (k === "t") {
       focusedCard = 2
       cycleTerminal(1)
+      return true
     } else if (k === "f") {
       focusedCard = 3
       cycleFileManager(1)
+      return true
     } else if (k === "r") {
       refresh()
       notifyStatus("Refreshed default applications")
+      return true
     }
+    return false
   }
 
   Component.onCompleted: refresh()

@@ -97,7 +97,11 @@ Item {
     root.setMode(raw)
     root.customModeOpen = false
     root.modeFocusIndex = root.displayModes.length
-    root.forceActiveFocus()
+    if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+      root.panelRoot.returnFocusToKeyCatcher()
+    } else {
+      root.forceActiveFocus()
+    }
   }
 
   function applyCustomScale() {
@@ -121,7 +125,11 @@ Item {
     root.setScale(String(num))
     root.customScaleOpen = false
     root.scaleFocusIndex = root.scaleOptions.length
-    root.forceActiveFocus()
+    if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+      root.panelRoot.returnFocusToKeyCatcher()
+    } else {
+      root.forceActiveFocus()
+    }
   }
 
   readonly property var scaleOptions: [
@@ -282,14 +290,17 @@ Item {
 
   function cycleScale(delta) {
     var cur = (scaleFocusIndex >= 0) ? scaleFocusIndex : currentScaleIndex()
+    if (delta < 0 && cur === 0) return false
     var next = Math.max(0, Math.min(scaleOptions.length, cur + delta))
+    if (next === cur) return false
     scaleFocusIndex = next
     if (next < scaleOptions.length) {
       if (customScaleOpen) customScaleOpen = false
       setScale(scaleOptions[next].value)
     } else {
-      openCustomScale()
+      if (customScaleOpen) customScaleOpen = false
     }
+    return true
   }
 
   function openCustomScale() {
@@ -309,14 +320,17 @@ Item {
 
   function cycleMode(delta) {
     var cur = (modeFocusIndex >= 0) ? modeFocusIndex : currentModeIndex()
+    if (delta < 0 && cur === 0) return false
     var next = Math.max(0, Math.min(displayModes.length, cur + delta))
+    if (next === cur) return false
     modeFocusIndex = next
     if (next < displayModes.length) {
       if (customModeOpen) customModeOpen = false
       setMode(displayModes[next].mode)
     } else {
-      openCustomMode()
+      if (customModeOpen) customModeOpen = false
     }
+    return true
   }
 
   function openCustomMode() {
@@ -336,8 +350,11 @@ Item {
 
   function cycleNightlightTemp(delta) {
     var idx = currentNightlightIndex()
+    if (delta < 0 && idx === 0) return false
     var next = Math.max(0, Math.min(nightlightOptions.length - 1, idx + delta))
+    if (next === idx) return false
     setNightlightTemp(nightlightOptions[next].temp)
+    return true
   }
 
   function adjustBrightness(delta) {
@@ -353,12 +370,19 @@ Item {
       return true
     }
     if (dx !== 0) {
-      if (focusedRow === 0) adjustBrightness(dx * 5)
-      else if (focusedRow === 1) toggleNightlight()
-      else if (focusedRow === 2) cycleNightlightTemp(dx)
-      else if (focusedRow === 3) cycleScale(dx)
-      else if (focusedRow === 4) cycleMode(dx)
-      return true
+      if (focusedRow === 0) {
+        if (dx < 0 && root.brightness <= 5) return false
+        adjustBrightness(dx * 5)
+        return true
+      }
+      else if (focusedRow === 1) {
+        if (dx < 0) return false
+        toggleNightlight()
+        return true
+      }
+      else if (focusedRow === 2) return cycleNightlightTemp(dx)
+      else if (focusedRow === 3) return cycleScale(dx)
+      else if (focusedRow === 4) return cycleMode(dx)
     }
     return false
   }
@@ -371,14 +395,22 @@ Item {
     else if (focusedRow === 3) {
       var curScale = (scaleFocusIndex >= 0) ? scaleFocusIndex : currentScaleIndex()
       if (curScale === scaleOptions.length) {
-        openCustomScale()
+        if (customScaleOpen) {
+          applyCustomScale()
+        } else {
+          openCustomScale()
+        }
       } else {
         cycleScale(1)
       }
     } else if (focusedRow === 4) {
       var curMode = (modeFocusIndex >= 0) ? modeFocusIndex : currentModeIndex()
       if (curMode === displayModes.length) {
-        openCustomMode()
+        if (customModeOpen) {
+          applyCustomMode()
+        } else {
+          openCustomMode()
+        }
       } else {
         cycleMode(1)
       }
@@ -408,26 +440,18 @@ Item {
       return true
     } else if (key === "c" || key === "C") {
       if (focusedRow === 3) {
+        scaleFocusIndex = scaleOptions.length
         openCustomScale()
         return true
       } else if (focusedRow === 4) {
+        modeFocusIndex = displayModes.length
         openCustomMode()
         return true
       }
     } else if (key === "h" || key === "H") {
-      if (focusedRow === 0) adjustBrightness(-5)
-      else if (focusedRow === 1) toggleNightlight()
-      else if (focusedRow === 2) cycleNightlightTemp(-1)
-      else if (focusedRow === 3) cycleScale(-1)
-      else if (focusedRow === 4) cycleMode(-1)
-      return true
+      return handleMove(-1, 0)
     } else if (key === "l" || key === "L") {
-      if (focusedRow === 0) adjustBrightness(5)
-      else if (focusedRow === 1) toggleNightlight()
-      else if (focusedRow === 2) cycleNightlightTemp(1)
-      else if (focusedRow === 3) cycleScale(1)
-      else if (focusedRow === 4) cycleMode(1)
-      return true
+      return handleMove(1, 0)
     }
     return false
   }
@@ -1361,7 +1385,11 @@ Item {
                     Keys.onEscapePressed: function(event) {
                       event.accepted = true
                       root.customScaleOpen = false
-                      root.forceActiveFocus()
+                      if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                        root.panelRoot.returnFocusToKeyCatcher()
+                      } else {
+                        root.forceActiveFocus()
+                      }
                     }
 
                     Keys.onTabPressed: function(event) {
@@ -1397,6 +1425,9 @@ Item {
                 onClicked: {
                   root.customScaleOpen = false
                   root.customScaleError = ""
+                  if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                    root.panelRoot.returnFocusToKeyCatcher()
+                  }
                 }
               }
             }
@@ -1724,7 +1755,11 @@ Item {
                     Keys.onEscapePressed: function(event) {
                       event.accepted = true
                       root.customModeOpen = false
-                      root.forceActiveFocus()
+                      if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                        root.panelRoot.returnFocusToKeyCatcher()
+                      } else {
+                        root.forceActiveFocus()
+                      }
                     }
 
                     Keys.onTabPressed: function(event) {
@@ -1760,6 +1795,9 @@ Item {
                 onClicked: {
                   root.customModeOpen = false
                   root.customModeError = ""
+                  if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
+                    root.panelRoot.returnFocusToKeyCatcher()
+                  }
                 }
               }
             }

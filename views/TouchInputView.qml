@@ -111,22 +111,31 @@ Item {
 
   function cycleScrollFactor(delta) {
     var idx = currentScrollFactorIndex()
+    if (delta < 0 && idx === 0) return false
     var next = Math.max(0, Math.min(scrollFactorOptions.length - 1, idx + delta))
+    if (next === idx) return false
     setScrollFactor(scrollFactorOptions[next])
+    return true
   }
 
   function cycleSensitivity(delta) {
     var idx = currentSensitivityIndex()
+    if (delta < 0 && idx === 0) return false
     var next = Math.max(0, Math.min(sensitivityOptions.length - 1, idx + delta))
+    if (next === idx) return false
     setSensitivity(sensitivityOptions[next])
+    return true
   }
 
   function cycleTouchOutput(delta) {
     var opts = allOutputOptions()
-    if (opts.length <= 1) return
+    if (opts.length <= 1) return false
     var idx = currentOutputIndex()
-    var next = (idx + delta + opts.length) % opts.length
+    if (delta < 0 && idx === 0) return false
+    var next = Math.max(0, Math.min(opts.length - 1, idx + delta))
+    if (next === idx) return false
     setTouchOutput(opts[next])
+    return true
   }
 
   function refresh() {
@@ -210,17 +219,43 @@ Item {
     if (dy !== 0) {
       focusedCard = Math.max(0, Math.min(8, focusedCard + dy))
       ensureCardVisible(focusedCard)
+      return true
     } else if (dx !== 0) {
-      if (focusedCard === 0) toggleTouchscreen()
-      else if (focusedCard === 1) toggleWorkspaceSwipeTouch()
-      else if (focusedCard === 2) cycleTouchOutput(dx)
-      else if (focusedCard === 3) toggleTouchpad()
-      else if (focusedCard === 4) toggleNaturalScroll()
-      else if (focusedCard === 5) toggleTapToClick()
-      else if (focusedCard === 6) cycleScrollFactor(dx)
-      else if (focusedCard === 7) toggleDisableWhileTyping()
-      else if (focusedCard === 8) cycleSensitivity(dx)
+      if (focusedCard === 0) {
+        if (dx < 0) return false
+        toggleTouchscreen()
+        return true
+      }
+      else if (focusedCard === 1) {
+        if (dx < 0) return false
+        toggleWorkspaceSwipeTouch()
+        return true
+      }
+      else if (focusedCard === 2) return cycleTouchOutput(dx)
+      else if (focusedCard === 3) {
+        if (dx < 0) return false
+        toggleTouchpad()
+        return true
+      }
+      else if (focusedCard === 4) {
+        if (dx < 0) return false
+        toggleNaturalScroll()
+        return true
+      }
+      else if (focusedCard === 5) {
+        if (dx < 0) return false
+        toggleTapToClick()
+        return true
+      }
+      else if (focusedCard === 6) return cycleScrollFactor(dx)
+      else if (focusedCard === 7) {
+        if (dx < 0) return false
+        toggleDisableWhileTyping()
+        return true
+      }
+      else if (focusedCard === 8) return cycleSensitivity(dx)
     }
+    return false
   }
 
   function handleActivate() {
@@ -237,7 +272,11 @@ Item {
 
   function handleTextKey(key) {
     var k = key.toLowerCase()
-    if (k === "t") {
+    if (k === "h") {
+      return handleMove(-1, 0)
+    } else if (k === "l") {
+      return handleMove(1, 0)
+    } else if (k === "t") {
       focusedCard = 0
       toggleTouchscreen()
       return true

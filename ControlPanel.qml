@@ -342,7 +342,12 @@ Item {
           }
         } else {
           if (categoryLoader.item && typeof categoryLoader.item.handleMove === "function") {
-            categoryLoader.item.handleMove(dx, dy)
+            var handled = categoryLoader.item.handleMove(dx, dy)
+            if (handled === false && dx < 0) {
+              root.focusSection = "sidebar"
+            }
+          } else if (dx < 0) {
+            root.focusSection = "sidebar"
           }
         }
       }
@@ -351,6 +356,10 @@ Item {
         if (root.focusSection === "content" && categoryLoader.item && typeof categoryLoader.item.handleTextKey === "function") {
           var handled = categoryLoader.item.handleTextKey(key)
           if (handled === true) return
+          if (handled === false && (key === "h" || key === "H")) {
+            root.focusSection = "sidebar"
+            return
+          }
         }
 
         if (key === "/" || ((key === "s" || key === "S") && (!categoryLoader.item || !categoryLoader.item.hasActiveInput))) {

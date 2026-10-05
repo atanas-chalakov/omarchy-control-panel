@@ -128,6 +128,7 @@ Item {
       return true
     }
     if (dx !== 0) {
+      if (dx < 0) return false
       if (focusedRow === 0) toggleDnd()
       return true
     }
@@ -141,20 +142,31 @@ Item {
 
   function handleTextKey(key) {
     var k = key.toLowerCase()
-    if (k === "d") {
+    if (k === "h") {
+      return handleMove(-1, 0)
+    } else if (k === "l") {
+      return handleMove(1, 0)
+    } else if (k === "d") {
       toggleDnd()
+      return true
     } else if (k === "p") {
       showHistory()
+      return true
     } else if (k === "x") {
       dismissAll()
+      return true
     } else if (k === "t") {
       sendTest()
+      return true
     } else if (k === "c") {
       clearHistory()
+      return true
     } else if (k === "r") {
       refresh()
       notifyStatus("Refreshed notifications status")
+      return true
     }
+    return false
   }
 
   Component.onCompleted: refresh()
