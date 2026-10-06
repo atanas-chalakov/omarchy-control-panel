@@ -12,8 +12,10 @@ Item {
 
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
+  property var panelRoot: null
 
   property bool activeFocusSection: false
+  readonly property bool isContentFocused: panelRoot ? panelRoot.focusSection === "content" : activeFocusSection
   property bool hasActiveInput: searchField.activeFocus
   property string statusMessage: ""
 
@@ -41,6 +43,8 @@ Item {
   property var allBindings: []
   property var filteredBindings: []
   property bool isRefreshing: false
+  property int focusedIndex: 0
+  onFocusedIndexChanged: ensureShortcutVisible(focusedIndex)
 
   readonly property var categoryList: [
     { id: "all", label: "All" },
@@ -71,10 +75,28 @@ Item {
       res.push(item)
     }
     filteredBindings = res
+    if (focusedIndex >= res.length) {
+      focusedIndex = Math.max(0, res.length - 1)
+    }
   }
 
   onSearchQueryChanged: updateFiltered()
   onActiveCategoryChanged: updateFiltered()
+
+  function ensureShortcutVisible(index) {
+    if (!shortcutsScroll || !shortcutsScroll.contentItem || !bindingsRepeater) return
+    var item = bindingsRepeater.itemAt(index)
+    if (item && item.visible) {
+      var flick = shortcutsScroll.contentItem
+      var pos = item.mapToItem(shortcutsScroll, 0, 0)
+      var maxScroll = Math.max(0, flick.contentHeight - flick.height)
+      if (pos.y < 8) {
+        flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + pos.y - 8))
+      } else if (pos.y + item.height > shortcutsScroll.height - 8) {
+        flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + (pos.y + item.height - shortcutsScroll.height + 8)))
+      }
+    }
+  }
 
   function refresh() {
     if (!stateProcess.running && pluginPath.length > 0) {
@@ -94,6 +116,13 @@ Item {
     actionProcess.command = [pluginPath + "/scripts/shortcuts-control.sh", "open-menu"]
     actionProcess.running = true
     notifyStatus("Opening interactive keybindings menu")
+  }
+
+  function copyToClipboard(keys) {
+    if (!keys) return
+    actionProcess.command = ["sh", "-c", "printf '%s' \"" + keys.replace(/"/g, '\\"') + "\" | wl-copy"]
+    actionProcess.running = true
+    notifyStatus("Copied to clipboard: " + keys)
   }
 
   function notifyStatus(msg) {
@@ -120,12 +149,12 @@ Item {
     }
 
     if (dy !== 0) {
-      if (shortcutsScroll && shortcutsScroll.contentItem) {
-        var flick = shortcutsScroll.contentItem
-        var maxScroll = Math.max(0, flick.contentHeight - flick.height)
-        flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + dy * 60))
+      if (filteredBindings.length > 0) {
+        focusedIndex = Math.max(0, Math.min(filteredBindings.length - 1, focusedIndex + dy))
+        ensureShortcutVisible(focusedIndex)
         return true
       }
+      return false
     } else if (dx !== 0) {
       var ids = categoryList.map(function(c) { return c.id })
       var idx = ids.indexOf(activeCategory)
@@ -140,6 +169,13 @@ Item {
   }
 
   function handleActivate() {
+    if (focusedIndex >= 0 && focusedIndex < filteredBindings.length) {
+      var item = filteredBindings[focusedIndex]
+      if (item && item.keys) {
+        copyToClipboard(item.keys)
+        return
+      }
+    }
     openMenu()
   }
 
@@ -151,6 +187,10 @@ Item {
       return handleMove(-1, 0)
     } else if (k === "l") {
       return handleMove(1, 0)
+    } else if (k === "j") {
+      return handleMove(0, 1)
+    } else if (k === "k") {
+      return handleMove(0, -1)
     } else if (k === "m") {
       openMenu()
       return true
@@ -224,8 +264,8 @@ Item {
       Layout.preferredHeight: 32
       visible: root.statusMessage.length > 0
       radius: 6
-      color: Color.pickAlpha("accent.subtle", "#1f3b30")
-      border.color: Color.accent
+      color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+      border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
       border.width: 1
 
       RowLayout {
@@ -259,8 +299,8 @@ Item {
       implicitHeight: Math.max(64, topBannerRow.implicitHeight + 28)
       Layout.preferredHeight: implicitHeight
       radius: Style.cornerRadius || 8
-      color: Color.pickAlpha("surface.subtle", "#181b1d")
-      border.color: Color.pickAlpha("border.subtle", "#262b30")
+      color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+      border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
       border.width: 1
 
       RowLayout {
@@ -275,7 +315,9 @@ Item {
           width: 36
           height: 36
           radius: 18
-          color: Color.pickAlpha("accent.subtle", "#283b32")
+          color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+          border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+          border.width: 1
 
           Text {
             anchors.centerIn: parent
@@ -306,10 +348,12 @@ Item {
             }
 
             Rectangle {
-              width: countText.implicitWidth + 10
+              width: countText.implicitWidth + 12
               height: 18
               radius: 9
-              color: Color.accent
+              color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+              border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+              border.width: 1
 
               Text {
                 id: countText
@@ -318,7 +362,7 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: 10
                 font.bold: true
-                color: Color.background
+                color: Color.accent
               }
             }
           }
@@ -334,14 +378,62 @@ Item {
           }
         }
 
-        Button {
-          text: "󰍉 Search Menu [M]"
-          onClicked: root.openMenu()
+        Rectangle {
+          id: searchMenuBtn
+          implicitWidth: searchMenuText.implicitWidth + 20
+          implicitHeight: 28
+          radius: 6
+          readonly property bool btnHover: searchMenuMouse.containsMouse
+          color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05)
+          border.color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.30) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+          border.width: 1
+
+          Text {
+            id: searchMenuText
+            anchors.centerIn: parent
+            text: "󰍉 Search Menu [M]"
+            font.family: Style.font.family
+            font.pixelSize: 11
+            font.bold: true
+            color: parent.btnHover ? Color.foreground : Color.muted
+          }
+
+          MouseArea {
+            id: searchMenuMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.openMenu()
+          }
         }
 
-        Button {
-          text: "󰏫 Edit Config [E]"
-          onClicked: root.openConfig()
+        Rectangle {
+          id: editConfigBtn
+          implicitWidth: editConfigText.implicitWidth + 20
+          implicitHeight: 28
+          radius: 6
+          readonly property bool btnHover: editConfigMouse.containsMouse
+          color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05)
+          border.color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.30) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+          border.width: 1
+
+          Text {
+            id: editConfigText
+            anchors.centerIn: parent
+            text: "󰏫 Edit Config [E]"
+            font.family: Style.font.family
+            font.pixelSize: 11
+            font.bold: true
+            color: parent.btnHover ? Color.foreground : Color.muted
+          }
+
+          MouseArea {
+            id: editConfigMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.openConfig()
+          }
         }
       }
     }
@@ -356,8 +448,10 @@ Item {
         Layout.fillWidth: true
         Layout.preferredHeight: 36
         radius: 6
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: searchField.activeFocus ? Color.accent : Color.pickAlpha("border.subtle", "#262b30")
+        color: searchField.activeFocus
+          ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+          : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)
+        border.color: searchField.activeFocus ? Color.accent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
         border.width: searchField.activeFocus ? 2 : 1
 
         RowLayout {
@@ -376,7 +470,7 @@ Item {
           TextField {
             id: searchField
             Layout.fillWidth: true
-            placeholderText: "Type to search shortcuts... (e.g. terminal, window, close, super+q)"
+            placeholderText: "Type to search shortcuts... (e.g. terminal, window, close, super+q) [S]"
             placeholderTextColor: Color.muted
             color: Color.foreground
             font.family: Style.font.family
@@ -430,12 +524,27 @@ Item {
             }
           }
 
-          Button {
+          Rectangle {
             visible: searchField.text.length > 0
-            text: "✕"
-            implicitWidth: 24
-            implicitHeight: 24
-            onClicked: searchField.text = ""
+            width: 22
+            height: 22
+            radius: 11
+            color: clearMouse.containsMouse ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+
+            Text {
+              anchors.centerIn: parent
+              text: "✕"
+              font.pixelSize: 10
+              color: Color.muted
+            }
+
+            MouseArea {
+              id: clearMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: searchField.text = ""
+            }
           }
         }
       }
@@ -451,29 +560,53 @@ Item {
         model: root.categoryList
 
         delegate: Rectangle {
+          id: catPill
           height: 28
-          width: catText.implicitWidth + 20
+          width: catRow.implicitWidth + 20
           radius: 14
-          color: (root.activeCategory === modelData.id)
-            ? Color.pickAlpha("accent.subtle", "#203a30")
-            : Color.pickAlpha("surface.subtle", "#181b1d")
-          border.color: (root.activeCategory === modelData.id) ? Color.accent : "transparent"
+          readonly property bool isActive: root.activeCategory === modelData.id
+          readonly property bool isHovered: catMouse.containsMouse
+
+          color: isActive
+            ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isHovered ? 0.28 : 0.20)
+            : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04))
+          border.color: isActive
+            ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+            : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12))
           border.width: 1
 
           MouseArea {
+            id: catMouse
             anchors.fill: parent
+            hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.activeCategory = modelData.id
+            onClicked: {
+              if (root.panelRoot) root.panelRoot.focusSection = "content"
+              root.activeCategory = modelData.id
+            }
           }
 
-          Text {
-            id: catText
+          RowLayout {
+            id: catRow
             anchors.centerIn: parent
-            text: modelData.label
-            font.family: Style.font.family
-            font.pixelSize: 11
-            font.bold: root.activeCategory === modelData.id
-            color: (root.activeCategory === modelData.id) ? Color.accent : Color.muted
+            spacing: 5
+
+            Rectangle {
+              visible: catPill.isActive
+              width: 5
+              height: 5
+              radius: 2.5
+              color: Color.accent
+            }
+
+            Text {
+              id: catText
+              text: modelData.label
+              font.family: Style.font.family
+              font.pixelSize: 11
+              font.bold: catPill.isActive
+              color: catPill.isActive ? Color.accent : (catPill.isHovered ? Color.foreground : Color.muted)
+            }
           }
         }
       }
@@ -507,7 +640,9 @@ Item {
           Layout.fillWidth: true
           Layout.preferredHeight: 120
           radius: Style.cornerRadius || 8
-          color: Color.pickAlpha("surface.subtle", "#181b1d")
+          color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+          border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+          border.width: 1
 
           ColumnLayout {
             anchors.centerIn: parent
@@ -530,26 +665,71 @@ Item {
               color: Color.foreground
             }
 
-            Button {
+            Rectangle {
               Layout.alignment: Qt.AlignHCenter
-              text: "Clear Search Filter"
-              onClicked: searchField.text = ""
+              implicitWidth: clearSearchText.implicitWidth + 20
+              implicitHeight: 28
+              radius: 6
+              readonly property bool btnHover: clearSearchMouse.containsMouse
+              color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05)
+              border.color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.30) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+              border.width: 1
+
+              Text {
+                id: clearSearchText
+                anchors.centerIn: parent
+                text: "Clear Search Filter"
+                font.family: Style.font.family
+                font.pixelSize: 11
+                color: Color.foreground
+              }
+
+              MouseArea {
+                id: clearSearchMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: searchField.text = ""
+              }
             }
           }
         }
 
         // Bindings Items
         Repeater {
+          id: bindingsRepeater
           model: root.filteredBindings
 
           delegate: Rectangle {
+            id: bindingCard
             Layout.fillWidth: true
             implicitHeight: Math.max(42, bindingRowLayout.implicitHeight + 14)
             Layout.preferredHeight: implicitHeight
             radius: 6
-            color: Color.pickAlpha("surface.subtle", "#181b1d")
-            border.color: Color.pickAlpha("border.subtle", "#262b30")
-            border.width: 1
+            readonly property bool isFocused: root.isContentFocused && root.focusedIndex === index
+            readonly property bool isHovered: bindingMouse.containsMouse
+
+            color: isFocused
+              ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+              : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+            border.color: isFocused
+              ? Color.accent
+              : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+            border.width: isFocused ? 2 : 1
+
+            MouseArea {
+              id: bindingMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: {
+                if (root.panelRoot) root.panelRoot.focusSection = "content"
+                root.focusedIndex = index
+              }
+              onDoubleClicked: {
+                root.copyToClipboard(modelData.keys)
+              }
+            }
 
             RowLayout {
               id: bindingRowLayout
@@ -579,7 +759,7 @@ Item {
                 text: modelData.desc
                 font.family: Style.font.family
                 font.pixelSize: 13
-                font.bold: true
+                font.bold: isFocused
                 color: Color.foreground
                 wrapMode: Text.WordWrap
               }
@@ -589,8 +769,12 @@ Item {
                 Layout.preferredHeight: 24
                 Layout.preferredWidth: keyText.implicitWidth + 16
                 radius: 4
-                color: Color.pickAlpha("surface.hover", "#22272c")
-                border.color: Color.pickAlpha("border.subtle", "#30363d")
+                color: isFocused
+                  ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  : (bindingCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06))
+                border.color: isFocused
+                  ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                  : (bindingCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12))
                 border.width: 1
 
                 Text {
@@ -600,7 +784,7 @@ Item {
                   font.family: Style.font.monospace || Style.font.family
                   font.pixelSize: 11
                   font.bold: true
-                  color: Color.accent
+                  color: isFocused ? Color.accent : Color.foreground
                 }
               }
             }
