@@ -12,6 +12,7 @@ Item {
 
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
+  property var panelRoot: null
 
   property string defaultAgent: "agy"
   property var agents: []
@@ -19,8 +20,35 @@ Item {
   property string statusMessage: ""
 
   property bool activeFocusSection: false
-  property int focusedRow: 0       // 0: Default Assistant Card, 1: Launch Actions, 2+: Provider Usage Cards
-  property int selectedAgentIdx: 0  // Index within agents array for keyboard cycling
+  readonly property bool isContentFocused: panelRoot ? panelRoot.focusSection === "content" : activeFocusSection
+  property int focusedRow: 1       // 0: Hero Card Actions, 1: Default Assistant Card, 2+: Provider Usage Cards
+  property int heroActionIdx: 0    // 0: Launch, 1: Refresh
+  property int selectedAgentIdx: 0 // Index within agents array for keyboard cursor
+  onFocusedRowChanged: ensureRowVisible(focusedRow)
+
+  function ensureRowVisible(index) {
+    if (!scrollArea || !scrollArea.contentItem) return
+    var item = null
+    if (index === 0) item = heroCard
+    else if (index === 1) item = selectorCard
+    else if (index >= 2 && providerRepeater && index - 2 < providerRepeater.count) {
+      item = providerRepeater.itemAt(index - 2)
+    }
+    if (item && item.visible) {
+      var flick = scrollArea.contentItem
+      var pos = item.mapToItem(scrollArea, 0, 0)
+      var maxScroll = Math.max(0, flick.contentHeight - flick.height)
+      if (pos.y < 12) {
+        flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + pos.y - 12))
+      } else if (pos.y + item.height > scrollArea.height - 12) {
+        if (item.height >= scrollArea.height) {
+          flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + pos.y - 12))
+        } else {
+          flick.contentY = Math.max(0, Math.min(maxScroll, flick.contentY + (pos.y + item.height - scrollArea.height + 12)))
+        }
+      }
+    }
+  }
 
   // Inotify reactive watcher on default agent file
   FileView {
@@ -59,14 +87,12 @@ Item {
     onTriggered: root.statusMessage = ""
   }
 
-  function cycleAgent(delta) {
+  function cycleAgentCursor(delta) {
     if (agents.length === 0) return false
     if (delta < 0 && selectedAgentIdx === 0) return false
     var next = Math.max(0, Math.min(agents.length - 1, selectedAgentIdx + delta))
     if (next === selectedAgentIdx) return false
     selectedAgentIdx = next
-    var target = agents[selectedAgentIdx]
-    setDefault(target.id, target.name)
     return true
   }
 
@@ -120,7 +146,11 @@ Item {
     }
     if (dx !== 0) {
       if (focusedRow === 0) {
-        return cycleAgent(dx)
+        if (dx < 0 && heroActionIdx === 0) return false
+        heroActionIdx = Math.max(0, Math.min(1, heroActionIdx + dx))
+        return true
+      } else if (focusedRow === 1) {
+        return cycleAgentCursor(dx)
       } else if (dx < 0) {
         return false
       }
@@ -130,24 +160,28 @@ Item {
 
   function handleActivate() {
     if (focusedRow === 0) {
+      if (heroActionIdx === 0) launchAgent()
+      else refreshUsage()
+    } else if (focusedRow === 1) {
       if (agents.length > 0 && selectedAgentIdx >= 0 && selectedAgentIdx < agents.length) {
         setDefault(agents[selectedAgentIdx].id, agents[selectedAgentIdx].name)
       }
-    } else if (focusedRow === 1) {
-      launchAgent()
     } else {
       refreshUsage()
     }
   }
 
   function handleTextKey(key) {
-    if (key === "h" || key === "H") {
+    var k = key.toLowerCase()
+    if (k === "h") {
       return handleMove(-1, 0)
-    } else if (key === "r" || key === "R") {
+    } else if (k === "l") {
+      return handleMove(1, 0)
+    } else if (k === "r") {
       refreshUsage()
       return true
-    } else if (key === "l" || key === "L") {
-      launchAgent()
+    } else if (k === "x" || key === " " || key === "Return") {
+      handleActivate()
       return true
     } else if (key >= "1" && key <= "7") {
       var idx = parseInt(key) - 1
@@ -210,7 +244,7 @@ Item {
     Rectangle {
       anchors.fill: parent
       radius: height / 2
-      color: Color.pickAlpha("surface.selected", "#2a3036")
+      color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
     }
 
     Rectangle {
@@ -244,21 +278,30 @@ Item {
         Layout.preferredHeight: 32
         visible: root.statusMessage.length > 0
         radius: 6
-        color: Color.pickAlpha("accent.subtle", "#1f3b30")
-        border.color: Color.accent
+        color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+        border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
         border.width: 1
 
         RowLayout {
           anchors.fill: parent
           anchors.leftMargin: 12
           anchors.rightMargin: 12
+          spacing: 8
 
           Text {
-            text: "✓  " + root.statusMessage
+            text: "󰄬"
+            font.family: Style.font.family
+            font.pixelSize: 13
+            color: Color.accent
+          }
+
+          Text {
+            Layout.fillWidth: true
+            text: root.statusMessage
             font.family: Style.font.family
             font.pixelSize: 12
-            font.bold: true
-            color: Color.accent
+            color: Color.foreground
+            elide: Text.ElideRight
           }
         }
       }
@@ -273,14 +316,34 @@ Item {
         Layout.topMargin: 4
       }
 
-      // Hero Card: Current Default & Actions
+      // Hero Card: Current Default & Actions (Row 0)
       Rectangle {
         id: heroCard
         Layout.fillWidth: true
         implicitHeight: Math.max(88, heroLayout.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 0
+        readonly property bool isHovered: heroMouse.containsMouse
+
+        color: isFocused
+          ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+          : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+        border.color: isFocused
+          ? Color.accent
+          : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+        border.width: isFocused ? 2 : 1
+
+        MouseArea {
+          id: heroMouse
+          anchors.fill: parent
+          hoverEnabled: true
+          cursorShape: Qt.ArrowCursor
+          onClicked: {
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
+            root.focusedRow = 0
+          }
+        }
 
         RowLayout {
           id: heroLayout
@@ -294,7 +357,9 @@ Item {
             width: 48
             height: 48
             radius: 10
-            color: Color.pickAlpha("surface.selected", "#2a3036")
+            color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+            border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+            border.width: 1
 
             Image {
               anchors.centerIn: parent
@@ -336,18 +401,29 @@ Item {
               }
 
               Rectangle {
-                width: 62
+                width: 72
                 height: 20
                 radius: 4
-                color: Color.pickAlpha("accent.subtle", "#1f3b30")
+                color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                border.width: 1
 
-                Text {
+                RowLayout {
                   anchors.centerIn: parent
-                  text: "PRIMARY"
-                  font.family: Style.font.family
-                  font.pixelSize: 10
-                  font.bold: true
-                  color: Color.accent
+                  spacing: 4
+                  Rectangle {
+                    width: 5
+                    height: 5
+                    radius: 2.5
+                    color: Color.accent
+                  }
+                  Text {
+                    text: "PRIMARY"
+                    font.family: Style.font.family
+                    font.pixelSize: 9
+                    font.bold: true
+                    color: Color.accent
+                  }
                 }
               }
             }
@@ -366,40 +442,134 @@ Item {
           RowLayout {
             spacing: 8
 
-            Button {
-              text: "Launch"
-              iconText: "󰘳"
-              bordered: true
-              hasCursor: root.activeFocusSection && root.focusedRow === 1
-              onClicked: root.launchAgent()
+            // Launch Button Pill
+            Rectangle {
+              id: launchBtn
+              implicitWidth: launchBtnLayout.implicitWidth + 24
+              implicitHeight: 30
+              radius: 6
+              readonly property bool isBtnFocused: root.isContentFocused && root.focusedRow === 0 && root.heroActionIdx === 0
+              readonly property bool btnHover: launchBtnMouse.containsMouse
+              color: isBtnFocused
+                ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, btnHover ? 0.18 : 0.14)
+                : (btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04))
+              border.color: isBtnFocused
+                ? Color.accent
+                : (btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12))
+              border.width: isBtnFocused ? 2 : 1
+
+              RowLayout {
+                id: launchBtnLayout
+                anchors.centerIn: parent
+                spacing: 6
+                Text {
+                  text: "󰘳"
+                  font.family: Style.font.family
+                  font.pixelSize: 13
+                  color: launchBtn.isBtnFocused ? Color.accent : (launchBtn.btnHover ? Color.foreground : Color.muted)
+                }
+                Text {
+                  text: "Launch [L]"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: launchBtn.isBtnFocused
+                  color: launchBtn.isBtnFocused ? Color.accent : (launchBtn.btnHover ? Color.foreground : Color.muted)
+                }
+              }
+
+              MouseArea {
+                id: launchBtnMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
+                  root.focusedRow = 0
+                  root.heroActionIdx = 0
+                  root.launchAgent()
+                }
+              }
             }
 
-            Button {
-              text: "Refresh"
-              iconText: ""
-              bordered: true
-              onClicked: root.refreshUsage()
+            // Refresh Button Pill
+            Rectangle {
+              id: refreshBtn
+              implicitWidth: refreshBtnLayout.implicitWidth + 24
+              implicitHeight: 30
+              radius: 6
+              readonly property bool isBtnFocused: root.isContentFocused && root.focusedRow === 0 && root.heroActionIdx === 1
+              readonly property bool btnHover: refreshBtnMouse.containsMouse
+              color: isBtnFocused
+                ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, btnHover ? 0.18 : 0.14)
+                : (btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04))
+              border.color: isBtnFocused
+                ? Color.accent
+                : (btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12))
+              border.width: isBtnFocused ? 2 : 1
+
+              RowLayout {
+                id: refreshBtnLayout
+                anchors.centerIn: parent
+                spacing: 6
+                Text {
+                  text: ""
+                  font.family: Style.font.family
+                  font.pixelSize: 13
+                  color: refreshBtn.isBtnFocused ? Color.accent : (refreshBtn.btnHover ? Color.foreground : Color.muted)
+                }
+                Text {
+                  text: "Refresh [R]"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: refreshBtn.isBtnFocused
+                  color: refreshBtn.isBtnFocused ? Color.accent : (refreshBtn.btnHover ? Color.foreground : Color.muted)
+                }
+              }
+
+              MouseArea {
+                id: refreshBtnMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
+                  root.focusedRow = 0
+                  root.heroActionIdx = 1
+                  root.refreshUsage()
+                }
+              }
             }
           }
         }
       }
 
-      // Setting Row 0: Default Assistant Card
+      // Setting Row 1: Default Assistant Card
       Rectangle {
         id: selectorCard
         Layout.fillWidth: true
         implicitHeight: Math.max(130, selectorColLayout.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 0
-        color: selectorCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: selectorCard.isFocused ? Color.accent : "transparent"
-        border.width: selectorCard.isFocused ? 2 : 1
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 1
+        readonly property bool isHovered: selectorMouse.containsMouse
+
+        color: isFocused
+          ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+          : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+        border.color: isFocused
+          ? Color.accent
+          : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+        border.width: isFocused ? 2 : 1
 
         MouseArea {
+          id: selectorMouse
           anchors.fill: parent
-          cursorShape: Qt.PointingHandCursor
-          onClicked: root.focusedRow = 0
+          hoverEnabled: true
+          cursorShape: Qt.ArrowCursor
+          onClicked: {
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
+            root.focusedRow = 1
+          }
         }
 
         ColumnLayout {
@@ -441,7 +611,7 @@ Item {
 
                 Text {
                   visible: selectorCard.isFocused
-                  text: "• Use [←/→ or h/l] to cycle, [Enter] to set default"
+                  text: "• Use [←/→ or h/l] to move cursor, [Enter] to set default"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
@@ -463,25 +633,61 @@ Item {
             RowLayout {
               spacing: 6
 
-              Button {
-                text: "◀"
+              Rectangle {
                 implicitWidth: 32
                 implicitHeight: 32
-                bordered: true
-                onClicked: {
-                  root.focusedRow = 0
-                  root.cycleAgent(-1)
+                radius: 6
+                readonly property bool btnHover: prevMouse.containsMouse
+                color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05)
+                border.color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.30) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
+
+                Text {
+                  anchors.centerIn: parent
+                  text: "◀"
+                  font.pixelSize: 11
+                  color: parent.btnHover ? Color.foreground : Color.muted
+                }
+
+                MouseArea {
+                  id: prevMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
+                    root.focusedRow = 1
+                    root.cycleAgentCursor(-1)
+                  }
                 }
               }
 
-              Button {
-                text: "▶"
+              Rectangle {
                 implicitWidth: 32
                 implicitHeight: 32
-                bordered: true
-                onClicked: {
-                  root.focusedRow = 0
-                  root.cycleAgent(1)
+                radius: 6
+                readonly property bool btnHover: nextMouse.containsMouse
+                color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05)
+                border.color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.30) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
+
+                Text {
+                  anchors.centerIn: parent
+                  text: "▶"
+                  font.pixelSize: 11
+                  color: parent.btnHover ? Color.foreground : Color.muted
+                }
+
+                MouseArea {
+                  id: nextMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
+                    root.focusedRow = 1
+                    root.cycleAgentCursor(1)
+                  }
                 }
               }
             }
@@ -505,14 +711,19 @@ Item {
                 radius: 6
                 readonly property bool isSelected: modelData.id === root.defaultAgent
                 readonly property bool isCursorTarget: selectorCard.isFocused && root.selectedAgentIdx === index
+                readonly property bool isHovered: delegateMouse.containsMouse
 
                 color: isSelected
-                  ? Color.pickAlpha("accent.subtle", "#1f3b30")
+                  ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isHovered ? 0.28 : 0.20)
                   : (isCursorTarget
-                    ? Color.pickAlpha("surface.selected", "#262b32")
-                    : (delegateMouse.containsMouse ? Color.pickAlpha("surface.hover", "#1b1f23") : Color.pickAlpha("surface.selected", "#1a1e22")))
-                border.color: isSelected ? Color.accent : (isCursorTarget ? Color.accent : "transparent")
-                border.width: isSelected || isCursorTarget ? 2 : 1
+                    ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14)
+                    : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)))
+                border.color: isCursorTarget
+                  ? Color.accent
+                  : (isSelected
+                    ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                    : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)))
+                border.width: isCursorTarget ? 2 : 1
 
                 MouseArea {
                   id: delegateMouse
@@ -520,7 +731,8 @@ Item {
                   hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
-                    root.focusedRow = 0
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
+                    root.focusedRow = 1
                     root.selectedAgentIdx = index
                     root.setDefault(modelData.id, modelData.name)
                   }
@@ -535,7 +747,11 @@ Item {
                     width: 28
                     height: 28
                     radius: 5
-                    color: isSelected ? Color.pickAlpha("accent.subtle", "#2a4d3e") : Color.pickAlpha("surface.selected", "#23282e")
+                    color: agentDelegate.isSelected
+                      ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.25)
+                      : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                    border.color: agentDelegate.isSelected ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                    border.width: 1
 
                     Image {
                       anchors.centerIn: parent
@@ -554,7 +770,7 @@ Item {
                       text: "󰚩"
                       font.family: Style.font.family
                       font.pixelSize: 14
-                      color: isSelected ? Color.accent : Color.foreground
+                      color: agentDelegate.isSelected ? Color.accent : Color.foreground
                     }
                   }
 
@@ -569,8 +785,8 @@ Item {
                       text: modelData.name
                       font.family: Style.font.family
                       font.pixelSize: Style.font.bodySmall || 12
-                      font.bold: isSelected
-                      color: isSelected ? Color.accent : Color.foreground
+                      font.bold: agentDelegate.isSelected || agentDelegate.isCursorTarget
+                      color: agentDelegate.isSelected ? Color.accent : Color.foreground
                       elide: Text.ElideRight
                     }
 
@@ -580,17 +796,16 @@ Item {
                       text: modelData.installed ? "Installed CLI" : "Available"
                       font.family: Style.font.family
                       font.pixelSize: 10
-                      color: modelData.installed ? Color.muted : Color.pickAlpha("muted", "#666666")
+                      color: Color.muted
                       elide: Text.ElideRight
                     }
                   }
 
-                  Text {
-                    visible: isSelected
-                    text: "✓"
-                    font.family: Style.font.family
-                    font.pixelSize: 12
-                    font.bold: true
+                  Rectangle {
+                    visible: agentDelegate.isSelected
+                    width: 5
+                    height: 5
+                    radius: 2.5
                     color: Color.accent
                   }
                 }
@@ -612,6 +827,7 @@ Item {
 
       // Provider Usage Cards
       Repeater {
+        id: providerRepeater
         model: root.usage
 
         delegate: Rectangle {
@@ -621,15 +837,26 @@ Item {
           Layout.preferredHeight: implicitHeight
           radius: Style.cornerRadius || 8
           readonly property int myRowIndex: 2 + index
-          readonly property bool isFocused: root.activeFocusSection && root.focusedRow === myRowIndex
-          color: providerCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-          border.color: providerCard.isFocused ? Color.accent : "transparent"
-          border.width: providerCard.isFocused ? 2 : 1
+          readonly property bool isFocused: root.isContentFocused && root.focusedRow === myRowIndex
+          readonly property bool isHovered: providerMouse.containsMouse
+
+          color: isFocused
+            ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+            : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+          border.color: isFocused
+            ? Color.accent
+            : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+          border.width: isFocused ? 2 : 1
 
           MouseArea {
+            id: providerMouse
             anchors.fill: parent
+            hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.focusedRow = providerCard.myRowIndex
+            onClicked: {
+              if (root.panelRoot) root.panelRoot.focusSection = "content"
+              root.focusedRow = providerCard.myRowIndex
+            }
           }
 
           ColumnLayout {
@@ -649,7 +876,9 @@ Item {
                 width: 36
                 height: 36
                 radius: 8
-                color: Color.pickAlpha("surface.selected", "#2a3036")
+                color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15)
+                border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.40)
+                border.width: 1
 
                 Image {
                   anchors.centerIn: parent
@@ -694,7 +923,9 @@ Item {
                     visible: !!modelData.tierLabel && modelData.tierLabel.length > 0
                     height: 18
                     radius: 4
-                    color: Color.pickAlpha("accent.subtle", "#1f3b30")
+                    color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                    border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                    border.width: 1
                     width: tierLabelText.implicitWidth + 12
 
                     Text {
@@ -725,17 +956,31 @@ Item {
                 width: 76
                 height: 24
                 radius: 12
-                color: modelData.ready ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.selected", "#2a3036")
-                border.color: modelData.ready ? Color.accent : "transparent"
+                color: modelData.ready
+                  ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
+                border.color: modelData.ready
+                  ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                  : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
                 border.width: 1
 
-                Text {
+                RowLayout {
                   anchors.centerIn: parent
-                  text: modelData.ready ? "ACTIVE" : "STANDBY"
-                  font.family: Style.font.family
-                  font.pixelSize: 10
-                  font.bold: true
-                  color: modelData.ready ? Color.accent : Color.muted
+                  spacing: 4
+                  Rectangle {
+                    visible: modelData.ready
+                    width: 5
+                    height: 5
+                    radius: 2.5
+                    color: Color.accent
+                  }
+                  Text {
+                    text: modelData.ready ? "ACTIVE" : "STANDBY"
+                    font.family: Style.font.family
+                    font.pixelSize: 10
+                    font.bold: true
+                    color: modelData.ready ? Color.accent : Color.muted
+                  }
                 }
               }
             }
@@ -831,8 +1076,8 @@ Item {
               implicitHeight: authHelpRow.implicitHeight + 12
               Layout.preferredHeight: implicitHeight
               radius: 6
-              color: Color.pickAlpha("urgent.subtle", "#2e1818")
-              border.color: Color.urgent
+              color: Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.15)
+              border.color: Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.60)
               border.width: 1
 
               RowLayout {
