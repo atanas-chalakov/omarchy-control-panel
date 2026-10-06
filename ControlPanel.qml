@@ -15,7 +15,12 @@ Item {
   property string currentCategory: "search"
   property string focusSection: "content" // "sidebar" or "content"
   property bool showDiffInspector: false
+  property bool diffInspectorExpanded: false
   readonly property string pluginPath: manifest && manifest.__sourceDir ? manifest.__sourceDir : "/home/ac/.config/omarchy/plugins/ac.control-panel"
+
+  onDiffInspectorExpandedChanged: {
+    fitWindowToScreen(false)
+  }
 
   function toggleFocusSection() {
     root.focusSection = (root.focusSection === "sidebar" ? "content" : "sidebar")
@@ -67,7 +72,7 @@ Item {
     var maxW = Math.max(320, scrW - marginH)
     var maxH = Math.max(260, scrH - marginV)
 
-    var desiredW = root.showDiffInspector ? (root.isCompactScreen ? 1120 : 1260) : (root.isCompactScreen ? 880 : 1060)
+    var desiredW = root.showDiffInspector ? ((root.isCompactScreen ? 1120 : 1260) + (root.diffInspectorExpanded ? 160 : 0)) : (root.isCompactScreen ? 880 : 1060)
     var desiredH = root.isCompactScreen ? 620 : 740
 
     var targetW = Math.min(desiredW, maxW)
@@ -269,7 +274,7 @@ Item {
     implicitWidth: {
       var scrW = window.screen ? window.screen.width : 1280
       var marginH = scrW < 800 ? 16 : 34
-      var desiredW = root.showDiffInspector ? (root.isCompactScreen ? 1120 : 1260) : (root.isCompactScreen ? 880 : 1060)
+      var desiredW = root.showDiffInspector ? ((root.isCompactScreen ? 1120 : 1260) + (root.diffInspectorExpanded ? 160 : 0)) : (root.isCompactScreen ? 880 : 1060)
       return Math.max(480, Math.min(desiredW, scrW - marginH))
     }
     implicitHeight: {
@@ -368,6 +373,12 @@ Item {
             event.accepted = true
             return
           }
+        }
+
+        if (root.showDiffInspector && (event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_E)) {
+          root.diffInspectorExpanded = !root.diffInspectorExpanded
+          event.accepted = true
+          return
         }
 
         if (categoryLoader.item && categoryLoader.item.hasActiveInput === true) return
@@ -962,9 +973,9 @@ Item {
             id: diffInspectorLoader
             visible: root.showDiffInspector
             active: true
-            Layout.preferredWidth: root.showDiffInspector ? (root.isCompactScreen ? 280 : 360) : 0
-            Layout.minimumWidth: root.showDiffInspector ? (root.isCompactScreen ? 240 : 300) : 0
-            Layout.maximumWidth: root.showDiffInspector ? (root.isCompactScreen ? 320 : 380) : 0
+            Layout.preferredWidth: root.showDiffInspector ? (root.diffInspectorExpanded ? 520 : (root.isCompactScreen ? 280 : 360)) : 0
+            Layout.minimumWidth: root.showDiffInspector ? (root.diffInspectorExpanded ? 460 : (root.isCompactScreen ? 240 : 300)) : 0
+            Layout.maximumWidth: root.showDiffInspector ? (root.diffInspectorExpanded ? 640 : (root.isCompactScreen ? 320 : 400)) : 0
             Layout.fillHeight: true
             source: "views/DiffInspector.qml"
 
@@ -996,7 +1007,9 @@ Item {
           Text {
             Layout.fillWidth: true
             elide: Text.ElideRight
-            text: "⌨ Shortcuts: [Tab] Switch Sidebar / Settings  •  [↑/↓ or j/k] Select  •  [Enter] Activate  •  [S or /] Search  •  [Ctrl+D] Diff  •  [Esc] Close"
+            text: root.showDiffInspector
+              ? "⌨ Shortcuts: [Tab] Focus  •  [Ctrl+D] Toggle Diff  •  [Ctrl+→/←] Cycle Tabs  •  [Ctrl+E] Expand Width  •  [Esc] Close"
+              : "⌨ Shortcuts: [Tab] Switch Sidebar / Settings  •  [↑/↓ or j/k] Select  •  [Enter] Activate  •  [S or /] Search  •  [Ctrl+D] Diff  •  [Esc] Close"
             font.family: Style.font.family
             font.pixelSize: 11
             color: Color.muted
