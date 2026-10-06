@@ -15,8 +15,15 @@ Item {
 
   property var panelRoot: null
   property bool activeFocusSection: false
+  readonly property bool isContentFocused: root.panelRoot ? (root.panelRoot.focusSection === "content") : root.activeFocusSection
+
   property int focusedCard: 0 // 0: Browser, 1: Editor, 2: Terminal, 3: File Manager
   onFocusedCardChanged: ensureCardVisible(focusedCard)
+
+  property int browserFocusIndex: -1
+  property int editorFocusIndex: -1
+  property int terminalFocusIndex: -1
+  property int fileManagerFocusIndex: -1
 
   function ensureCardVisible(index) {
     if (!scrollArea || !scrollArea.contentItem) return
@@ -45,15 +52,19 @@ Item {
   // State properties
   property string currentBrowser: "chromium.desktop"
   property var installedBrowsers: []
+  onCurrentBrowserChanged: browserFocusIndex = currentBrowserIndex()
 
   property string currentEditor: "nvim"
   property var installedEditors: []
+  onCurrentEditorChanged: editorFocusIndex = currentEditorIndex()
 
   property string currentTerminal: "Alacritty.desktop"
   property var installedTerminals: []
+  onCurrentTerminalChanged: terminalFocusIndex = currentTerminalIndex()
 
   property string currentFileManager: "org.gnome.Nautilus.desktop"
   property var installedFileManagers: []
+  onCurrentFileManagerChanged: fileManagerFocusIndex = currentFileManagerIndex()
 
   function currentBrowserIndex() {
     for (var i = 0; i < installedBrowsers.length; i++) {
@@ -85,40 +96,44 @@ Item {
 
   function cycleBrowser(delta) {
     if (installedBrowsers.length === 0) return false
-    var idx = currentBrowserIndex()
-    if (delta < 0 && idx === 0) return false
-    var next = Math.max(0, Math.min(installedBrowsers.length - 1, idx + delta))
-    if (next === idx) return false
+    var cur = (browserFocusIndex >= 0) ? browserFocusIndex : currentBrowserIndex()
+    if (delta < 0 && cur === 0) return false
+    var next = Math.max(0, Math.min(installedBrowsers.length - 1, cur + delta))
+    if (next === cur) return false
+    browserFocusIndex = next
     setBrowser(installedBrowsers[next].id, installedBrowsers[next].name)
     return true
   }
 
   function cycleEditor(delta) {
     if (installedEditors.length === 0) return false
-    var idx = currentEditorIndex()
-    if (delta < 0 && idx === 0) return false
-    var next = Math.max(0, Math.min(installedEditors.length - 1, idx + delta))
-    if (next === idx) return false
+    var cur = (editorFocusIndex >= 0) ? editorFocusIndex : currentEditorIndex()
+    if (delta < 0 && cur === 0) return false
+    var next = Math.max(0, Math.min(installedEditors.length - 1, cur + delta))
+    if (next === cur) return false
+    editorFocusIndex = next
     setEditor(installedEditors[next].code, installedEditors[next].id, installedEditors[next].name)
     return true
   }
 
   function cycleTerminal(delta) {
     if (installedTerminals.length === 0) return false
-    var idx = currentTerminalIndex()
-    if (delta < 0 && idx === 0) return false
-    var next = Math.max(0, Math.min(installedTerminals.length - 1, idx + delta))
-    if (next === idx) return false
+    var cur = (terminalFocusIndex >= 0) ? terminalFocusIndex : currentTerminalIndex()
+    if (delta < 0 && cur === 0) return false
+    var next = Math.max(0, Math.min(installedTerminals.length - 1, cur + delta))
+    if (next === cur) return false
+    terminalFocusIndex = next
     setTerminal(installedTerminals[next].id, installedTerminals[next].name)
     return true
   }
 
   function cycleFileManager(delta) {
     if (installedFileManagers.length === 0) return false
-    var idx = currentFileManagerIndex()
-    if (delta < 0 && idx === 0) return false
-    var next = Math.max(0, Math.min(installedFileManagers.length - 1, idx + delta))
-    if (next === idx) return false
+    var cur = (fileManagerFocusIndex >= 0) ? fileManagerFocusIndex : currentFileManagerIndex()
+    if (delta < 0 && cur === 0) return false
+    var next = Math.max(0, Math.min(installedFileManagers.length - 1, cur + delta))
+    if (next === cur) return false
+    fileManagerFocusIndex = next
     setFileManager(installedFileManagers[next].id, installedFileManagers[next].name)
     return true
   }
@@ -191,10 +206,19 @@ Item {
   }
 
   function handleActivate() {
-    if (focusedCard === 0) cycleBrowser(1)
-    else if (focusedCard === 1) cycleEditor(1)
-    else if (focusedCard === 2) cycleTerminal(1)
-    else if (focusedCard === 3) cycleFileManager(1)
+    if (focusedCard === 0) {
+      var bIdx = (browserFocusIndex >= 0) ? browserFocusIndex : currentBrowserIndex()
+      if (installedBrowsers[bIdx]) setBrowser(installedBrowsers[bIdx].id, installedBrowsers[bIdx].name)
+    } else if (focusedCard === 1) {
+      var eIdx = (editorFocusIndex >= 0) ? editorFocusIndex : currentEditorIndex()
+      if (installedEditors[eIdx]) setEditor(installedEditors[eIdx].code, installedEditors[eIdx].id, installedEditors[eIdx].name)
+    } else if (focusedCard === 2) {
+      var tIdx = (terminalFocusIndex >= 0) ? terminalFocusIndex : currentTerminalIndex()
+      if (installedTerminals[tIdx]) setTerminal(installedTerminals[tIdx].id, installedTerminals[tIdx].name)
+    } else if (focusedCard === 3) {
+      var fIdx = (fileManagerFocusIndex >= 0) ? fileManagerFocusIndex : currentFileManagerIndex()
+      if (installedFileManagers[fIdx]) setFileManager(installedFileManagers[fIdx].id, installedFileManagers[fIdx].name)
+    }
   }
 
   function handleTextKey(key) {
@@ -205,19 +229,15 @@ Item {
       return handleMove(1, 0)
     } else if (k === "b") {
       focusedCard = 0
-      cycleBrowser(1)
       return true
     } else if (k === "e") {
       focusedCard = 1
-      cycleEditor(1)
       return true
     } else if (k === "t") {
       focusedCard = 2
-      cycleTerminal(1)
       return true
     } else if (k === "f") {
       focusedCard = 3
-      cycleFileManager(1)
       return true
     } else if (k === "r") {
       refresh()
@@ -296,7 +316,7 @@ Item {
         Layout.preferredHeight: 32
         visible: root.statusMessage.length > 0
         radius: 6
-        color: Color.pickAlpha("accent.subtle", "#1f3b30")
+        color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15)
         border.color: Color.accent
         border.width: 1
 
@@ -321,10 +341,22 @@ Item {
         Layout.fillWidth: true
         implicitHeight: Math.max(116, browserCol.implicitHeight + 24)
         Layout.preferredHeight: implicitHeight
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
-        border.color: (root.activeFocusSection && root.focusedCard === 0) ? Color.accent : "transparent"
-        border.width: (root.activeFocusSection && root.focusedCard === 0) ? 1 : 0
+        readonly property bool isFocused: root.isContentFocused && root.focusedCard === 0
+        readonly property bool isHovered: browserCardMouse.containsMouse
+        color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+        border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+        border.width: isFocused ? 2 : 1
+
+        MouseArea {
+          id: browserCardMouse
+          anchors.fill: parent
+          hoverEnabled: true
+          onClicked: {
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
+            root.focusedCard = 0
+          }
+        }
 
         ColumnLayout {
           id: browserCol
@@ -363,7 +395,9 @@ Item {
                 width: 18
                 height: 18
                 radius: 3
-                color: Color.pickAlpha("surface.selected", "#2a3036")
+                color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
                 Text {
                   anchors.centerIn: parent
                   text: "B"
@@ -373,12 +407,30 @@ Item {
                 }
               }
 
-              Button {
-                text: "Launch"
+              Rectangle {
                 implicitWidth: 64
                 implicitHeight: 24
-                bordered: true
-                onClicked: root.launchApp("browser")
+                radius: 4
+                readonly property bool btnHover: browserLaunchMouse.containsMouse
+                color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
+                border.color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.3) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
+
+                Text {
+                  anchors.centerIn: parent
+                  text: "Launch"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: parent.btnHover ? Color.foreground : Color.muted
+                }
+
+                MouseArea {
+                  id: browserLaunchMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.launchApp("browser")
+                }
               }
             }
           }
@@ -409,50 +461,62 @@ Item {
 
               delegate: Rectangle {
                 width: browserFlow.itemWidth
-                height: 36
+                height: 38
                 radius: 6
-                readonly property bool isSelected: root.currentBrowser === modelData.id
-                color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
-                border.color: isSelected ? Color.accent : "transparent"
-                border.width: isSelected ? 1 : 0
+                readonly property bool isActive: root.currentBrowser === modelData.id
+                readonly property bool isCursorFocused: root.isContentFocused && root.focusedCard === 0 && index === ((root.browserFocusIndex >= 0) ? root.browserFocusIndex : root.currentBrowserIndex())
+                readonly property bool isHovered: browserItemMouse.containsMouse
+
+                color: isActive
+                  ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isHovered ? 0.28 : 0.20)
+                  : (isCursorFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)))
+
+                border.color: isCursorFocused
+                  ? Color.accent
+                  : (isActive ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)))
+                border.width: isCursorFocused ? 2 : 1
 
                 MouseArea {
+                  id: browserItemMouse
                   anchors.fill: parent
+                  hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.focusedCard = 0
+                    root.browserFocusIndex = index
                     root.setBrowser(modelData.id, modelData.name)
                   }
                 }
 
                 RowLayout {
                   anchors.centerIn: parent
-                  width: Math.min(implicitWidth, parent.width - 12)
+                  width: Math.min(implicitWidth, parent.width - 16)
                   spacing: 6
 
                   Text {
                     text: modelData.icon
                     font.family: Style.font.family
                     font.pixelSize: 14
-                    color: isSelected ? Color.accent : Color.foreground
+                    color: isActive ? Color.accent : Color.foreground
                   }
 
                   Text {
                     text: modelData.name
                     font.family: Style.font.family
                     font.pixelSize: 12
-                    font.bold: isSelected
-                    color: isSelected ? Color.accent : Color.foreground
+                    font.bold: isActive || isCursorFocused
+                    color: isActive ? Color.accent : (isCursorFocused ? Color.foreground : Color.foreground)
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
                   }
 
                   Rectangle {
-                    visible: isSelected
-                    width: 12
-                    height: 12
-                    radius: 6
+                    visible: isActive
+                    width: 6
+                    height: 6
+                    radius: 3
                     color: Color.accent
                   }
                 }
@@ -468,10 +532,22 @@ Item {
         Layout.fillWidth: true
         implicitHeight: Math.max(116, editorCol.implicitHeight + 24)
         Layout.preferredHeight: implicitHeight
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
-        border.color: (root.activeFocusSection && root.focusedCard === 1) ? Color.accent : "transparent"
-        border.width: (root.activeFocusSection && root.focusedCard === 1) ? 1 : 0
+        readonly property bool isFocused: root.isContentFocused && root.focusedCard === 1
+        readonly property bool isHovered: editorCardMouse.containsMouse
+        color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+        border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+        border.width: isFocused ? 2 : 1
+
+        MouseArea {
+          id: editorCardMouse
+          anchors.fill: parent
+          hoverEnabled: true
+          onClicked: {
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
+            root.focusedCard = 1
+          }
+        }
 
         ColumnLayout {
           id: editorCol
@@ -510,7 +586,9 @@ Item {
                 width: 18
                 height: 18
                 radius: 3
-                color: Color.pickAlpha("surface.selected", "#2a3036")
+                color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
                 Text {
                   anchors.centerIn: parent
                   text: "E"
@@ -520,12 +598,30 @@ Item {
                 }
               }
 
-              Button {
-                text: "Launch"
+              Rectangle {
                 implicitWidth: 64
                 implicitHeight: 24
-                bordered: true
-                onClicked: root.launchApp("editor")
+                radius: 4
+                readonly property bool btnHover: editorLaunchMouse.containsMouse
+                color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
+                border.color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.3) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
+
+                Text {
+                  anchors.centerIn: parent
+                  text: "Launch"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: parent.btnHover ? Color.foreground : Color.muted
+                }
+
+                MouseArea {
+                  id: editorLaunchMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.launchApp("editor")
+                }
               }
             }
           }
@@ -556,50 +652,62 @@ Item {
 
               delegate: Rectangle {
                 width: editorFlow.itemWidth
-                height: 36
+                height: 38
                 radius: 6
-                readonly property bool isSelected: root.currentEditor === modelData.code || root.currentEditor === modelData.id
-                color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
-                border.color: isSelected ? Color.accent : "transparent"
-                border.width: isSelected ? 1 : 0
+                readonly property bool isActive: (root.currentEditor === modelData.code || root.currentEditor === modelData.id)
+                readonly property bool isCursorFocused: root.isContentFocused && root.focusedCard === 1 && index === ((root.editorFocusIndex >= 0) ? root.editorFocusIndex : root.currentEditorIndex())
+                readonly property bool isHovered: editorItemMouse.containsMouse
+
+                color: isActive
+                  ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isHovered ? 0.28 : 0.20)
+                  : (isCursorFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)))
+
+                border.color: isCursorFocused
+                  ? Color.accent
+                  : (isActive ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)))
+                border.width: isCursorFocused ? 2 : 1
 
                 MouseArea {
+                  id: editorItemMouse
                   anchors.fill: parent
+                  hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.focusedCard = 1
+                    root.editorFocusIndex = index
                     root.setEditor(modelData.code, modelData.id, modelData.name)
                   }
                 }
 
                 RowLayout {
                   anchors.centerIn: parent
-                  width: Math.min(implicitWidth, parent.width - 12)
+                  width: Math.min(implicitWidth, parent.width - 16)
                   spacing: 6
 
                   Text {
                     text: modelData.icon
                     font.family: Style.font.family
                     font.pixelSize: 14
-                    color: isSelected ? Color.accent : Color.foreground
+                    color: isActive ? Color.accent : Color.foreground
                   }
 
                   Text {
                     text: modelData.name
                     font.family: Style.font.family
                     font.pixelSize: 12
-                    font.bold: isSelected
-                    color: isSelected ? Color.accent : Color.foreground
+                    font.bold: isActive || isCursorFocused
+                    color: isActive ? Color.accent : (isCursorFocused ? Color.foreground : Color.foreground)
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
                   }
 
                   Rectangle {
-                    visible: isSelected
-                    width: 12
-                    height: 12
-                    radius: 6
+                    visible: isActive
+                    width: 6
+                    height: 6
+                    radius: 3
                     color: Color.accent
                   }
                 }
@@ -615,10 +723,22 @@ Item {
         Layout.fillWidth: true
         implicitHeight: Math.max(116, terminalCol.implicitHeight + 24)
         Layout.preferredHeight: implicitHeight
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
-        border.color: (root.activeFocusSection && root.focusedCard === 2) ? Color.accent : "transparent"
-        border.width: (root.activeFocusSection && root.focusedCard === 2) ? 1 : 0
+        readonly property bool isFocused: root.isContentFocused && root.focusedCard === 2
+        readonly property bool isHovered: terminalCardMouse.containsMouse
+        color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+        border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+        border.width: isFocused ? 2 : 1
+
+        MouseArea {
+          id: terminalCardMouse
+          anchors.fill: parent
+          hoverEnabled: true
+          onClicked: {
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
+            root.focusedCard = 2
+          }
+        }
 
         ColumnLayout {
           id: terminalCol
@@ -657,7 +777,9 @@ Item {
                 width: 18
                 height: 18
                 radius: 3
-                color: Color.pickAlpha("surface.selected", "#2a3036")
+                color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
                 Text {
                   anchors.centerIn: parent
                   text: "T"
@@ -667,12 +789,30 @@ Item {
                 }
               }
 
-              Button {
-                text: "Launch"
+              Rectangle {
                 implicitWidth: 64
                 implicitHeight: 24
-                bordered: true
-                onClicked: root.launchApp("terminal")
+                radius: 4
+                readonly property bool btnHover: terminalLaunchMouse.containsMouse
+                color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
+                border.color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.3) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
+
+                Text {
+                  anchors.centerIn: parent
+                  text: "Launch"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: parent.btnHover ? Color.foreground : Color.muted
+                }
+
+                MouseArea {
+                  id: terminalLaunchMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.launchApp("terminal")
+                }
               }
             }
           }
@@ -703,50 +843,62 @@ Item {
 
               delegate: Rectangle {
                 width: terminalFlow.itemWidth
-                height: 36
+                height: 38
                 radius: 6
-                readonly property bool isSelected: root.currentTerminal === modelData.id
-                color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
-                border.color: isSelected ? Color.accent : "transparent"
-                border.width: isSelected ? 1 : 0
+                readonly property bool isActive: root.currentTerminal === modelData.id
+                readonly property bool isCursorFocused: root.isContentFocused && root.focusedCard === 2 && index === ((root.terminalFocusIndex >= 0) ? root.terminalFocusIndex : root.currentTerminalIndex())
+                readonly property bool isHovered: terminalItemMouse.containsMouse
+
+                color: isActive
+                  ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isHovered ? 0.28 : 0.20)
+                  : (isCursorFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)))
+
+                border.color: isCursorFocused
+                  ? Color.accent
+                  : (isActive ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)))
+                border.width: isCursorFocused ? 2 : 1
 
                 MouseArea {
+                  id: terminalItemMouse
                   anchors.fill: parent
+                  hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.focusedCard = 2
+                    root.terminalFocusIndex = index
                     root.setTerminal(modelData.id, modelData.name)
                   }
                 }
 
                 RowLayout {
                   anchors.centerIn: parent
-                  width: Math.min(implicitWidth, parent.width - 12)
+                  width: Math.min(implicitWidth, parent.width - 16)
                   spacing: 6
 
                   Text {
                     text: modelData.icon
                     font.family: Style.font.family
                     font.pixelSize: 14
-                    color: isSelected ? Color.accent : Color.foreground
+                    color: isActive ? Color.accent : Color.foreground
                   }
 
                   Text {
                     text: modelData.name
                     font.family: Style.font.family
                     font.pixelSize: 12
-                    font.bold: isSelected
-                    color: isSelected ? Color.accent : Color.foreground
+                    font.bold: isActive || isCursorFocused
+                    color: isActive ? Color.accent : (isCursorFocused ? Color.foreground : Color.foreground)
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
                   }
 
                   Rectangle {
-                    visible: isSelected
-                    width: 12
-                    height: 12
-                    radius: 6
+                    visible: isActive
+                    width: 6
+                    height: 6
+                    radius: 3
                     color: Color.accent
                   }
                 }
@@ -762,10 +914,22 @@ Item {
         Layout.fillWidth: true
         implicitHeight: Math.max(116, fileManagerCol.implicitHeight + 24)
         Layout.preferredHeight: implicitHeight
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
-        border.color: (root.activeFocusSection && root.focusedCard === 3) ? Color.accent : "transparent"
-        border.width: (root.activeFocusSection && root.focusedCard === 3) ? 1 : 0
+        readonly property bool isFocused: root.isContentFocused && root.focusedCard === 3
+        readonly property bool isHovered: fileManagerCardMouse.containsMouse
+        color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+        border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+        border.width: isFocused ? 2 : 1
+
+        MouseArea {
+          id: fileManagerCardMouse
+          anchors.fill: parent
+          hoverEnabled: true
+          onClicked: {
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
+            root.focusedCard = 3
+          }
+        }
 
         ColumnLayout {
           id: fileManagerCol
@@ -804,7 +968,9 @@ Item {
                 width: 18
                 height: 18
                 radius: 3
-                color: Color.pickAlpha("surface.selected", "#2a3036")
+                color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
                 Text {
                   anchors.centerIn: parent
                   text: "F"
@@ -814,12 +980,30 @@ Item {
                 }
               }
 
-              Button {
-                text: "Launch"
+              Rectangle {
                 implicitWidth: 64
                 implicitHeight: 24
-                bordered: true
-                onClicked: root.launchApp("file-manager")
+                radius: 4
+                readonly property bool btnHover: fileManagerLaunchMouse.containsMouse
+                color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
+                border.color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.3) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
+
+                Text {
+                  anchors.centerIn: parent
+                  text: "Launch"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: parent.btnHover ? Color.foreground : Color.muted
+                }
+
+                MouseArea {
+                  id: fileManagerLaunchMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.launchApp("file-manager")
+                }
               }
             }
           }
@@ -850,50 +1034,62 @@ Item {
 
               delegate: Rectangle {
                 width: fileManagerFlow.itemWidth
-                height: 36
+                height: 38
                 radius: 6
-                readonly property bool isSelected: root.currentFileManager === modelData.id
-                color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
-                border.color: isSelected ? Color.accent : "transparent"
-                border.width: isSelected ? 1 : 0
+                readonly property bool isActive: root.currentFileManager === modelData.id
+                readonly property bool isCursorFocused: root.isContentFocused && root.focusedCard === 3 && index === ((root.fileManagerFocusIndex >= 0) ? root.fileManagerFocusIndex : root.currentFileManagerIndex())
+                readonly property bool isHovered: fileManagerItemMouse.containsMouse
+
+                color: isActive
+                  ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isHovered ? 0.28 : 0.20)
+                  : (isCursorFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)))
+
+                border.color: isCursorFocused
+                  ? Color.accent
+                  : (isActive ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)))
+                border.width: isCursorFocused ? 2 : 1
 
                 MouseArea {
+                  id: fileManagerItemMouse
                   anchors.fill: parent
+                  hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.focusedCard = 3
+                    root.fileManagerFocusIndex = index
                     root.setFileManager(modelData.id, modelData.name)
                   }
                 }
 
                 RowLayout {
                   anchors.centerIn: parent
-                  width: Math.min(implicitWidth, parent.width - 12)
+                  width: Math.min(implicitWidth, parent.width - 16)
                   spacing: 6
 
                   Text {
                     text: modelData.icon
                     font.family: Style.font.family
                     font.pixelSize: 14
-                    color: isSelected ? Color.accent : Color.foreground
+                    color: isActive ? Color.accent : Color.foreground
                   }
 
                   Text {
                     text: modelData.name
                     font.family: Style.font.family
                     font.pixelSize: 12
-                    font.bold: isSelected
-                    color: isSelected ? Color.accent : Color.foreground
+                    font.bold: isActive || isCursorFocused
+                    color: isActive ? Color.accent : (isCursorFocused ? Color.foreground : Color.foreground)
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
                   }
 
                   Rectangle {
-                    visible: isSelected
-                    width: 12
-                    height: 12
-                    radius: 6
+                    visible: isActive
+                    width: 6
+                    height: 6
+                    radius: 3
                     color: Color.accent
                   }
                 }
