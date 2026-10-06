@@ -15,6 +15,16 @@ Item {
 
   property var panelRoot: null
   property bool activeFocusSection: false
+  readonly property bool isContentFocused: {
+    if (root.panelRoot && root.panelRoot.focusSection !== undefined) {
+      return root.panelRoot.focusSection === "content"
+    }
+    return activeFocusSection
+  }
+  property int gapFocusIndex: -1
+  property int roundingFocusIndex: -1
+  property int borderFocusIndex: -1
+  property int opacityFocusIndex: -1
   property int focusedCard: 0   // 0: Animations, 1: Gaps, 2: Single Window Aspect, 3: Rounding, 4: Border, 5: Opacity, 6: Blur, 7: Bar Hidden, 8: Bar Position, 9: Bar Transparency, 10: Workspace Layout
   onFocusedCardChanged: ensureCardVisible(focusedCard)
 
@@ -122,37 +132,41 @@ Item {
   }
 
   function cycleGaps(delta) {
-    var idx = currentGapIndex()
-    if (delta < 0 && idx === 0) return false
-    var next = Math.max(0, Math.min(gapPresets.length - 1, idx + delta))
-    if (next === idx) return false
+    var cur = (gapFocusIndex >= 0) ? gapFocusIndex : currentGapIndex()
+    if (delta < 0 && cur === 0) return false
+    var next = Math.max(0, Math.min(gapPresets.length - 1, cur + delta))
+    if (next === cur) return false
+    gapFocusIndex = next
     setGaps(gapPresets[next].inGap, gapPresets[next].outGap)
     return true
   }
 
   function cycleRounding(delta) {
-    var idx = currentRoundingIndex()
-    if (delta < 0 && idx === 0) return false
-    var next = Math.max(0, Math.min(roundingOptions.length - 1, idx + delta))
-    if (next === idx) return false
+    var cur = (roundingFocusIndex >= 0) ? roundingFocusIndex : currentRoundingIndex()
+    if (delta < 0 && cur === 0) return false
+    var next = Math.max(0, Math.min(roundingOptions.length - 1, cur + delta))
+    if (next === cur) return false
+    roundingFocusIndex = next
     setRounding(roundingOptions[next])
     return true
   }
 
   function cycleBorder(delta) {
-    var idx = currentBorderIndex()
-    if (delta < 0 && idx === 0) return false
-    var next = Math.max(0, Math.min(borderOptions.length - 1, idx + delta))
-    if (next === idx) return false
+    var cur = (borderFocusIndex >= 0) ? borderFocusIndex : currentBorderIndex()
+    if (delta < 0 && cur === 0) return false
+    var next = Math.max(0, Math.min(borderOptions.length - 1, cur + delta))
+    if (next === cur) return false
+    borderFocusIndex = next
     setBorderSize(borderOptions[next])
     return true
   }
 
   function cycleOpacity(delta) {
-    var idx = currentOpacityIndex()
-    if (delta < 0 && idx === 0) return false
-    var next = Math.max(0, Math.min(opacityOptions.length - 1, idx + delta))
-    if (next === idx) return false
+    var cur = (opacityFocusIndex >= 0) ? opacityFocusIndex : currentOpacityIndex()
+    if (delta < 0 && cur === 0) return false
+    var next = Math.max(0, Math.min(opacityOptions.length - 1, cur + delta))
+    if (next === cur) return false
+    opacityFocusIndex = next
     setInactiveOpacity(opacityOptions[next])
     return true
   }
@@ -306,11 +320,23 @@ Item {
 
   function handleActivate() {
     if (focusedCard === 0) toggleAnimations()
-    else if (focusedCard === 1) cycleGaps(1)
+    else if (focusedCard === 1) {
+      var gIdx = (gapFocusIndex >= 0) ? gapFocusIndex : currentGapIndex()
+      setGaps(gapPresets[gIdx].inGap, gapPresets[gIdx].outGap)
+    }
     else if (focusedCard === 2) toggleSingleWindowAspect()
-    else if (focusedCard === 3) cycleRounding(1)
-    else if (focusedCard === 4) cycleBorder(1)
-    else if (focusedCard === 5) cycleOpacity(1)
+    else if (focusedCard === 3) {
+      var rIdx = (roundingFocusIndex >= 0) ? roundingFocusIndex : currentRoundingIndex()
+      setRounding(roundingOptions[rIdx])
+    }
+    else if (focusedCard === 4) {
+      var bIdx = (borderFocusIndex >= 0) ? borderFocusIndex : currentBorderIndex()
+      setBorderSize(borderOptions[bIdx])
+    }
+    else if (focusedCard === 5) {
+      var oIdx = (opacityFocusIndex >= 0) ? opacityFocusIndex : currentOpacityIndex()
+      setInactiveOpacity(opacityOptions[oIdx])
+    }
     else if (focusedCard === 6) toggleBlur()
     else if (focusedCard === 7) toggleBar()
     else if (focusedCard === 8) cycleBarPosition()
@@ -446,7 +472,7 @@ Item {
         Layout.preferredHeight: 32
         visible: root.statusMessage.length > 0
         radius: 6
-        color: Color.pickAlpha("accent.subtle", "#1f3b30")
+        color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
         border.color: Color.accent
         border.width: 1
 
@@ -471,15 +497,20 @@ Item {
         Layout.fillWidth: true
         implicitHeight: Math.max(76, animRow.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
         radius: Style.cornerRadius || 8
-        border.color: (root.activeFocusSection && root.focusedCard === 0) ? Color.accent : "transparent"
-        border.width: (root.activeFocusSection && root.focusedCard === 0) ? 2 : 0
+        readonly property bool isFocused: root.isContentFocused && root.focusedCard === 0
+        readonly property bool isHovered: animMouse.containsMouse
+        color: isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.07 : 0.05) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+        border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+        border.width: isFocused ? 2 : 1
 
         MouseArea {
+          id: animMouse
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
           onClicked: {
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
             root.focusedCard = 0
             root.toggleAnimations()
           }
@@ -497,7 +528,9 @@ Item {
             width: 48
             height: 48
             radius: 8
-            color: root.animations ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.selected", "#2a3036")
+            color: root.animations ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+            border.color: root.animations ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.30) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+            border.width: 1
 
             Text {
               anchors.centerIn: parent
@@ -530,7 +563,9 @@ Item {
                 Layout.preferredHeight: 20
                 Layout.preferredWidth: animStatusText.implicitWidth + 14
                 radius: 4
-                color: root.animations ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#262b30")
+                color: root.animations ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                border.color: root.animations ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
 
                 Text {
                   id: animStatusText
@@ -547,7 +582,9 @@ Item {
                 width: 18
                 height: 18
                 radius: 3
-                color: Color.pickAlpha("surface.selected", "#2a3036")
+                color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
                 Text {
                   anchors.centerIn: parent
                   text: "A"
@@ -571,14 +608,21 @@ Item {
             }
           }
 
-          Button {
-            text: root.animations ? "ON" : "OFF"
-            implicitWidth: 70
-            implicitHeight: 34
-            bordered: true
-            onClicked: {
-              root.focusedCard = 0
-              root.toggleAnimations()
+          Rectangle {
+            width: 70
+            height: 32
+            radius: 16
+            color: root.animations ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+            border.color: root.animations ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+            border.width: 1
+
+            Text {
+              anchors.centerIn: parent
+              text: root.animations ? "ON" : "OFF"
+              font.family: Style.font.family
+              font.pixelSize: 11
+              font.bold: true
+              color: root.animations ? Color.accent : Color.muted
             }
           }
         }
@@ -590,7 +634,9 @@ Item {
         Layout.fillWidth: true
         implicitHeight: spacingCol.implicitHeight + 24
         Layout.preferredHeight: implicitHeight
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+        border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+        border.width: 1
         radius: Style.cornerRadius || 8
 
         ColumnLayout {
@@ -608,14 +654,21 @@ Item {
             implicitHeight: Math.max(46, gapsInnerRow.implicitHeight + 14)
             Layout.preferredHeight: implicitHeight
             radius: 6
-            color: (root.activeFocusSection && root.focusedCard === 1) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
-            border.color: (root.activeFocusSection && root.focusedCard === 1) ? Color.accent : "transparent"
-            border.width: (root.activeFocusSection && root.focusedCard === 1) ? 2 : 0
+            readonly property bool isFocused: root.isContentFocused && root.focusedCard === 1
+            readonly property bool isHovered: gapsMouse.containsMouse
+            color: isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : "transparent")
+            border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : "transparent")
+            border.width: isFocused ? 2 : 1
 
             MouseArea {
+              id: gapsMouse
               anchors.fill: parent
+              hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
-              onClicked: root.focusedCard = 1
+              onClicked: {
+                if (root.panelRoot) root.panelRoot.focusSection = "content"
+                root.focusedCard = 1
+              }
             }
 
             RowLayout {
@@ -655,7 +708,9 @@ Item {
                     width: 18
                     height: 18
                     radius: 3
-                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                    border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                    border.width: 1
                     Text {
                       anchors.centerIn: parent
                       text: "G"
@@ -686,24 +741,36 @@ Item {
                   implicitHeight: 28
                   bordered: true
                   onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.focusedCard = 1
                     root.cycleGaps(-1)
                   }
                 }
 
                 Rectangle {
-                  implicitWidth: 100
+                  implicitWidth: 108
                   implicitHeight: 28
-                  radius: 4
-                  color: Color.pickAlpha("surface.selected", "#2a3036")
+                  radius: 14
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                  border.width: 1
 
-                  Text {
+                  RowLayout {
                     anchors.centerIn: parent
-                    text: root.gapPresets[root.currentGapIndex()].label
-                    font.family: Style.font.family
-                    font.pixelSize: 11
-                    font.bold: true
-                    color: Color.foreground
+                    spacing: 5
+                    Rectangle {
+                      width: 5
+                      height: 5
+                      radius: 2.5
+                      color: Color.accent
+                    }
+                    Text {
+                      text: root.gapPresets[root.gapFocusIndex >= 0 ? root.gapFocusIndex : root.currentGapIndex()].label
+                      font.family: Style.font.family
+                      font.pixelSize: 11
+                      font.bold: true
+                      color: Color.accent
+                    }
                   }
                 }
 
@@ -713,6 +780,7 @@ Item {
                   implicitHeight: 28
                   bordered: true
                   onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.focusedCard = 1
                     root.cycleGaps(1)
                   }
@@ -728,14 +796,19 @@ Item {
             implicitHeight: Math.max(46, aspectInnerRow.implicitHeight + 14)
             Layout.preferredHeight: implicitHeight
             radius: 6
-            color: (root.activeFocusSection && root.focusedCard === 2) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
-            border.color: (root.activeFocusSection && root.focusedCard === 2) ? Color.accent : "transparent"
-            border.width: (root.activeFocusSection && root.focusedCard === 2) ? 2 : 0
+            readonly property bool isFocused: root.isContentFocused && root.focusedCard === 2
+            readonly property bool isHovered: aspectMouse.containsMouse
+            color: isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : "transparent")
+            border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : "transparent")
+            border.width: isFocused ? 2 : 1
 
             MouseArea {
+              id: aspectMouse
               anchors.fill: parent
+              hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
               onClicked: {
+                if (root.panelRoot) root.panelRoot.focusSection = "content"
                 root.focusedCard = 2
                 root.toggleSingleWindowAspect()
               }
@@ -778,7 +851,9 @@ Item {
                     width: 18
                     height: 18
                     radius: 3
-                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                    border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                    border.width: 1
                     Text {
                       anchors.centerIn: parent
                       text: "S"
@@ -800,14 +875,21 @@ Item {
                 }
               }
 
-              Button {
-                text: root.singleWindowAspect ? "ON" : "OFF"
-                implicitWidth: 64
-                implicitHeight: 28
-                bordered: true
-                onClicked: {
-                  root.focusedCard = 2
-                  root.toggleSingleWindowAspect()
+              Rectangle {
+                width: 64
+                height: 28
+                radius: 14
+                color: root.singleWindowAspect ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                border.color: root.singleWindowAspect ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
+
+                Text {
+                  anchors.centerIn: parent
+                  text: root.singleWindowAspect ? "ON" : "OFF"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: true
+                  color: root.singleWindowAspect ? Color.accent : Color.muted
                 }
               }
             }
@@ -821,7 +903,9 @@ Item {
         Layout.fillWidth: true
         implicitHeight: Math.max(120, card3Col.implicitHeight + 24)
         Layout.preferredHeight: implicitHeight
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+        border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+        border.width: 1
         radius: Style.cornerRadius || 8
 
         ColumnLayout {
@@ -867,14 +951,21 @@ Item {
             implicitHeight: Math.max(46, roundingInnerRow.implicitHeight + 14)
             Layout.preferredHeight: implicitHeight
             radius: 6
-            color: (root.activeFocusSection && root.focusedCard === 3) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
-            border.color: (root.activeFocusSection && root.focusedCard === 3) ? Color.accent : "transparent"
-            border.width: (root.activeFocusSection && root.focusedCard === 3) ? 2 : 0
+            readonly property bool isFocused: root.isContentFocused && root.focusedCard === 3
+            readonly property bool isHovered: roundingMouse.containsMouse
+            color: isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : "transparent")
+            border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : "transparent")
+            border.width: isFocused ? 2 : 1
 
             MouseArea {
+              id: roundingMouse
               anchors.fill: parent
+              hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
-              onClicked: root.focusedCard = 3
+              onClicked: {
+                if (root.panelRoot) root.panelRoot.focusSection = "content"
+                root.focusedCard = 3
+              }
             }
 
             RowLayout {
@@ -907,7 +998,9 @@ Item {
                     width: 16
                     height: 16
                     radius: 3
-                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                    border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                    border.width: 1
                     Text {
                       anchors.centerIn: parent
                       text: "R"
@@ -938,24 +1031,36 @@ Item {
                   implicitHeight: 26
                   bordered: true
                   onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.focusedCard = 3
                     root.cycleRounding(-1)
                   }
                 }
 
                 Rectangle {
-                  implicitWidth: 64
-                  implicitHeight: 26
-                  radius: 4
-                  color: Color.pickAlpha("surface.selected", "#2a3036")
+                  implicitWidth: 84
+                  implicitHeight: 28
+                  radius: 14
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                  border.width: 1
 
-                  Text {
+                  RowLayout {
                     anchors.centerIn: parent
-                    text: root.rounding === 0 ? "Sharp (0)" : (root.rounding + "px")
-                    font.family: Style.font.family
-                    font.pixelSize: 11
-                    font.bold: true
-                    color: Color.foreground
+                    spacing: 5
+                    Rectangle {
+                      width: 5
+                      height: 5
+                      radius: 2.5
+                      color: Color.accent
+                    }
+                    Text {
+                      text: root.rounding === 0 ? "Sharp (0)" : (root.rounding + "px")
+                      font.family: Style.font.family
+                      font.pixelSize: 11
+                      font.bold: true
+                      color: Color.accent
+                    }
                   }
                 }
 
@@ -965,6 +1070,7 @@ Item {
                   implicitHeight: 26
                   bordered: true
                   onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.focusedCard = 3
                     root.cycleRounding(1)
                   }
@@ -980,14 +1086,21 @@ Item {
             implicitHeight: Math.max(46, borderInnerRow.implicitHeight + 14)
             Layout.preferredHeight: implicitHeight
             radius: 6
-            color: (root.activeFocusSection && root.focusedCard === 4) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
-            border.color: (root.activeFocusSection && root.focusedCard === 4) ? Color.accent : "transparent"
-            border.width: (root.activeFocusSection && root.focusedCard === 4) ? 2 : 0
+            readonly property bool isFocused: root.isContentFocused && root.focusedCard === 4
+            readonly property bool isHovered: borderMouse.containsMouse
+            color: isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : "transparent")
+            border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : "transparent")
+            border.width: isFocused ? 2 : 1
 
             MouseArea {
+              id: borderMouse
               anchors.fill: parent
+              hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
-              onClicked: root.focusedCard = 4
+              onClicked: {
+                if (root.panelRoot) root.panelRoot.focusSection = "content"
+                root.focusedCard = 4
+              }
             }
 
             RowLayout {
@@ -1020,7 +1133,9 @@ Item {
                     width: 16
                     height: 16
                     radius: 3
-                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                    border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                    border.width: 1
                     Text {
                       anchors.centerIn: parent
                       text: "B"
@@ -1051,24 +1166,36 @@ Item {
                   implicitHeight: 26
                   bordered: true
                   onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.focusedCard = 4
                     root.cycleBorder(-1)
                   }
                 }
 
                 Rectangle {
-                  implicitWidth: 64
-                  implicitHeight: 26
-                  radius: 4
-                  color: Color.pickAlpha("surface.selected", "#2a3036")
+                  implicitWidth: 80
+                  implicitHeight: 28
+                  radius: 14
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                  border.width: 1
 
-                  Text {
+                  RowLayout {
                     anchors.centerIn: parent
-                    text: root.borderSize === 0 ? "None (0)" : (root.borderSize + "px")
-                    font.family: Style.font.family
-                    font.pixelSize: 11
-                    font.bold: true
-                    color: Color.foreground
+                    spacing: 5
+                    Rectangle {
+                      width: 5
+                      height: 5
+                      radius: 2.5
+                      color: Color.accent
+                    }
+                    Text {
+                      text: root.borderSize === 0 ? "None (0)" : (root.borderSize + "px")
+                      font.family: Style.font.family
+                      font.pixelSize: 11
+                      font.bold: true
+                      color: Color.accent
+                    }
                   }
                 }
 
@@ -1078,6 +1205,7 @@ Item {
                   implicitHeight: 26
                   bordered: true
                   onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.focusedCard = 4
                     root.cycleBorder(1)
                   }
@@ -1093,14 +1221,21 @@ Item {
             implicitHeight: Math.max(46, opacityInnerRow.implicitHeight + 14)
             Layout.preferredHeight: implicitHeight
             radius: 6
-            color: (root.activeFocusSection && root.focusedCard === 5) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
-            border.color: (root.activeFocusSection && root.focusedCard === 5) ? Color.accent : "transparent"
-            border.width: (root.activeFocusSection && root.focusedCard === 5) ? 2 : 0
+            readonly property bool isFocused: root.isContentFocused && root.focusedCard === 5
+            readonly property bool isHovered: opacityMouse.containsMouse
+            color: isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : "transparent")
+            border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : "transparent")
+            border.width: isFocused ? 2 : 1
 
             MouseArea {
+              id: opacityMouse
               anchors.fill: parent
+              hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
-              onClicked: root.focusedCard = 5
+              onClicked: {
+                if (root.panelRoot) root.panelRoot.focusSection = "content"
+                root.focusedCard = 5
+              }
             }
 
             RowLayout {
@@ -1133,7 +1268,9 @@ Item {
                     width: 16
                     height: 16
                     radius: 3
-                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                    border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                    border.width: 1
                     Text {
                       anchors.centerIn: parent
                       text: "D"
@@ -1164,24 +1301,36 @@ Item {
                   implicitHeight: 26
                   bordered: true
                   onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.focusedCard = 5
                     root.cycleOpacity(-1)
                   }
                 }
 
                 Rectangle {
-                  implicitWidth: 64
-                  implicitHeight: 26
-                  radius: 4
-                  color: Color.pickAlpha("surface.selected", "#2a3036")
+                  implicitWidth: 80
+                  implicitHeight: 28
+                  radius: 14
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                  border.width: 1
 
-                  Text {
+                  RowLayout {
                     anchors.centerIn: parent
-                    text: Math.round(root.inactiveOpacity * 100) + "%"
-                    font.family: Style.font.family
-                    font.pixelSize: 11
-                    font.bold: true
-                    color: Color.foreground
+                    spacing: 5
+                    Rectangle {
+                      width: 5
+                      height: 5
+                      radius: 2.5
+                      color: Color.accent
+                    }
+                    Text {
+                      text: Math.round(root.inactiveOpacity * 100) + "%"
+                      font.family: Style.font.family
+                      font.pixelSize: 11
+                      font.bold: true
+                      color: Color.accent
+                    }
                   }
                 }
 
@@ -1191,6 +1340,7 @@ Item {
                   implicitHeight: 26
                   bordered: true
                   onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.focusedCard = 5
                     root.cycleOpacity(1)
                   }
@@ -1206,14 +1356,19 @@ Item {
             implicitHeight: Math.max(46, blurInnerRow.implicitHeight + 14)
             Layout.preferredHeight: implicitHeight
             radius: 6
-            color: (root.activeFocusSection && root.focusedCard === 6) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
-            border.color: (root.activeFocusSection && root.focusedCard === 6) ? Color.accent : "transparent"
-            border.width: (root.activeFocusSection && root.focusedCard === 6) ? 2 : 0
+            readonly property bool isFocused: root.isContentFocused && root.focusedCard === 6
+            readonly property bool isHovered: blurMouse.containsMouse
+            color: isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : "transparent")
+            border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : "transparent")
+            border.width: isFocused ? 2 : 1
 
             MouseArea {
+              id: blurMouse
               anchors.fill: parent
+              hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
               onClicked: {
+                if (root.panelRoot) root.panelRoot.focusSection = "content"
                 root.focusedCard = 6
                 root.toggleBlur()
               }
@@ -1249,7 +1404,9 @@ Item {
                     width: 16
                     height: 16
                     radius: 3
-                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                    border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                    border.width: 1
                     Text {
                       anchors.centerIn: parent
                       text: "L"
@@ -1271,14 +1428,21 @@ Item {
                 }
               }
 
-              Button {
-                text: root.blur ? "ON" : "OFF"
-                implicitWidth: 60
-                implicitHeight: 26
-                bordered: true
-                onClicked: {
-                  root.focusedCard = 6
-                  root.toggleBlur()
+              Rectangle {
+                width: 60
+                height: 28
+                radius: 14
+                color: root.blur ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                border.color: root.blur ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
+
+                Text {
+                  anchors.centerIn: parent
+                  text: root.blur ? "ON" : "OFF"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: true
+                  color: root.blur ? Color.accent : Color.muted
                 }
               }
             }
@@ -1292,7 +1456,9 @@ Item {
         Layout.fillWidth: true
         implicitHeight: card4Col.implicitHeight + 24
         Layout.preferredHeight: implicitHeight
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+        border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+        border.width: 1
         radius: Style.cornerRadius || 8
 
         ColumnLayout {
@@ -1338,14 +1504,19 @@ Item {
             implicitHeight: Math.max(46, barInnerRow.implicitHeight + 14)
             Layout.preferredHeight: implicitHeight
             radius: 6
-            color: (root.activeFocusSection && root.focusedCard === 7) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
-            border.color: (root.activeFocusSection && root.focusedCard === 7) ? Color.accent : "transparent"
-            border.width: (root.activeFocusSection && root.focusedCard === 7) ? 2 : 0
+            readonly property bool isFocused: root.isContentFocused && root.focusedCard === 7
+            readonly property bool isHovered: barMouse.containsMouse
+            color: isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : "transparent")
+            border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : "transparent")
+            border.width: isFocused ? 2 : 1
 
             MouseArea {
+              id: barMouse
               anchors.fill: parent
+              hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
               onClicked: {
+                if (root.panelRoot) root.panelRoot.focusSection = "content"
                 root.focusedCard = 7
                 root.toggleBar()
               }
@@ -1381,7 +1552,9 @@ Item {
                     width: 16
                     height: 16
                     radius: 3
-                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                    border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                    border.width: 1
                     Text {
                       anchors.centerIn: parent
                       text: "T"
@@ -1403,14 +1576,21 @@ Item {
                 }
               }
 
-              Button {
-                text: root.barHidden ? "HIDDEN" : "VISIBLE"
-                implicitWidth: 78
-                implicitHeight: 26
-                bordered: true
-                onClicked: {
-                  root.focusedCard = 7
-                  root.toggleBar()
+              Rectangle {
+                width: 78
+                height: 28
+                radius: 14
+                color: !root.barHidden ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                border.color: !root.barHidden ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
+
+                Text {
+                  anchors.centerIn: parent
+                  text: root.barHidden ? "HIDDEN" : "VISIBLE"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: true
+                  color: !root.barHidden ? Color.accent : Color.muted
                 }
               }
             }
@@ -1423,14 +1603,19 @@ Item {
             implicitHeight: Math.max(46, barPosInnerRow.implicitHeight + 14)
             Layout.preferredHeight: implicitHeight
             radius: 6
-            color: (root.activeFocusSection && root.focusedCard === 8) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
-            border.color: (root.activeFocusSection && root.focusedCard === 8) ? Color.accent : "transparent"
-            border.width: (root.activeFocusSection && root.focusedCard === 8) ? 2 : 0
+            readonly property bool isFocused: root.isContentFocused && root.focusedCard === 8
+            readonly property bool isHovered: barPosMouse.containsMouse
+            color: isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : "transparent")
+            border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : "transparent")
+            border.width: isFocused ? 2 : 1
 
             MouseArea {
+              id: barPosMouse
               anchors.fill: parent
+              hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
               onClicked: {
+                if (root.panelRoot) root.panelRoot.focusSection = "content"
                 root.focusedCard = 8
                 root.cycleBarPosition()
               }
@@ -1466,7 +1651,9 @@ Item {
                     width: 16
                     height: 16
                     radius: 3
-                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                    border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                    border.width: 1
                     Text {
                       anchors.centerIn: parent
                       text: "P"
@@ -1488,14 +1675,21 @@ Item {
                 }
               }
 
-              Button {
-                text: root.barPosition.toUpperCase()
-                implicitWidth: 78
-                implicitHeight: 26
-                bordered: true
-                onClicked: {
-                  root.focusedCard = 8
-                  root.cycleBarPosition()
+              Rectangle {
+                width: 78
+                height: 28
+                radius: 14
+                color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                border.width: 1
+
+                Text {
+                  anchors.centerIn: parent
+                  text: root.barPosition.toUpperCase()
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: true
+                  color: Color.accent
                 }
               }
             }
@@ -1508,14 +1702,19 @@ Item {
             implicitHeight: Math.max(46, barTransInnerRow.implicitHeight + 14)
             Layout.preferredHeight: implicitHeight
             radius: 6
-            color: (root.activeFocusSection && root.focusedCard === 9) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
-            border.color: (root.activeFocusSection && root.focusedCard === 9) ? Color.accent : "transparent"
-            border.width: (root.activeFocusSection && root.focusedCard === 9) ? 2 : 0
+            readonly property bool isFocused: root.isContentFocused && root.focusedCard === 9
+            readonly property bool isHovered: barTransMouse.containsMouse
+            color: isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : "transparent")
+            border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : "transparent")
+            border.width: isFocused ? 2 : 1
 
             MouseArea {
+              id: barTransMouse
               anchors.fill: parent
+              hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
               onClicked: {
+                if (root.panelRoot) root.panelRoot.focusSection = "content"
                 root.focusedCard = 9
                 root.toggleBarTransparent()
               }
@@ -1551,7 +1750,9 @@ Item {
                     width: 16
                     height: 16
                     radius: 3
-                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                    border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                    border.width: 1
                     Text {
                       anchors.centerIn: parent
                       text: "E"
@@ -1573,14 +1774,21 @@ Item {
                 }
               }
 
-              Button {
-                text: root.barTransparent ? "TRANSPARENT" : "SOLID"
-                implicitWidth: 96
-                implicitHeight: 26
-                bordered: true
-                onClicked: {
-                  root.focusedCard = 9
-                  root.toggleBarTransparent()
+              Rectangle {
+                width: 96
+                height: 28
+                radius: 14
+                color: root.barTransparent ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                border.color: root.barTransparent ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
+
+                Text {
+                  anchors.centerIn: parent
+                  text: root.barTransparent ? "TRANSPARENT" : "SOLID"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: true
+                  color: root.barTransparent ? Color.accent : Color.muted
                 }
               }
             }
@@ -1593,14 +1801,19 @@ Item {
             implicitHeight: Math.max(46, layoutInnerRow.implicitHeight + 14)
             Layout.preferredHeight: implicitHeight
             radius: 6
-            color: (root.activeFocusSection && root.focusedCard === 10) ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
-            border.color: (root.activeFocusSection && root.focusedCard === 10) ? Color.accent : "transparent"
-            border.width: (root.activeFocusSection && root.focusedCard === 10) ? 2 : 0
+            readonly property bool isFocused: root.isContentFocused && root.focusedCard === 10
+            readonly property bool isHovered: layoutMouse.containsMouse
+            color: isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : "transparent")
+            border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : "transparent")
+            border.width: isFocused ? 2 : 1
 
             MouseArea {
+              id: layoutMouse
               anchors.fill: parent
+              hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
               onClicked: {
+                if (root.panelRoot) root.panelRoot.focusSection = "content"
                 root.focusedCard = 10
                 root.toggleWorkspaceLayout()
               }
@@ -1636,7 +1849,9 @@ Item {
                     width: 16
                     height: 16
                     radius: 3
-                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                    border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                    border.width: 1
                     Text {
                       anchors.centerIn: parent
                       text: "W"
@@ -1658,14 +1873,21 @@ Item {
                 }
               }
 
-              Button {
-                text: root.workspaceLayout === "dwindle" ? "DWINDLE" : "SCROLLING"
-                implicitWidth: 96
-                implicitHeight: 26
-                bordered: true
-                onClicked: {
-                  root.focusedCard = 10
-                  root.toggleWorkspaceLayout()
+              Rectangle {
+                width: 96
+                height: 28
+                radius: 14
+                color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                border.width: 1
+
+                Text {
+                  anchors.centerIn: parent
+                  text: root.workspaceLayout === "dwindle" ? "DWINDLE" : "SCROLLING"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: true
+                  color: Color.accent
                 }
               }
             }
