@@ -15,7 +15,9 @@ Item {
   property var panelRoot: null
 
   property bool activeFocusSection: false
+  readonly property bool isContentFocused: panelRoot ? panelRoot.focusSection === "content" : activeFocusSection
   property int focusedRow: 0   // 0: DND Toggle, 1: Actions Row, 2+: History Items
+  property int actionFocusIndex: 0 // 0: Replay, 1: Dismiss, 2: Send Test, 3: Clear History
   onFocusedRowChanged: ensureRowVisible(focusedRow)
 
   function ensureRowVisible(index) {
@@ -108,6 +110,13 @@ Item {
     notifyStatus("Sent test notification")
   }
 
+  function triggerAction(idx) {
+    if (idx === 0) showHistory()
+    else if (idx === 1) dismissAll()
+    else if (idx === 2) sendTest()
+    else if (idx === 3) clearHistory()
+  }
+
   function notifyStatus(msg) {
     statusMessage = msg
     statusClearTimer.restart()
@@ -128,16 +137,24 @@ Item {
       return true
     }
     if (dx !== 0) {
-      if (dx < 0) return false
-      if (focusedRow === 0) toggleDnd()
-      return true
+      if (dx < 0 && focusedRow !== 1) return false
+      if (focusedRow === 0) {
+        if (dx > 0) toggleDnd()
+        return true
+      } else if (focusedRow === 1) {
+        if (dx < 0 && actionFocusIndex === 0) return false
+        actionFocusIndex = Math.max(0, Math.min(3, actionFocusIndex + dx))
+        return true
+      }
+      return false
     }
     return false
   }
 
   function handleActivate() {
     if (focusedRow === 0) toggleDnd()
-    else if (focusedRow === 1) showHistory()
+    else if (focusedRow === 1) triggerAction(actionFocusIndex)
+    else if (focusedRow >= 2) showHistory()
   }
 
   function handleTextKey(key) {
@@ -220,8 +237,8 @@ Item {
         Layout.preferredHeight: 32
         visible: root.statusMessage.length > 0
         radius: 6
-        color: Color.pickAlpha("accent.subtle", "#1f3b30")
-        border.color: Color.accent
+        color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+        border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
         border.width: 1
 
         RowLayout {
@@ -255,15 +272,23 @@ Item {
         implicitHeight: Math.max(78, dndRowLayout.implicitHeight + 24)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 0
-        color: dndCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: dndCard.isFocused ? Color.accent : Color.pickAlpha("border.subtle", "#262b30")
-        border.width: dndCard.isFocused ? 2 : 1
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 0
+        readonly property bool isHovered: dndCardMouse.containsMouse
+        color: isFocused
+          ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+          : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+        border.color: isFocused
+          ? Color.accent
+          : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+        border.width: isFocused ? 2 : 1
 
         MouseArea {
+          id: dndCardMouse
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
           onClicked: {
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
             root.focusedRow = 0
             root.toggleDnd()
           }
@@ -281,7 +306,13 @@ Item {
             width: 44
             height: 44
             radius: 8
-            color: root.dndEnabled ? Color.pickAlpha("urgent.subtle", "#3a1f1f") : Color.pickAlpha("accent.subtle", "#1f3b30")
+            color: root.dndEnabled
+              ? Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.20)
+              : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+            border.color: root.dndEnabled
+              ? Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.60)
+              : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+            border.width: 1
 
             Text {
               anchors.centerIn: parent
@@ -312,10 +343,14 @@ Item {
               }
 
               Rectangle {
-                width: dndPillText.implicitWidth + 10
+                width: dndPillText.implicitWidth + 12
                 height: 18
                 radius: 4
-                color: root.dndEnabled ? Color.urgent : Color.accent
+                color: root.dndEnabled
+                  ? Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.25)
+                  : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.25)
+                border.color: root.dndEnabled ? Color.urgent : Color.accent
+                border.width: 1
 
                 Text {
                   id: dndPillText
@@ -324,7 +359,7 @@ Item {
                   font.family: Style.font.family
                   font.pixelSize: 10
                   font.bold: true
-                  color: Color.background
+                  color: root.dndEnabled ? Color.urgent : Color.accent
                 }
               }
             }
@@ -342,13 +377,49 @@ Item {
             }
           }
 
-          Button {
-            text: root.dndEnabled ? "Unmute [D]" : "Silence [D]"
-            selected: root.dndEnabled
-            bordered: true
-            onClicked: {
-              root.focusedRow = 0
-              root.toggleDnd()
+          Rectangle {
+            id: dndActionBtn
+            implicitWidth: dndActionBtnText.implicitWidth + 24
+            implicitHeight: 30
+            radius: 6
+            readonly property bool btnHover: dndActionBtnMouse.containsMouse
+            color: root.dndEnabled
+              ? Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, btnHover ? 0.28 : 0.20)
+              : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, btnHover ? 0.28 : 0.20)
+            border.color: root.dndEnabled
+              ? Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.60)
+              : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+            border.width: 1
+
+            RowLayout {
+              anchors.centerIn: parent
+              spacing: 6
+              Rectangle {
+                width: 5
+                height: 5
+                radius: 2.5
+                color: root.dndEnabled ? Color.urgent : Color.accent
+              }
+              Text {
+                id: dndActionBtnText
+                text: root.dndEnabled ? "Unmute [D]" : "Silence [D]"
+                font.family: Style.font.family
+                font.pixelSize: 11
+                font.bold: true
+                color: root.dndEnabled ? Color.urgent : Color.accent
+              }
+            }
+
+            MouseArea {
+              id: dndActionBtnMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: {
+                if (root.panelRoot) root.panelRoot.focusSection = "content"
+                root.focusedRow = 0
+                root.toggleDnd()
+              }
             }
           }
         }
@@ -361,9 +432,26 @@ Item {
         implicitHeight: Math.max(52, actionsFlow.implicitHeight + 20)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: (root.activeFocusSection && root.focusedRow === 1) ? Color.accent : Color.pickAlpha("border.subtle", "#262b30")
-        border.width: (root.activeFocusSection && root.focusedRow === 1) ? 2 : 1
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 1
+        readonly property bool isHovered: actionsCardMouse.containsMouse
+        color: isFocused
+          ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+          : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+        border.color: isFocused
+          ? Color.accent
+          : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+        border.width: isFocused ? 2 : 1
+
+        MouseArea {
+          id: actionsCardMouse
+          anchors.fill: parent
+          hoverEnabled: true
+          cursorShape: Qt.ArrowCursor
+          onClicked: {
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
+            root.focusedRow = 1
+          }
+        }
 
         Flow {
           id: actionsFlow
@@ -382,24 +470,53 @@ Item {
             color: Color.muted
           }
 
-          Button {
-            text: "󰂚 Replay Toasts [P]"
-            onClicked: root.showHistory()
-          }
+          Repeater {
+            model: [
+              { label: "󰂚 Replay Toasts [P]", actionIdx: 0 },
+              { label: "✕ Dismiss All [X]", actionIdx: 1 },
+              { label: "󰄬 Send Test [T]", actionIdx: 2 },
+              { label: "🗑 Clear History [C]", actionIdx: 3 }
+            ]
 
-          Button {
-            text: "✕ Dismiss All [X]"
-            onClicked: root.dismissAll()
-          }
+            delegate: Rectangle {
+              id: actBtn
+              implicitWidth: actBtnText.implicitWidth + 20
+              implicitHeight: 28
+              radius: 6
+              readonly property bool isBtnFocused: root.isContentFocused && root.focusedRow === 1 && root.actionFocusIndex === modelData.actionIdx
+              readonly property bool btnHover: actBtnMouse.containsMouse
 
-          Button {
-            text: "󰄬 Send Test [T]"
-            onClicked: root.sendTest()
-          }
+              color: isBtnFocused
+                ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, btnHover ? 0.18 : 0.14)
+                : (btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04))
+              border.color: isBtnFocused
+                ? Color.accent
+                : (btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12))
+              border.width: isBtnFocused ? 2 : 1
 
-          Button {
-            text: "🗑 Clear History [C]"
-            onClicked: root.clearHistory()
+              Text {
+                id: actBtnText
+                anchors.centerIn: parent
+                text: modelData.label
+                font.family: Style.font.family
+                font.pixelSize: 11
+                font.bold: isBtnFocused
+                color: isBtnFocused ? Color.accent : (actBtn.btnHover ? Color.foreground : Color.muted)
+              }
+
+              MouseArea {
+                id: actBtnMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
+                  root.focusedRow = 1
+                  root.actionFocusIndex = modelData.actionIdx
+                  root.triggerAction(modelData.actionIdx)
+                }
+              }
+            }
           }
         }
       }
@@ -434,8 +551,8 @@ Item {
         Layout.fillWidth: true
         Layout.preferredHeight: 90
         radius: Style.cornerRadius || 8
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: Color.pickAlpha("border.subtle", "#262b30")
+        color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+        border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
         border.width: 1
 
         ColumnLayout {
@@ -466,19 +583,30 @@ Item {
         model: root.historyItems
 
         delegate: Rectangle {
+          id: histItemCard
           Layout.fillWidth: true
           implicitHeight: Math.max(56, histRowLayout.implicitHeight + 16)
           Layout.preferredHeight: implicitHeight
           radius: 6
-          readonly property bool isSelected: root.activeFocusSection && root.focusedRow === (2 + index)
-          color: isSelected ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-          border.color: isSelected ? Color.accent : Color.pickAlpha("border.subtle", "#262b30")
-          border.width: 1
+          readonly property bool isFocused: root.isContentFocused && root.focusedRow === (2 + index)
+          readonly property bool isHovered: histMouse.containsMouse
+          color: isFocused
+            ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+            : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+          border.color: isFocused
+            ? Color.accent
+            : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+          border.width: isFocused ? 2 : 1
 
           MouseArea {
+            id: histMouse
             anchors.fill: parent
+            hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.focusedRow = 2 + index
+            onClicked: {
+              if (root.panelRoot) root.panelRoot.focusSection = "content"
+              root.focusedRow = 2 + index
+            }
           }
 
           RowLayout {
@@ -497,8 +625,12 @@ Item {
               height: 32
               radius: 6
               color: modelData.urgency === 2
-                ? Color.pickAlpha("urgent.subtle", "#3a1f1f")
-                : Color.pickAlpha("surface.hover", "#20252b")
+                ? Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.20)
+                : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15)
+              border.color: modelData.urgency === 2
+                ? Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.60)
+                : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.40)
+              border.width: 1
 
               Text {
                 anchors.centerIn: parent
@@ -540,7 +672,7 @@ Item {
                   font.family: Style.font.family
                   font.pixelSize: 12
                   font.bold: true
-                  color: Color.foreground
+                  color: isFocused ? Color.foreground : Color.foreground
                   elide: Text.ElideRight
                 }
 
