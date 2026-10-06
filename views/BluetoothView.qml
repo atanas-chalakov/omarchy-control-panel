@@ -20,6 +20,12 @@ Item {
   property string statusMessage: ""
 
   property bool activeFocusSection: false
+  readonly property bool isContentFocused: {
+    if (root.panelRoot && root.panelRoot.focusSection !== undefined) {
+      return root.panelRoot.focusSection === "content"
+    }
+    return activeFocusSection
+  }
   property int focusedRow: 0   // 0: Power Toggle, 1: Scan, 2..N: Device rows
   onFocusedRowChanged: ensureRowVisible(focusedRow)
 
@@ -250,7 +256,7 @@ Item {
         Layout.preferredHeight: 32
         visible: root.statusMessage.length > 0
         radius: 6
-        color: Color.pickAlpha("accent.subtle", "#1f3b30")
+        color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
         border.color: Color.accent
         border.width: 1
 
@@ -275,7 +281,9 @@ Item {
         Layout.fillWidth: true
         implicitHeight: Math.max(76, bluetoothHeroRow.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)
+        border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+        border.width: 1
         radius: Style.cornerRadius || 8
 
         RowLayout {
@@ -290,7 +298,9 @@ Item {
             width: 46
             height: 46
             radius: 8
-            color: Color.pickAlpha("surface.selected", "#2a3036")
+            color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+            border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+            border.width: 1
 
             Text {
               anchors.centerIn: parent
@@ -324,7 +334,9 @@ Item {
                 width: root.powered ? 76 : 74
                 height: 20
                 radius: 4
-                color: root.powered ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.selected", "#2a3036")
+                color: root.powered ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                border.color: root.powered ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
 
                 Text {
                   anchors.centerIn: parent
@@ -366,15 +378,31 @@ Item {
         implicitHeight: Math.max(74, btPowerRowLayout.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 0
-        color: btPowerCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: btPowerCard.isFocused ? Color.accent : "transparent"
-        border.width: btPowerCard.isFocused ? 2 : 1
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 0
+        readonly property bool isHovered: btPowerMouse.containsMouse
+        color: {
+          if (isFocused) {
+            return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14)
+          }
+          if (isHovered) {
+            return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+          }
+          return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+        }
+        border.color: {
+          if (isFocused) return Color.accent
+          if (isHovered) return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28)
+          return "transparent"
+        }
+        border.width: isFocused ? 2 : 1
 
         MouseArea {
+          id: btPowerMouse
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
           onClicked: {
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
             root.focusedRow = 0
             root.togglePower()
           }
@@ -392,7 +420,9 @@ Item {
             width: 44
             height: 44
             radius: 8
-            color: root.powered ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#20252b")
+            color: root.powered ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+            border.color: root.powered ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.30) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+            border.width: 1
 
             Text {
               anchors.centerIn: parent
@@ -446,9 +476,9 @@ Item {
             Layout.minimumWidth: 90
             Layout.preferredHeight: 32
             radius: 16
-            color: root.powered ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
-            border.color: btPowerCard.isFocused ? Color.accent : "transparent"
-            border.width: btPowerCard.isFocused ? 2 : 0
+            color: root.powered ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+            border.color: root.powered ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+            border.width: 1
 
             Text {
               anchors.centerIn: parent
@@ -456,7 +486,7 @@ Item {
               font.family: Style.font.family
               font.pixelSize: 11
               font.bold: true
-              color: root.powered ? "#000000" : Color.muted
+              color: root.powered ? Color.accent : Color.muted
             }
           }
         }
@@ -469,16 +499,32 @@ Item {
         implicitHeight: Math.max(64, scanRowLayout.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 1
-        color: scanCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: scanCard.isFocused ? Color.accent : "transparent"
-        border.width: scanCard.isFocused ? 2 : 1
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 1
+        readonly property bool isHovered: scanMouse.containsMouse
+        color: {
+          if (isFocused) {
+            return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14)
+          }
+          if (isHovered) {
+            return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+          }
+          return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+        }
+        border.color: {
+          if (isFocused) return Color.accent
+          if (isHovered) return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28)
+          return "transparent"
+        }
+        border.width: isFocused ? 2 : 1
         visible: root.powered
 
         MouseArea {
+          id: scanMouse
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
           onClicked: {
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
             root.focusedRow = 1
             root.triggerScan()
           }
@@ -496,7 +542,9 @@ Item {
             width: 36
             height: 36
             radius: 8
-            color: root.discovering ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#20252b")
+            color: root.discovering ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+            border.color: root.discovering ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.30) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+            border.width: 1
 
             Text {
               anchors.centerIn: parent
@@ -550,9 +598,9 @@ Item {
             Layout.minimumWidth: 100
             Layout.preferredHeight: 28
             radius: 14
-            color: root.discovering ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
-            border.color: scanCard.isFocused ? Color.accent : "transparent"
-            border.width: scanCard.isFocused ? 1 : 0
+            color: root.discovering ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+            border.color: root.discovering ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : (scanCard.isFocused ? Color.accent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15))
+            border.width: 1
 
             Text {
               anchors.centerIn: parent
@@ -560,7 +608,7 @@ Item {
               font.family: Style.font.family
               font.pixelSize: 10
               font.bold: true
-              color: root.discovering ? "#000000" : Color.foreground
+              color: root.discovering ? Color.accent : Color.foreground
             }
           }
         }
@@ -606,17 +654,34 @@ Item {
             implicitHeight: Math.max(52, delegateBtRowLayout.implicitHeight + 16)
             Layout.preferredHeight: implicitHeight
             radius: Style.cornerRadius || 6
-            readonly property bool isFocused: root.activeFocusSection && root.focusedRow === (index + 2)
-            color: delegateCard.isFocused
-              ? Color.pickAlpha("surface.selected", "#22272e")
-              : (modelData.connected ? Color.pickAlpha("surface.subtle", "#1c2220") : Color.pickAlpha("surface.subtle", "#181b1d"))
-            border.color: delegateCard.isFocused ? Color.accent : (modelData.connected ? Color.pickAlpha("accent.subtle", "#304030") : "transparent")
+            readonly property bool isActive: (modelData.connected === true)
+            readonly property bool isFocused: root.isContentFocused && root.focusedRow === (index + 2)
+            readonly property bool isHovered: devMouseArea.containsMouse
+
+            color: {
+              if (delegateCard.isFocused) {
+                if (isActive) return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isHovered ? 0.28 : 0.24)
+                return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14)
+              }
+              if (isActive) return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isHovered ? 0.28 : 0.20)
+              if (isHovered) return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+              return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+            }
+            border.color: {
+              if (delegateCard.isFocused) return Color.accent
+              if (isActive) return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+              if (isHovered) return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28)
+              return "transparent"
+            }
             border.width: delegateCard.isFocused ? 2 : 1
 
             MouseArea {
+              id: devMouseArea
               anchors.fill: parent
+              hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
               onClicked: {
+                if (root.panelRoot) root.panelRoot.focusSection = "content"
                 root.focusedRow = index + 2
                 root.toggleDevice(modelData)
               }
@@ -631,6 +696,14 @@ Item {
               anchors.leftMargin: 14
               anchors.rightMargin: 14
               spacing: 12
+
+              Rectangle {
+                visible: delegateCard.isActive
+                width: 5
+                height: 5
+                radius: 2.5
+                color: Color.accent
+              }
 
               // Device Type Icon
               Text {
@@ -705,15 +778,30 @@ Item {
                 Layout.minimumWidth: modelData.connected ? 104 : (modelData.paired ? 96 : 74)
                 Layout.preferredHeight: 28
                 radius: 14
-                color: modelData.connected
-                  ? Color.pickAlpha("accent.subtle", "#1f3b30")
-                  : (delegateCard.isFocused ? Color.pickAlpha("surface.hover", "#2a3036") : "transparent")
-                border.color: modelData.connected ? Color.accent : (delegateCard.isFocused ? Color.accent : Color.pickAlpha("surface.hover", "#2a3036"))
+                color: {
+                  if (modelData.connected) {
+                    return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  }
+                  if (delegateCard.isFocused) {
+                    return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.14)
+                  }
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)
+                }
+                border.color: {
+                  if (delegateCard.isFocused) return Color.accent
+                  if (modelData.connected) return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12)
+                }
                 border.width: 1
 
                 Text {
                   anchors.centerIn: parent
-                  text: modelData.connected ? "CONNECTED" : (modelData.paired ? (delegateCard.isFocused ? "CONNECT" : "PAIRED") : "PAIR")
+                  text: {
+                    if (modelData.connected) return "✓ CONNECTED"
+                    if (delegateCard.isFocused) return (modelData.paired ? "⏎ CONNECT" : "⏎ PAIR")
+                    if (modelData.paired) return "PAIRED"
+                    return "PAIR"
+                  }
                   font.family: Style.font.family
                   font.pixelSize: 10
                   font.bold: modelData.connected || delegateCard.isFocused

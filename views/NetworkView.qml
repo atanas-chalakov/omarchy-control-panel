@@ -113,6 +113,12 @@ Item {
   }
 
   property bool activeFocusSection: false
+  readonly property bool isContentFocused: {
+    if (root.panelRoot && root.panelRoot.focusSection !== undefined) {
+      return root.panelRoot.focusSection === "content"
+    }
+    return activeFocusSection
+  }
   property int focusedRow: 0   // 0: Wi-Fi Toggle, 1..N: Network rows
   onFocusedRowChanged: ensureRowVisible(focusedRow)
 
@@ -372,7 +378,7 @@ Item {
         Layout.preferredHeight: 32
         visible: root.statusMessage.length > 0
         radius: 6
-        color: Color.pickAlpha("accent.subtle", "#1f3b30")
+        color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
         border.color: Color.accent
         border.width: 1
 
@@ -397,7 +403,9 @@ Item {
         Layout.fillWidth: true
         implicitHeight: Math.max(76, networkHeroRow.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)
+        border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+        border.width: 1
         radius: Style.cornerRadius || 8
 
         RowLayout {
@@ -412,7 +420,9 @@ Item {
             width: 46
             height: 46
             radius: 8
-            color: Color.pickAlpha("surface.selected", "#2a3036")
+            color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+            border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+            border.width: 1
 
             Text {
               anchors.centerIn: parent
@@ -446,7 +456,9 @@ Item {
                 width: root.activeConnection ? 80 : 86
                 height: 20
                 radius: 4
-                color: root.activeConnection ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.selected", "#2a3036")
+                color: root.activeConnection ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                border.color: root.activeConnection ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
 
                 Text {
                   anchors.centerIn: parent
@@ -488,15 +500,31 @@ Item {
         implicitHeight: Math.max(74, wifiToggleRowLayout.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 0
-        color: wifiToggleCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: wifiToggleCard.isFocused ? Color.accent : "transparent"
-        border.width: wifiToggleCard.isFocused ? 2 : 1
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 0
+        readonly property bool isHovered: wifiToggleMouse.containsMouse
+        color: {
+          if (isFocused) {
+            return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14)
+          }
+          if (isHovered) {
+            return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+          }
+          return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+        }
+        border.color: {
+          if (isFocused) return Color.accent
+          if (isHovered) return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28)
+          return "transparent"
+        }
+        border.width: isFocused ? 2 : 1
 
         MouseArea {
+          id: wifiToggleMouse
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
           onClicked: {
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
             root.focusedRow = 0
             root.toggleWifi()
           }
@@ -514,7 +542,9 @@ Item {
             width: 44
             height: 44
             radius: 8
-            color: root.wifiEnabled ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#20252b")
+            color: root.wifiEnabled ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+            border.color: root.wifiEnabled ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.30) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+            border.width: 1
 
             Text {
               anchors.centerIn: parent
@@ -568,9 +598,9 @@ Item {
             Layout.minimumWidth: 90
             Layout.preferredHeight: 32
             radius: 16
-            color: root.wifiEnabled ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
-            border.color: wifiToggleCard.isFocused ? Color.accent : "transparent"
-            border.width: wifiToggleCard.isFocused ? 2 : 0
+            color: root.wifiEnabled ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+            border.color: root.wifiEnabled ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+            border.width: 1
 
             Text {
               anchors.centerIn: parent
@@ -578,7 +608,7 @@ Item {
               font.family: Style.font.family
               font.pixelSize: 11
               font.bold: true
-              color: root.wifiEnabled ? "#000000" : Color.muted
+              color: root.wifiEnabled ? Color.accent : Color.muted
             }
           }
         }
@@ -653,21 +683,38 @@ Item {
             implicitHeight: Math.max(52, cardColumn.implicitHeight + 16)
             Layout.preferredHeight: implicitHeight
             radius: Style.cornerRadius || 6
-            readonly property bool isFocused: root.activeFocusSection && root.focusedRow === (index + 1)
-            color: delegateCard.isFocused
-              ? Color.pickAlpha("surface.selected", "#22272e")
-              : (modelData.inUse ? Color.pickAlpha("surface.subtle", "#1c2220") : Color.pickAlpha("surface.subtle", "#181b1d"))
-            border.color: (delegateCard.isPasswordOpen || delegateCard.isFocused) ? Color.accent : (modelData.inUse ? Color.pickAlpha("accent.subtle", "#304030") : "transparent")
-            border.width: (delegateCard.isPasswordOpen || delegateCard.isFocused) ? 2 : 1
+            readonly property bool isActive: (modelData.inUse === true)
+            readonly property bool isFocused: root.isContentFocused && root.focusedRow === (index + 1)
+            readonly property bool isHovered: netMouseArea.containsMouse
+
+            color: {
+              if (delegateCard.isFocused) {
+                if (isActive) return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isHovered ? 0.28 : 0.24)
+                return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14)
+              }
+              if (isActive) return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isHovered ? 0.28 : 0.20)
+              if (isHovered) return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+              return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+            }
+            border.color: {
+              if (delegateCard.isFocused || delegateCard.isPasswordOpen) return Color.accent
+              if (isActive) return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+              if (isHovered) return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28)
+              return "transparent"
+            }
+            border.width: (delegateCard.isFocused || delegateCard.isPasswordOpen) ? 2 : 1
 
             // Clickable header area for toggling connection or password prompt
             MouseArea {
+              id: netMouseArea
               anchors.top: parent.top
               anchors.left: parent.left
               anchors.right: parent.right
               height: Math.max(48, delegateRowLayout.implicitHeight + 16)
+              hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
               onClicked: {
+                if (root.panelRoot) root.panelRoot.focusSection = "content"
                 root.focusedRow = index + 1
                 root.toggleNetwork(modelData)
               }
@@ -687,6 +734,14 @@ Item {
                 id: delegateRowLayout
                 Layout.fillWidth: true
                 spacing: 12
+
+                Rectangle {
+                  visible: delegateCard.isActive
+                  width: 5
+                  height: 5
+                  radius: 2.5
+                  color: Color.accent
+                }
 
                 // Signal Strength Icon
                 Text {
@@ -754,7 +809,7 @@ Item {
                       text: "• Saved Profile"
                       font.family: Style.font.family
                       font.pixelSize: 10
-                      color: Color.pickAlpha("accent.subtle", "#40c080")
+                      color: Color.accent
                     }
                   }
                 }
@@ -767,8 +822,8 @@ Item {
                   Layout.preferredWidth: 28
                   Layout.preferredHeight: 28
                   radius: 14
-                  color: keyBtnMouse.containsMouse ? Color.pickAlpha("surface.hover", "#2a3036") : "transparent"
-                  border.color: delegateCard.isPasswordOpen ? Color.accent : Color.pickAlpha("border.subtle", "#262b30")
+                  color: keyBtnMouse.containsMouse ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : "transparent"
+                  border.color: delegateCard.isPasswordOpen ? Color.accent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
                   border.width: 1
 
                   Text {
@@ -785,6 +840,7 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
+                      if (root.panelRoot) root.panelRoot.focusSection = "content"
                       root.focusedRow = index + 1
                       if (delegateCard.isPasswordOpen) {
                         root.cancelPasswordPrompt()
@@ -802,17 +858,28 @@ Item {
                   Layout.preferredWidth: width
                   Layout.preferredHeight: 28
                   radius: 14
-                  color: modelData.inUse
-                    ? Color.pickAlpha("accent.subtle", "#1f3b30")
-                    : (delegateCard.isFocused ? Color.pickAlpha("surface.hover", "#2a3036") : "transparent")
-                  border.color: modelData.inUse ? Color.accent : (delegateCard.isFocused ? Color.accent : Color.pickAlpha("surface.hover", "#2a3036"))
+                  color: {
+                    if (modelData.inUse) {
+                      return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                    }
+                    if (delegateCard.isFocused) {
+                      return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.14)
+                    }
+                    return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)
+                  }
+                  border.color: {
+                    if (delegateCard.isFocused) return Color.accent
+                    if (modelData.inUse) return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                    return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12)
+                  }
                   border.width: 1
 
                   Text {
                     anchors.centerIn: parent
                     text: {
-                      if (modelData.inUse) return "CONNECTED"
+                      if (modelData.inUse) return "✓ CONNECTED"
                       if (delegateCard.isPasswordOpen) return "CLOSE"
+                      if (delegateCard.isFocused) return "⏎ CONNECT"
                       if (modelData.isKnown) return "CONNECT"
                       return "CONNECT"
                     }
@@ -826,6 +893,7 @@ Item {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
+                      if (root.panelRoot) root.panelRoot.focusSection = "content"
                       root.focusedRow = index + 1
                       root.toggleNetwork(modelData)
                     }
@@ -843,7 +911,7 @@ Item {
                 Rectangle {
                   Layout.fillWidth: true
                   height: 1
-                  color: Color.pickAlpha("border.subtle", "#262b30")
+                  color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
                   opacity: 0.5
                 }
 
@@ -856,8 +924,8 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     radius: 6
-                    color: Color.pickAlpha("surface.selected", "#1a1f24")
-                    border.color: (passwordInput.activeFocus || root.promptFocusIndex === 0) ? Color.accent : Color.pickAlpha("border.subtle", "#2a3036")
+                    color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05)
+                    border.color: (passwordInput.activeFocus || root.promptFocusIndex === 0) ? Color.accent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
                     border.width: (passwordInput.activeFocus || root.promptFocusIndex === 0) ? 2 : 1
 
                     RowLayout {
@@ -939,10 +1007,10 @@ Item {
                         radius: 4
                         focus: root.promptFocusIndex === 1
                         color: (root.promptFocusIndex === 1 || showPwMouse.containsMouse)
-                          ? Color.pickAlpha("surface.hover", "#2a3036")
+                          ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
                           : "transparent"
                         border.color: (root.promptFocusIndex === 1) ? Color.accent : "transparent"
-                        border.width: (root.promptFocusIndex === 1) ? 1.5 : 0
+                        border.width: (root.promptFocusIndex === 1) ? 2 : 0
 
                         Text {
                           anchors.centerIn: parent
@@ -1027,13 +1095,13 @@ Item {
                     radius: 6
                     focus: root.promptFocusIndex === 2
                     color: (root.passwordText.length > 0 && !root.isConnecting)
-                      ? Color.accent
-                      : Color.pickAlpha("surface.selected", "#22272e")
+                      ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.25)
+                      : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05)
                     opacity: (root.passwordText.length > 0 && !root.isConnecting) ? 1.0 : 0.6
                     border.color: (root.promptFocusIndex === 2)
-                      ? (root.passwordText.length > 0 ? Color.foreground : Color.accent)
-                      : "transparent"
-                    border.width: (root.promptFocusIndex === 2) ? 2 : 0
+                      ? Color.accent
+                      : ((root.passwordText.length > 0 && !root.isConnecting) ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : "transparent")
+                    border.width: (root.promptFocusIndex === 2) ? 2 : 1
 
                     Text {
                       anchors.centerIn: parent
@@ -1041,7 +1109,7 @@ Item {
                       font.family: Style.font.family
                       font.pixelSize: 11
                       font.bold: true
-                      color: (root.passwordText.length > 0 && !root.isConnecting) ? "#000000" : Color.muted
+                      color: (root.passwordText.length > 0 && !root.isConnecting) ? Color.accent : Color.muted
                     }
 
                     MouseArea {
@@ -1117,8 +1185,10 @@ Item {
                     Layout.preferredHeight: 36
                     radius: 6
                     focus: root.promptFocusIndex === 3
-                    color: cancelMouse.containsMouse ? Color.pickAlpha("surface.hover", "#2a3036") : Color.pickAlpha("surface.subtle", "#181b1d")
-                    border.color: (root.promptFocusIndex === 3) ? Color.accent : Color.pickAlpha("border.subtle", "#2a3036")
+                    color: (root.promptFocusIndex === 3)
+                      ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.14)
+                      : (cancelMouse.containsMouse ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03))
+                    border.color: (root.promptFocusIndex === 3) ? Color.accent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
                     border.width: (root.promptFocusIndex === 3) ? 2 : 1
 
                     Text {
@@ -1217,7 +1287,7 @@ Item {
                     text: "⚠ " + root.passwordError
                     font.family: Style.font.family
                     font.pixelSize: 11
-                    color: Color.pickAlpha("urgent", "#e06c75")
+                    color: Color.urgent || "#e06c75"
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
                   }
