@@ -62,16 +62,6 @@ Item {
     }
     if (dx !== 0) {
       if (dx < 0) return false
-      if (focusedRow === 0) {
-        togglePower()
-      } else if (focusedRow === 1) {
-        triggerScan()
-      } else {
-        var devIdx = focusedRow - 2
-        if (devIdx >= 0 && devIdx < root.devices.length) {
-          toggleDevice(root.devices[devIdx])
-        }
-      }
       return true
     }
     return false

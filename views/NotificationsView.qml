@@ -18,7 +18,10 @@ Item {
   readonly property bool isContentFocused: panelRoot ? panelRoot.focusSection === "content" : activeFocusSection
   property int focusedRow: 0   // 0: DND Toggle, 1: Actions Row, 2+: History Items
   property int actionFocusIndex: 0 // 0: Replay, 1: Dismiss, 2: Send Test, 3: Clear History
-  onFocusedRowChanged: ensureRowVisible(focusedRow)
+  onFocusedRowChanged: {
+    ensureRowVisible(focusedRow)
+    if (focusedRow !== 1) actionFocusIndex = 0
+  }
 
   function ensureRowVisible(index) {
     if (!scrollArea || !scrollArea.contentItem) return
@@ -139,7 +142,6 @@ Item {
     if (dx !== 0) {
       if (dx < 0 && focusedRow !== 1) return false
       if (focusedRow === 0) {
-        if (dx > 0) toggleDnd()
         return true
       } else if (focusedRow === 1) {
         if (dx < 0 && actionFocusIndex === 0) return false

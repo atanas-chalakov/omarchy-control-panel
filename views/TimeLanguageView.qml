@@ -17,9 +17,17 @@ Item {
   property bool activeFocusSection: false
   readonly property bool isContentFocused: root.panelRoot ? (root.panelRoot.focusSection === "content") : root.activeFocusSection
   property int focusedCard: 0 // 0..9
+  property int clockFormatFocusIndex: -1
+  property int timezoneFocusIndex: -1
   property int layoutPresetFocusIndex: -1
   property int shortcutFocusIndex: -1
-  onFocusedCardChanged: ensureCardVisible(focusedCard)
+  onFocusedCardChanged: {
+    ensureCardVisible(focusedCard)
+    if (focusedCard !== 0) clockFormatFocusIndex = currentClockFormatIndex()
+    if (focusedCard !== 2) timezoneFocusIndex = currentTimezoneIndex()
+    if (focusedCard !== 6) layoutPresetFocusIndex = currentPresetIndex()
+    if (focusedCard !== 7) shortcutFocusIndex = currentShortcutIndex()
+  }
 
   readonly property bool hasActiveInput: (cityField && cityField.activeFocus) || (customLayoutField && customLayoutField.activeFocus)
 
@@ -40,10 +48,12 @@ Item {
   property string currentTime: "--:--"
   property string currentDate: "Loading date..."
   property string currentTimezone: "UTC"
+  onCurrentTimezoneChanged: timezoneFocusIndex = currentTimezoneIndex()
   property string currentTimezoneOffset: ""
   property bool ntpActive: true
   property string clockFormat: "dddd HH:mm"
   property bool is24Hour: true
+  onIs24HourChanged: clockFormatFocusIndex = currentClockFormatIndex()
   property bool hasSeconds: false
 
   property string locationName: "Auto-detecting..."
@@ -213,6 +223,17 @@ Item {
     }
   }
 
+  function currentClockFormatIndex() {
+    return root.is24Hour ? 1 : 0
+  }
+
+  function currentTimezoneIndex() {
+    for (var i = 0; i < timezonePresets.length; i++) {
+      if (timezonePresets[i].tz === root.currentTimezone) return i
+    }
+    return 0
+  }
+
   function currentPresetIndex() {
     for (var i = 0; i < layoutPresets.length; i++) {
       if (layoutPresets[i].layouts === root.kbLayout) return i
@@ -363,6 +384,25 @@ Item {
     notifyStatus("Keyboard layout set: " + preset.label)
   }
 
+  function cycleClockFormat(delta) {
+    var cur = (clockFormatFocusIndex >= 0) ? clockFormatFocusIndex : currentClockFormatIndex()
+    if (delta < 0 && cur === 0) return false
+    var next = Math.max(0, Math.min(1, cur + delta))
+    if (next === cur) return false
+    clockFormatFocusIndex = next
+    return true
+  }
+
+  function cycleTimezonePreset(delta) {
+    if (timezonePresets.length === 0) return false
+    var cur = (timezoneFocusIndex >= 0) ? timezoneFocusIndex : currentTimezoneIndex()
+    if (delta < 0 && cur <= 0) return false
+    var next = Math.max(0, Math.min(timezonePresets.length - 1, (cur < 0 ? 0 : cur) + delta))
+    if (next === cur) return false
+    timezoneFocusIndex = next
+    return true
+  }
+
   function cycleLayoutPreset(delta) {
     if (layoutPresets.length === 0) return false
     var cur = (layoutPresetFocusIndex >= 0) ? layoutPresetFocusIndex : currentPresetIndex()
@@ -370,7 +410,6 @@ Item {
     var next = Math.max(0, Math.min(layoutPresets.length - 1, (cur < 0 ? 0 : cur) + delta))
     if (next === cur) return false
     layoutPresetFocusIndex = next
-    applyLayoutPreset(layoutPresets[next])
     return true
   }
 
@@ -381,10 +420,6 @@ Item {
     var next = Math.max(0, Math.min(shortcutOptions.length - 1, cur + delta))
     if (next === cur) return false
     shortcutFocusIndex = next
-    var chosen = shortcutOptions[next]
-    actionProcess.command = [pluginPath + "/scripts/region-control.sh", "set-keyboard-config", root.kbLayout, root.kbVariant, chosen.code]
-    actionProcess.running = true
-    notifyStatus("Switch shortcut: " + chosen.label)
     return true
   }
 
@@ -408,21 +443,13 @@ Item {
       ensureCardVisible(focusedCard)
       return true
     } else if (dx !== 0) {
-      if (focusedCard === 0) {
-        if (dx < 0) return false
-        setTimeFormat(root.is24Hour ? "12" : "24")
-        return true
-      }
+      if (focusedCard === 0) return cycleClockFormat(dx)
       else if (focusedCard === 1) {
         if (dx < 0) return false
         toggleSeconds()
         return true
       }
-      else if (focusedCard === 2) {
-        if (dx < 0) return false
-        openTimezoneMenu()
-        return true
-      }
+      else if (focusedCard === 2) return cycleTimezonePreset(dx)
       else if (focusedCard === 3) {
         if (dx < 0) return false
         toggleAutoLocation()
@@ -445,9 +472,19 @@ Item {
   }
 
   function handleActivate() {
-    if (focusedCard === 0) setTimeFormat(root.is24Hour ? "12" : "24")
+    if (focusedCard === 0) {
+      var curFmt = (clockFormatFocusIndex >= 0) ? clockFormatFocusIndex : currentClockFormatIndex()
+      setTimeFormat(curFmt === 1 ? "24" : "12")
+    }
     else if (focusedCard === 1) toggleSeconds()
-    else if (focusedCard === 2) openTimezoneMenu()
+    else if (focusedCard === 2) {
+      var tzIdx = (timezoneFocusIndex >= 0) ? timezoneFocusIndex : currentTimezoneIndex()
+      if (tzIdx >= 0 && tzIdx < timezonePresets.length) {
+        setTimezone(timezonePresets[tzIdx].tz)
+      } else {
+        openTimezoneMenu()
+      }
+    }
     else if (focusedCard === 3) toggleAutoLocation()
     else if (focusedCard === 4) {
       if (cityField) {
@@ -484,7 +521,6 @@ Item {
     var k = key.toLowerCase()
     if (k === "h") {
       focusedCard = 0
-      setTimeFormat(root.is24Hour ? "12" : "24")
       return true
     } else if (k === "s") {
       focusedCard = 1
@@ -492,7 +528,6 @@ Item {
       return true
     } else if (k === "t") {
       focusedCard = 2
-      openTimezoneMenu()
       return true
     } else if (k === "a") {
       focusedCard = 3
@@ -511,11 +546,9 @@ Item {
       return true
     } else if (k === "p") {
       focusedCard = 6
-      cycleLayoutPreset(1)
       return true
     } else if (k === "w") {
       focusedCard = 7
-      cycleSwitchShortcut(1)
       return true
     } else if (k === "c") {
       focusedCard = 8
@@ -718,7 +751,6 @@ Item {
           onClicked: {
             if (root.panelRoot) root.panelRoot.focusSection = "content"
             root.focusedCard = 0
-            root.setTimeFormat(root.is24Hour ? "12" : "24")
           }
         }
 
@@ -765,24 +797,63 @@ Item {
                 color: Color.foreground
               }
 
-              // Format Badge (Clickable)
-              Rectangle {
-                width: 92
-                height: 22
-                radius: 5
-                color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
-                border.color: (root.activeFocusSection && root.focusedCard === 0) ? Color.accent : Color.muted
-                border.width: 1
+              // Clock Format Options: 12-Hour vs 24-Hour
+              RowLayout {
+                spacing: 6
+                Repeater {
+                  model: [
+                    { label: "12-Hour", is24: false },
+                    { label: "24-Hour", is24: true }
+                  ]
+                  delegate: Rectangle {
+                    height: 24
+                    width: fmtText.implicitWidth + 22
+                    radius: 12
+                    readonly property bool isActive: (root.is24Hour === modelData.is24)
+                    readonly property bool isCursorFocused: root.isContentFocused && (root.focusedCard === 0) && (((root.clockFormatFocusIndex >= 0 ? root.clockFormatFocusIndex : root.currentClockFormatIndex()) === index))
+                    readonly property bool isHovered: fmtMouse.containsMouse
 
-                RowLayout {
-                  anchors.centerIn: parent
-                  spacing: 4
-                  Text {
-                    text: root.is24Hour ? "24-Hour [H]" : "12-Hour [H]"
-                    font.family: Style.font.family
-                    font.pixelSize: 10
-                    font.bold: true
-                    color: Color.foreground
+                    color: isActive
+                      ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isHovered ? 0.28 : 0.20)
+                      : (isCursorFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)))
+
+                    border.color: isCursorFocused
+                      ? Color.accent
+                      : (isActive ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10)))
+                    border.width: isCursorFocused ? 2 : 1
+
+                    MouseArea {
+                      id: fmtMouse
+                      anchors.fill: parent
+                      hoverEnabled: true
+                      cursorShape: Qt.PointingHandCursor
+                      onClicked: {
+                        if (root.panelRoot) root.panelRoot.focusSection = "content"
+                        root.focusedCard = 0
+                        root.clockFormatFocusIndex = index
+                        root.setTimeFormat(modelData.is24 ? "24" : "12")
+                      }
+                    }
+
+                    RowLayout {
+                      anchors.centerIn: parent
+                      spacing: 4
+                      Rectangle {
+                        visible: isActive
+                        width: 5
+                        height: 5
+                        radius: 2.5
+                        color: Color.accent
+                      }
+                      Text {
+                        id: fmtText
+                        text: modelData.label
+                        font.family: Style.font.family
+                        font.pixelSize: 10
+                        font.bold: isActive || isCursorFocused
+                        color: isActive ? Color.accent : (isCursorFocused ? Color.foreground : (isHovered ? Color.foreground : Color.muted))
+                      }
+                    }
                   }
                 }
               }
@@ -1039,29 +1110,52 @@ Item {
               model: root.timezonePresets
               delegate: Rectangle {
                 height: 24
-                width: presetText.implicitWidth + 14
-                radius: 4
-                color: (root.currentTimezone === modelData.tz) ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
-                border.color: (root.currentTimezone === modelData.tz) ? Color.accent : "transparent"
-                border.width: 1
+                width: presetText.implicitWidth + 22
+                radius: 12
+                readonly property bool isActive: (root.currentTimezone === modelData.tz)
+                readonly property bool isCursorFocused: root.isContentFocused && (root.focusedCard === 2) && (((root.timezoneFocusIndex >= 0 ? root.timezoneFocusIndex : root.currentTimezoneIndex()) === index))
+                readonly property bool isHovered: tzPresetMouse.containsMouse
+
+                color: isActive
+                  ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isHovered ? 0.28 : 0.20)
+                  : (isCursorFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)))
+
+                border.color: isCursorFocused
+                  ? Color.accent
+                  : (isActive ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10)))
+                border.width: isCursorFocused ? 2 : 1
 
                 MouseArea {
+                  id: tzPresetMouse
                   anchors.fill: parent
+                  hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.focusedCard = 2
+                    root.timezoneFocusIndex = index
                     root.setTimezone(modelData.tz)
                   }
                 }
 
-                Text {
-                  id: presetText
+                RowLayout {
                   anchors.centerIn: parent
-                  text: modelData.label
-                  font.family: Style.font.family
-                  font.pixelSize: 10
-                  font.bold: root.currentTimezone === modelData.tz
-                  color: (root.currentTimezone === modelData.tz) ? Color.accent : Color.foreground
+                  spacing: 4
+                  Rectangle {
+                    visible: isActive
+                    width: 5
+                    height: 5
+                    radius: 2.5
+                    color: Color.accent
+                  }
+                  Text {
+                    id: presetText
+                    text: modelData.label
+                    font.family: Style.font.family
+                    font.pixelSize: 10
+                    font.bold: isActive || isCursorFocused
+                    color: isActive ? Color.accent : (isCursorFocused ? Color.foreground : (isHovered ? Color.foreground : Color.muted))
+                  }
                 }
               }
             }
@@ -1743,29 +1837,52 @@ Item {
               model: root.layoutPresets
               delegate: Rectangle {
                 height: 28
-                width: pillText.implicitWidth + 16
-                radius: 5
-                color: (root.kbLayout === modelData.layouts) ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
-                border.color: (root.kbLayout === modelData.layouts) ? Color.accent : "transparent"
-                border.width: 1
+                width: pillText.implicitWidth + 24
+                radius: 14
+                readonly property bool isActive: (root.kbLayout === modelData.layouts)
+                readonly property bool isCursorFocused: root.isContentFocused && (root.focusedCard === 6) && (((root.layoutPresetFocusIndex >= 0 ? root.layoutPresetFocusIndex : root.currentPresetIndex()) === index))
+                readonly property bool isHovered: lpMouse.containsMouse
+
+                color: isActive
+                  ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isHovered ? 0.28 : 0.20)
+                  : (isCursorFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)))
+
+                border.color: isCursorFocused
+                  ? Color.accent
+                  : (isActive ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10)))
+                border.width: isCursorFocused ? 2 : 1
 
                 MouseArea {
+                  id: lpMouse
                   anchors.fill: parent
+                  hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.focusedCard = 6
+                    root.layoutPresetFocusIndex = index
                     root.applyLayoutPreset(modelData)
                   }
                 }
 
-                Text {
-                  id: pillText
+                RowLayout {
                   anchors.centerIn: parent
-                  text: (root.kbLayout === modelData.layouts ? "✓ " : "") + modelData.label
-                  font.family: Style.font.family
-                  font.pixelSize: 10
-                  font.bold: root.kbLayout === modelData.layouts
-                  color: (root.kbLayout === modelData.layouts) ? Color.accent : Color.foreground
+                  spacing: 4
+                  Rectangle {
+                    visible: isActive
+                    width: 5
+                    height: 5
+                    radius: 2.5
+                    color: Color.accent
+                  }
+                  Text {
+                    id: pillText
+                    text: modelData.label
+                    font.family: Style.font.family
+                    font.pixelSize: 10
+                    font.bold: isActive || isCursorFocused
+                    color: isActive ? Color.accent : (isCursorFocused ? Color.foreground : (isHovered ? Color.foreground : Color.muted))
+                  }
                 }
               }
             }

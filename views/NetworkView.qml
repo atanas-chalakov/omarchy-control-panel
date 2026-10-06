@@ -155,14 +155,6 @@ Item {
     }
     if (dx !== 0) {
       if (dx < 0) return false
-      if (focusedRow === 0) {
-        toggleWifi()
-      } else {
-        var netIdx = focusedRow - 1
-        if (netIdx >= 0 && netIdx < root.networks.length) {
-          toggleNetwork(root.networks[netIdx])
-        }
-      }
       return true
     }
     return false

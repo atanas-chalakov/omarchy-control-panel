@@ -18,7 +18,13 @@ Item {
   readonly property bool isContentFocused: root.panelRoot ? (root.panelRoot.focusSection === "content") : root.activeFocusSection
 
   property int focusedCard: 0 // 0: Browser, 1: Editor, 2: Terminal, 3: File Manager
-  onFocusedCardChanged: ensureCardVisible(focusedCard)
+  onFocusedCardChanged: {
+    ensureCardVisible(focusedCard)
+    if (focusedCard !== 0) browserFocusIndex = currentBrowserIndex()
+    if (focusedCard !== 1) editorFocusIndex = currentEditorIndex()
+    if (focusedCard !== 2) terminalFocusIndex = currentTerminalIndex()
+    if (focusedCard !== 3) fileManagerFocusIndex = currentFileManagerIndex()
+  }
 
   property int browserFocusIndex: -1
   property int editorFocusIndex: -1
@@ -101,7 +107,6 @@ Item {
     var next = Math.max(0, Math.min(installedBrowsers.length - 1, cur + delta))
     if (next === cur) return false
     browserFocusIndex = next
-    setBrowser(installedBrowsers[next].id, installedBrowsers[next].name)
     return true
   }
 
@@ -112,7 +117,6 @@ Item {
     var next = Math.max(0, Math.min(installedEditors.length - 1, cur + delta))
     if (next === cur) return false
     editorFocusIndex = next
-    setEditor(installedEditors[next].code, installedEditors[next].id, installedEditors[next].name)
     return true
   }
 
@@ -123,7 +127,6 @@ Item {
     var next = Math.max(0, Math.min(installedTerminals.length - 1, cur + delta))
     if (next === cur) return false
     terminalFocusIndex = next
-    setTerminal(installedTerminals[next].id, installedTerminals[next].name)
     return true
   }
 
@@ -134,7 +137,6 @@ Item {
     var next = Math.max(0, Math.min(installedFileManagers.length - 1, cur + delta))
     if (next === cur) return false
     fileManagerFocusIndex = next
-    setFileManager(installedFileManagers[next].id, installedFileManagers[next].name)
     return true
   }
 

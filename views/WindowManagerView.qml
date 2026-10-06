@@ -26,7 +26,13 @@ Item {
   property int borderFocusIndex: -1
   property int opacityFocusIndex: -1
   property int focusedCard: 0   // 0: Animations, 1: Gaps, 2: Single Window Aspect, 3: Rounding, 4: Border, 5: Opacity, 6: Blur, 7: Bar Hidden, 8: Bar Position, 9: Bar Transparency, 10: Workspace Layout
-  onFocusedCardChanged: ensureCardVisible(focusedCard)
+  onFocusedCardChanged: {
+    ensureCardVisible(focusedCard)
+    if (focusedCard !== 1) gapFocusIndex = currentGapIndex()
+    if (focusedCard !== 3) roundingFocusIndex = currentRoundingIndex()
+    if (focusedCard !== 4) borderFocusIndex = currentBorderIndex()
+    if (focusedCard !== 5) opacityFocusIndex = currentOpacityIndex()
+  }
 
   function ensureCardVisible(index) {
     if (!scrollArea || !scrollArea.contentItem) return
@@ -55,10 +61,15 @@ Item {
   // State properties
   property bool animations: true
   property int gapsIn: 5
+  onGapsInChanged: gapFocusIndex = currentGapIndex()
   property int gapsOut: 10
+  onGapsOutChanged: gapFocusIndex = currentGapIndex()
   property int borderSize: 2
+  onBorderSizeChanged: borderFocusIndex = currentBorderIndex()
   property int rounding: 0
+  onRoundingChanged: roundingFocusIndex = currentRoundingIndex()
   property real inactiveOpacity: 1.0
+  onInactiveOpacityChanged: opacityFocusIndex = currentOpacityIndex()
   property bool blur: false
   property bool barHidden: false
   property string barPosition: "top"
@@ -137,7 +148,6 @@ Item {
     var next = Math.max(0, Math.min(gapPresets.length - 1, cur + delta))
     if (next === cur) return false
     gapFocusIndex = next
-    setGaps(gapPresets[next].inGap, gapPresets[next].outGap)
     return true
   }
 
@@ -147,7 +157,6 @@ Item {
     var next = Math.max(0, Math.min(roundingOptions.length - 1, cur + delta))
     if (next === cur) return false
     roundingFocusIndex = next
-    setRounding(roundingOptions[next])
     return true
   }
 
@@ -157,7 +166,6 @@ Item {
     var next = Math.max(0, Math.min(borderOptions.length - 1, cur + delta))
     if (next === cur) return false
     borderFocusIndex = next
-    setBorderSize(borderOptions[next])
     return true
   }
 
@@ -167,7 +175,6 @@ Item {
     var next = Math.max(0, Math.min(opacityOptions.length - 1, cur + delta))
     if (next === cur) return false
     opacityFocusIndex = next
-    setInactiveOpacity(opacityOptions[next])
     return true
   }
 
@@ -751,25 +758,33 @@ Item {
                   implicitWidth: 108
                   implicitHeight: 28
                   radius: 14
-                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
-                  border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
-                  border.width: 1
+                  readonly property int effectiveGapIdx: root.gapFocusIndex >= 0 ? root.gapFocusIndex : root.currentGapIndex()
+                  readonly property bool isPendingFocus: root.isContentFocused && (root.focusedCard === 1) && (effectiveGapIdx !== root.currentGapIndex())
+
+                  color: isPendingFocus
+                    ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.14)
+                    : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  border.color: isPendingFocus
+                    ? Color.accent
+                    : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                  border.width: isPendingFocus ? 2 : 1
 
                   RowLayout {
                     anchors.centerIn: parent
                     spacing: 5
                     Rectangle {
+                      visible: !parent.parent.isPendingFocus
                       width: 5
                       height: 5
                       radius: 2.5
                       color: Color.accent
                     }
                     Text {
-                      text: root.gapPresets[root.gapFocusIndex >= 0 ? root.gapFocusIndex : root.currentGapIndex()].label
+                      text: root.gapPresets[parent.parent.effectiveGapIdx].label
                       font.family: Style.font.family
                       font.pixelSize: 11
                       font.bold: true
-                      color: Color.accent
+                      color: parent.parent.isPendingFocus ? Color.foreground : Color.accent
                     }
                   }
                 }
@@ -1041,25 +1056,34 @@ Item {
                   implicitWidth: 84
                   implicitHeight: 28
                   radius: 14
-                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
-                  border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
-                  border.width: 1
+                  readonly property int effectiveRoundingIdx: root.roundingFocusIndex >= 0 ? root.roundingFocusIndex : root.currentRoundingIndex()
+                  readonly property int focusedVal: root.roundingOptions[effectiveRoundingIdx] !== undefined ? root.roundingOptions[effectiveRoundingIdx] : root.rounding
+                  readonly property bool isPendingFocus: root.isContentFocused && (root.focusedCard === 3) && (effectiveRoundingIdx !== root.currentRoundingIndex())
+
+                  color: isPendingFocus
+                    ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.14)
+                    : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  border.color: isPendingFocus
+                    ? Color.accent
+                    : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                  border.width: isPendingFocus ? 2 : 1
 
                   RowLayout {
                     anchors.centerIn: parent
                     spacing: 5
                     Rectangle {
+                      visible: !parent.parent.isPendingFocus
                       width: 5
                       height: 5
                       radius: 2.5
                       color: Color.accent
                     }
                     Text {
-                      text: root.rounding === 0 ? "Sharp (0)" : (root.rounding + "px")
+                      text: parent.parent.focusedVal === 0 ? "Sharp (0)" : (parent.parent.focusedVal + "px")
                       font.family: Style.font.family
                       font.pixelSize: 11
                       font.bold: true
-                      color: Color.accent
+                      color: parent.parent.isPendingFocus ? Color.foreground : Color.accent
                     }
                   }
                 }
@@ -1176,25 +1200,34 @@ Item {
                   implicitWidth: 80
                   implicitHeight: 28
                   radius: 14
-                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
-                  border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
-                  border.width: 1
+                  readonly property int effectiveBorderIdx: root.borderFocusIndex >= 0 ? root.borderFocusIndex : root.currentBorderIndex()
+                  readonly property int focusedVal: root.borderOptions[effectiveBorderIdx] !== undefined ? root.borderOptions[effectiveBorderIdx] : root.borderSize
+                  readonly property bool isPendingFocus: root.isContentFocused && (root.focusedCard === 4) && (effectiveBorderIdx !== root.currentBorderIndex())
+
+                  color: isPendingFocus
+                    ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.14)
+                    : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  border.color: isPendingFocus
+                    ? Color.accent
+                    : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                  border.width: isPendingFocus ? 2 : 1
 
                   RowLayout {
                     anchors.centerIn: parent
                     spacing: 5
                     Rectangle {
+                      visible: !parent.parent.isPendingFocus
                       width: 5
                       height: 5
                       radius: 2.5
                       color: Color.accent
                     }
                     Text {
-                      text: root.borderSize === 0 ? "None (0)" : (root.borderSize + "px")
+                      text: parent.parent.focusedVal === 0 ? "None (0)" : (parent.parent.focusedVal + "px")
                       font.family: Style.font.family
                       font.pixelSize: 11
                       font.bold: true
-                      color: Color.accent
+                      color: parent.parent.isPendingFocus ? Color.foreground : Color.accent
                     }
                   }
                 }
@@ -1311,25 +1344,34 @@ Item {
                   implicitWidth: 80
                   implicitHeight: 28
                   radius: 14
-                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
-                  border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
-                  border.width: 1
+                  readonly property int effectiveOpacityIdx: root.opacityFocusIndex >= 0 ? root.opacityFocusIndex : root.currentOpacityIndex()
+                  readonly property real focusedVal: root.opacityOptions[effectiveOpacityIdx] !== undefined ? root.opacityOptions[effectiveOpacityIdx] : root.inactiveOpacity
+                  readonly property bool isPendingFocus: root.isContentFocused && (root.focusedCard === 5) && (effectiveOpacityIdx !== root.currentOpacityIndex())
+
+                  color: isPendingFocus
+                    ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.14)
+                    : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  border.color: isPendingFocus
+                    ? Color.accent
+                    : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                  border.width: isPendingFocus ? 2 : 1
 
                   RowLayout {
                     anchors.centerIn: parent
                     spacing: 5
                     Rectangle {
+                      visible: !parent.parent.isPendingFocus
                       width: 5
                       height: 5
                       radius: 2.5
                       color: Color.accent
                     }
                     Text {
-                      text: Math.round(root.inactiveOpacity * 100) + "%"
+                      text: Math.round(parent.parent.focusedVal * 100) + "%"
                       font.family: Style.font.family
                       font.pixelSize: 11
                       font.bold: true
-                      color: Color.accent
+                      color: parent.parent.isPendingFocus ? Color.foreground : Color.accent
                     }
                   }
                 }

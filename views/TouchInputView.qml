@@ -18,7 +18,12 @@ Item {
   readonly property bool isContentFocused: root.panelRoot ? (root.panelRoot.focusSection === "content") : root.activeFocusSection
 
   property int focusedCard: 0   // 0: Touchscreen, 1: Touch Gestures, 2: Touch Output, 3: Touchpad, 4: Natural Scroll, 5: Tap to Click, 6: Scroll Speed, 7: Disable While Typing, 8: Pointer Sensitivity
-  onFocusedCardChanged: ensureCardVisible(focusedCard)
+  onFocusedCardChanged: {
+    ensureCardVisible(focusedCard)
+    if (focusedCard !== 2) touchOutputFocusIndex = currentOutputIndex()
+    if (focusedCard !== 6) scrollFactorFocusIndex = currentScrollFactorIndex()
+    if (focusedCard !== 8) sensitivityFocusIndex = currentSensitivityIndex()
+  }
 
   property int scrollFactorFocusIndex: -1
   property int sensitivityFocusIndex: -1
@@ -124,7 +129,6 @@ Item {
     var next = Math.max(0, Math.min(scrollFactorOptions.length - 1, cur + delta))
     if (next === cur) return false
     scrollFactorFocusIndex = next
-    setScrollFactor(scrollFactorOptions[next])
     return true
   }
 
@@ -134,7 +138,6 @@ Item {
     var next = Math.max(0, Math.min(sensitivityOptions.length - 1, cur + delta))
     if (next === cur) return false
     sensitivityFocusIndex = next
-    setSensitivity(sensitivityOptions[next])
     return true
   }
 
@@ -146,7 +149,6 @@ Item {
     var next = Math.max(0, Math.min(opts.length - 1, cur + delta))
     if (next === cur) return false
     touchOutputFocusIndex = next
-    setTouchOutput(opts[next])
     return true
   }
 
@@ -874,14 +876,24 @@ Item {
                   implicitWidth: Math.max(84, outText.implicitWidth + 24)
                   implicitHeight: 28
                   radius: 14
-                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
-                  border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
-                  border.width: 1
+                  readonly property var allOutputs: root.allOutputOptions()
+                  readonly property int effectiveOutIdx: root.touchOutputFocusIndex >= 0 ? root.touchOutputFocusIndex : root.currentOutputIndex()
+                  readonly property string focusedOutVal: (allOutputs[effectiveOutIdx] !== undefined) ? allOutputs[effectiveOutIdx] : root.touchOutput
+                  readonly property bool isPendingFocus: root.isContentFocused && (root.focusedCard === 2) && (effectiveOutIdx !== root.currentOutputIndex())
+
+                  color: isPendingFocus
+                    ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.14)
+                    : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  border.color: isPendingFocus
+                    ? Color.accent
+                    : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                  border.width: isPendingFocus ? 2 : 1
 
                   RowLayout {
                     anchors.centerIn: parent
                     spacing: 5
                     Rectangle {
+                      visible: !parent.parent.isPendingFocus
                       width: 5
                       height: 5
                       radius: 2.5
@@ -889,11 +901,11 @@ Item {
                     }
                     Text {
                       id: outText
-                      text: root.touchOutput === "[[Auto]]" ? "Auto" : root.touchOutput
+                      text: parent.parent.focusedOutVal === "[[Auto]]" ? "Auto" : parent.parent.focusedOutVal
                       font.family: Style.font.family
                       font.pixelSize: 11
                       font.bold: true
-                      color: Color.accent
+                      color: parent.parent.isPendingFocus ? Color.foreground : Color.accent
                     }
                   }
                 }
@@ -1379,25 +1391,34 @@ Item {
                   implicitWidth: 64
                   implicitHeight: 28
                   radius: 14
-                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
-                  border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
-                  border.width: 1
+                  readonly property int effectiveFactorIdx: root.scrollFactorFocusIndex >= 0 ? root.scrollFactorFocusIndex : root.currentScrollFactorIndex()
+                  readonly property real focusedFactorVal: (root.scrollFactorOptions[effectiveFactorIdx] !== undefined) ? root.scrollFactorOptions[effectiveFactorIdx] : root.scrollFactor
+                  readonly property bool isPendingFocus: root.isContentFocused && (root.focusedCard === 6) && (effectiveFactorIdx !== root.currentScrollFactorIndex())
+
+                  color: isPendingFocus
+                    ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.14)
+                    : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  border.color: isPendingFocus
+                    ? Color.accent
+                    : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                  border.width: isPendingFocus ? 2 : 1
 
                   RowLayout {
                     anchors.centerIn: parent
                     spacing: 4
                     Rectangle {
+                      visible: !parent.parent.isPendingFocus
                       width: 5
                       height: 5
                       radius: 2.5
                       color: Color.accent
                     }
                     Text {
-                      text: root.scrollFactor.toFixed(1) + "x"
+                      text: parent.parent.focusedFactorVal.toFixed(1) + "x"
                       font.family: Style.font.family
                       font.pixelSize: 11
                       font.bold: true
-                      color: Color.accent
+                      color: parent.parent.isPendingFocus ? Color.foreground : Color.accent
                     }
                   }
                 }
@@ -1675,25 +1696,34 @@ Item {
                   implicitWidth: 64
                   implicitHeight: 28
                   radius: 14
-                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
-                  border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
-                  border.width: 1
+                  readonly property int effectiveSensIdx: root.sensitivityFocusIndex >= 0 ? root.sensitivityFocusIndex : root.currentSensitivityIndex()
+                  readonly property real focusedSensVal: (root.sensitivityOptions[effectiveSensIdx] !== undefined) ? root.sensitivityOptions[effectiveSensIdx] : root.sensitivity
+                  readonly property bool isPendingFocus: root.isContentFocused && (root.focusedCard === 8) && (effectiveSensIdx !== root.currentSensitivityIndex())
+
+                  color: isPendingFocus
+                    ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.14)
+                    : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  border.color: isPendingFocus
+                    ? Color.accent
+                    : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                  border.width: isPendingFocus ? 2 : 1
 
                   RowLayout {
                     anchors.centerIn: parent
                     spacing: 4
                     Rectangle {
+                      visible: !parent.parent.isPendingFocus
                       width: 5
                       height: 5
                       radius: 2.5
                       color: Color.accent
                     }
                     Text {
-                      text: (root.sensitivity >= 0 ? "+" : "") + root.sensitivity.toFixed(1)
+                      text: (parent.parent.focusedSensVal >= 0 ? "+" : "") + parent.parent.focusedSensVal.toFixed(1)
                       font.family: Style.font.family
                       font.pixelSize: 11
                       font.bold: true
-                      color: Color.accent
+                      color: parent.parent.isPendingFocus ? Color.foreground : Color.accent
                     }
                   }
                 }
