@@ -16,12 +16,18 @@ Item {
   property string currentTheme: "Tokyo Night"
   property var themes: []
   property bool activeFocusSection: false
+  readonly property bool isContentFocused: {
+    if (root.panelRoot && root.panelRoot.focusSection !== undefined) {
+      return root.panelRoot.focusSection === "content"
+    }
+    return activeFocusSection
+  }
   property int focusedIndex: 0
   property string focusTarget: "search" // "search" or "list"
   readonly property bool hasActiveInput: searchField.activeFocus
 
-  onActiveFocusSectionChanged: {
-    if (activeFocusSection) {
+  onIsContentFocusedChanged: {
+    if (isContentFocused) {
       if (focusTarget === "search") {
         searchField.forceActiveFocus()
       }
@@ -186,7 +192,9 @@ Item {
       Layout.fillWidth: true
       implicitHeight: Math.max(70, headerLayout.implicitHeight + 28)
       Layout.preferredHeight: implicitHeight
-      color: Color.pickAlpha("surface.subtle", "#181b1d")
+      color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+      border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+      border.width: 1
       radius: Style.cornerRadius || 8
 
       RowLayout {
@@ -201,7 +209,9 @@ Item {
           width: 42
           height: 42
           radius: 8
-          color: Color.pickAlpha("surface.selected", "#2a3036")
+          color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15)
+          border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.30)
+          border.width: 1
 
           Text {
             anchors.centerIn: parent
@@ -232,10 +242,12 @@ Item {
             }
 
             Rectangle {
-              width: 52
-              height: 18
+              width: 58
+              height: 20
               radius: 4
-              color: Color.pickAlpha("accent.subtle", "#1f3b30")
+              color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+              border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+              border.width: 1
 
               Text {
                 anchors.centerIn: parent
@@ -271,15 +283,16 @@ Item {
     Rectangle {
       Layout.fillWidth: true
       Layout.preferredHeight: 42
-      color: Color.pickAlpha("surface.subtle", "#181b1d")
+      color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)
       radius: Style.cornerRadius || 6
-      border.color: (root.activeFocusSection && (searchField.activeFocus || root.focusTarget === "search")) ? Color.accent : "transparent"
-      border.width: (root.activeFocusSection && (searchField.activeFocus || root.focusTarget === "search")) ? 2 : 1
+      border.color: (root.isContentFocused && (searchField.activeFocus || root.focusTarget === "search")) ? Color.accent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10)
+      border.width: (root.isContentFocused && (searchField.activeFocus || root.focusTarget === "search")) ? 2 : 1
 
       MouseArea {
         anchors.fill: parent
         cursorShape: Qt.IBeamCursor
         onClicked: {
+          if (root.panelRoot) root.panelRoot.focusSection = "content"
           root.focusTarget = "search"
           searchField.forceActiveFocus()
         }
@@ -294,7 +307,7 @@ Item {
           text: "  "
           font.family: Style.font.family
           font.pixelSize: 13
-          color: (root.activeFocusSection && (searchField.activeFocus || root.focusTarget === "search")) ? Color.accent : Color.muted
+          color: (root.isContentFocused && (searchField.activeFocus || root.focusTarget === "search")) ? Color.accent : Color.muted
         }
 
         TextField {
@@ -308,6 +321,7 @@ Item {
           font.pixelSize: Style.font.body || 13
 
           onPressed: {
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
             root.focusTarget = "search"
           }
 
@@ -408,7 +422,9 @@ Item {
     Rectangle {
       Layout.fillWidth: true
       Layout.fillHeight: true
-      color: Color.pickAlpha("surface.subtle", "#181b1d")
+      color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+      border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+      border.width: 1
       radius: Style.cornerRadius || 8
 
       ScrollView {
@@ -427,21 +443,41 @@ Item {
             model: root.filteredThemes
 
             delegate: Rectangle {
+              id: themeItem
               Layout.fillWidth: true
               implicitHeight: Math.max(40, themeRowLayout.implicitHeight + 12)
               Layout.preferredHeight: implicitHeight
               radius: 6
-              readonly property bool isCurrent: root.currentTheme.toLowerCase() === modelData.toLowerCase()
-              readonly property bool isCursorTarget: root.activeFocusSection && root.focusTarget === "list" && root.focusedIndex === index
-              color: isCursorTarget
-                ? Color.pickAlpha("surface.selected", "#2a3036")
-                : (isCurrent
-                  ? Color.pickAlpha("surface.selected", "#22272e")
-                  : (mouseArea.containsMouse ? Color.pickAlpha("surface.hover", "#1b1f23") : "transparent"))
-              border.color: isCursorTarget
-                ? Color.accent
-                : (isCurrent ? Color.pickAlpha("accent.subtle", "#40ffffff") : "transparent")
-              border.width: isCursorTarget ? 2 : 1
+              readonly property bool isActive: root.currentTheme.toLowerCase() === modelData.toLowerCase()
+              readonly property bool isFocused: root.isContentFocused && root.focusTarget === "list" && root.focusedIndex === index
+              readonly property bool isHovered: mouseArea.containsMouse
+
+              color: {
+                if (isActive) {
+                  return isHovered ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.28)
+                                   : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                }
+                if (isFocused) {
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.18 : 0.14)
+                }
+                if (isHovered) {
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                }
+                return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)
+              }
+              border.color: {
+                if (isFocused) {
+                  return Color.accent
+                }
+                if (isActive) {
+                  return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                }
+                if (isHovered) {
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28)
+                }
+                return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+              }
+              border.width: isFocused ? 2 : 1
 
               MouseArea {
                 id: mouseArea
@@ -449,6 +485,7 @@ Item {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
                   root.focusedIndex = index
                   root.focusTarget = "list"
                   root.setTheme(modelData)
@@ -466,10 +503,18 @@ Item {
                 spacing: 10
 
                 Rectangle {
-                  width: 10
-                  height: 10
-                  radius: 5
-                  color: isCurrent ? Color.accent : (isCursorTarget ? Color.accent : Color.muted)
+                  visible: themeItem.isActive
+                  width: 5
+                  height: 5
+                  radius: 2.5
+                  color: Color.accent
+                }
+
+                Text {
+                  text: ""
+                  font.family: Style.font.family
+                  font.pixelSize: 14
+                  color: themeItem.isActive ? Color.accent : (themeItem.isFocused || themeItem.isHovered ? Color.foreground : Color.muted)
                 }
 
                 Text {
@@ -477,17 +522,19 @@ Item {
                   text: modelData
                   font.family: Style.font.family
                   font.pixelSize: Style.font.body || 13
-                  font.bold: isCurrent || isCursorTarget
-                  color: isCurrent ? Color.accent : Color.foreground
+                  font.bold: themeItem.isActive || themeItem.isFocused
+                  color: themeItem.isActive ? Color.accent : (themeItem.isFocused || themeItem.isHovered ? Color.foreground : Color.muted)
                   elide: Text.ElideRight
                 }
 
                 Rectangle {
-                  visible: isCurrent
-                  width: 58
+                  visible: themeItem.isActive
+                  width: 62
                   height: 20
                   radius: 4
-                  color: Color.pickAlpha("accent.subtle", "#1f3b30")
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                  border.width: 1
 
                   Text {
                     anchors.centerIn: parent
@@ -500,11 +547,11 @@ Item {
                 }
 
                 Text {
-                  visible: isCursorTarget && !isCurrent
+                  visible: themeItem.isFocused && !themeItem.isActive
                   text: "⏎ apply"
                   font.family: Style.font.family
                   font.pixelSize: 11
-                  color: Color.muted
+                  color: Color.accent
                 }
               }
             }
