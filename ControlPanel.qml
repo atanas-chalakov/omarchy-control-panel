@@ -73,9 +73,9 @@ Item {
     var targetW = Math.min(desiredW, maxW)
     var targetH = Math.min(desiredH, maxH)
 
-    if (forceReset || screenChanged || window.width > maxW || window.height > maxH || window.width <= 0 || window.height <= 0) {
-      window.width = targetW
-      window.height = targetH
+    if (forceReset || screenChanged || window.implicitWidth > maxW || window.implicitHeight > maxH || window.implicitWidth <= 0 || window.implicitHeight <= 0) {
+      window.implicitWidth = targetW
+      window.implicitHeight = targetH
     }
   }
 
@@ -221,8 +221,8 @@ Item {
     }
     if (showDiffInspector) {
       var minWWithDiff = Math.min(window.screen ? (window.screen.width - 24) : 960, 840)
-      if (window.width < minWWithDiff) {
-        window.width = minWWithDiff
+      if (window.implicitWidth < minWWithDiff) {
+        window.implicitWidth = minWWithDiff
       }
     }
     root.fitWindowToScreen(false)
