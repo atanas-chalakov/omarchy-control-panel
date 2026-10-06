@@ -13,7 +13,10 @@ Item {
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
 
+  property var panelRoot: null
   property bool activeFocusSection: false
+  readonly property bool isContentFocused: root.panelRoot ? (root.panelRoot.focusSection === "content") : root.activeFocusSection
+
   property int currentTab: 0 // 0: Updates, 1: Storage & Cache
   property int focusedAction: 0 // 0: Update All, 1: Prune Cache, 2: Vacuum Journal, 3: Remove Orphans
   property string statusMessage: ""
@@ -209,7 +212,7 @@ Item {
       Layout.preferredHeight: 32
       visible: root.statusMessage.length > 0
       radius: 6
-      color: Color.pickAlpha("accent.subtle", "#1f3b30")
+      color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15)
       border.color: Color.accent
       border.width: 1
 
@@ -244,14 +247,21 @@ Item {
       implicitHeight: Math.max(90, topBannerCol.implicitHeight + 24)
       Layout.preferredHeight: implicitHeight
       radius: Style.cornerRadius || 8
-      color: Color.pickAlpha("surface.subtle", "#181b1d")
-      border.color: (root.activeFocusSection && root.focusedAction === 0) ? Color.accent : Color.pickAlpha("border.subtle", "#262b30")
-      border.width: (root.activeFocusSection && root.focusedAction === 0) ? 2 : 1
+      readonly property bool isFocused: root.isContentFocused && root.focusedAction === 0
+      readonly property bool isHovered: topBannerMouse.containsMouse
+      color: isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.08 : 0.06) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+      border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+      border.width: isFocused ? 2 : 1
 
       MouseArea {
+        id: topBannerMouse
         anchors.fill: parent
+        hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onClicked: root.focusedAction = 0
+        onClicked: {
+          if (root.panelRoot) root.panelRoot.focusSection = "content"
+          root.focusedAction = 0
+        }
       }
 
       ColumnLayout {
@@ -272,8 +282,10 @@ Item {
             height: 36
             radius: 18
             color: root.totalUpdates > 0
-              ? Color.pickAlpha("accent.subtle", "#283b32")
-              : Color.pickAlpha("surface.hover", "#22272c")
+              ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+              : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
+            border.color: root.totalUpdates > 0 ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.40) : "transparent"
+            border.width: 1
 
             Text {
               anchors.centerIn: parent
@@ -301,10 +313,12 @@ Item {
 
               Rectangle {
                 visible: root.totalUpdates > 0
-                Layout.preferredHeight: 18
-                Layout.preferredWidth: updateCountText.implicitWidth + 10
-                radius: 9
-                color: Color.accent
+                Layout.preferredHeight: 20
+                Layout.preferredWidth: updateCountText.implicitWidth + 14
+                radius: 10
+                color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                border.width: 1
 
                 Text {
                   id: updateCountText
@@ -313,7 +327,7 @@ Item {
                   font.family: Style.font.family
                   font.pixelSize: 10
                   font.bold: true
-                  color: Color.background
+                  color: Color.accent
                 }
               }
             }
@@ -338,17 +352,65 @@ Item {
 
           Item { Layout.fillWidth: true }
 
-          Button {
-            text: root.isRefreshing ? "Checking..." : "󰑐 Refresh [R]"
-            enabled: !root.isRefreshing
-            onClicked: root.refresh()
+          Rectangle {
+            implicitWidth: refreshBtnText.implicitWidth + 24
+            implicitHeight: 28
+            radius: 6
+            readonly property bool btnHover: refreshBtnMouse.containsMouse
+            color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
+            border.color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.3) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+            border.width: 1
+
+            Text {
+              id: refreshBtnText
+              anchors.centerIn: parent
+              text: root.isRefreshing ? "Checking..." : "󰑐 Refresh [R]"
+              font.family: Style.font.family
+              font.pixelSize: 11
+              font.bold: true
+              color: parent.btnHover ? Color.foreground : Color.muted
+            }
+
+            MouseArea {
+              id: refreshBtnMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              enabled: !root.isRefreshing
+              onClicked: root.refresh()
+            }
           }
 
-          Button {
-            text: "󰚰 Update System [U]"
-            selected: root.totalUpdates > 0
-            bordered: true
-            onClicked: root.launchUpdate()
+          Rectangle {
+            implicitWidth: updateBtnText.implicitWidth + 24
+            implicitHeight: 28
+            radius: 6
+            readonly property bool btnHover: updateBtnMouse.containsMouse
+            color: root.totalUpdates > 0
+              ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, btnHover ? 0.30 : 0.20)
+              : (btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06))
+            border.color: root.totalUpdates > 0
+              ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+              : (btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.3) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15))
+            border.width: 1
+
+            Text {
+              id: updateBtnText
+              anchors.centerIn: parent
+              text: "󰚰 Update System [U]"
+              font.family: Style.font.family
+              font.pixelSize: 11
+              font.bold: true
+              color: root.totalUpdates > 0 ? Color.accent : (parent.btnHover ? Color.foreground : Color.muted)
+            }
+
+            MouseArea {
+              id: updateBtnMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.launchUpdate()
+            }
           }
         }
       }
@@ -371,16 +433,23 @@ Item {
         width: tabBarFlow.itemWidth
         height: 36
         radius: 6
-        color: root.currentTab === 0
-          ? Color.pickAlpha("accent.subtle", "#203a30")
-          : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: root.currentTab === 0 ? Color.accent : "transparent"
+        readonly property bool isTabActive: root.currentTab === 0
+        readonly property bool isTabHovered: tabUpdatesMouse.containsMouse
+        color: isTabActive
+          ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isTabHovered ? 0.28 : 0.20)
+          : (isTabHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03))
+        border.color: isTabActive ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : (isTabHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
         border.width: 1
 
         MouseArea {
+          id: tabUpdatesMouse
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
-          onClicked: root.currentTab = 0
+          onClicked: {
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
+            root.currentTab = 0
+          }
         }
 
         RowLayout {
@@ -388,19 +457,27 @@ Item {
           width: Math.min(implicitWidth, parent.width - 16)
           spacing: 6
 
+          Rectangle {
+            visible: tabUpdates.isTabActive
+            width: 5
+            height: 5
+            radius: 2.5
+            color: Color.accent
+          }
+
           Text {
             text: "󰚰"
             font.family: Style.font.family
             font.pixelSize: 13
-            color: root.currentTab === 0 ? Color.accent : Color.muted
+            color: tabUpdates.isTabActive ? Color.accent : Color.muted
           }
 
           Text {
             text: "Pending Updates (" + root.totalUpdates + ")"
             font.family: Style.font.family
             font.pixelSize: 12
-            font.bold: root.currentTab === 0
-            color: root.currentTab === 0 ? Color.accent : Color.muted
+            font.bold: tabUpdates.isTabActive
+            color: tabUpdates.isTabActive ? Color.accent : Color.muted
             elide: Text.ElideRight
           }
         }
@@ -411,16 +488,23 @@ Item {
         width: tabBarFlow.itemWidth
         height: 36
         radius: 6
-        color: root.currentTab === 1
-          ? Color.pickAlpha("accent.subtle", "#203a30")
-          : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: root.currentTab === 1 ? Color.accent : "transparent"
+        readonly property bool isTabActive: root.currentTab === 1
+        readonly property bool isTabHovered: tabDiskMouse.containsMouse
+        color: isTabActive
+          ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isTabHovered ? 0.28 : 0.20)
+          : (isTabHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03))
+        border.color: isTabActive ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : (isTabHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
         border.width: 1
 
         MouseArea {
+          id: tabDiskMouse
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
-          onClicked: root.currentTab = 1
+          onClicked: {
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
+            root.currentTab = 1
+          }
         }
 
         RowLayout {
@@ -428,19 +512,27 @@ Item {
           width: Math.min(implicitWidth, parent.width - 16)
           spacing: 6
 
+          Rectangle {
+            visible: tabDisk.isTabActive
+            width: 5
+            height: 5
+            radius: 2.5
+            color: Color.accent
+          }
+
           Text {
             text: "󰋊"
             font.family: Style.font.family
             font.pixelSize: 13
-            color: root.currentTab === 1 ? Color.accent : Color.muted
+            color: tabDisk.isTabActive ? Color.accent : Color.muted
           }
 
           Text {
             text: "Disk & Maintenance"
             font.family: Style.font.family
             font.pixelSize: 12
-            font.bold: root.currentTab === 1
-            color: root.currentTab === 1 ? Color.accent : Color.muted
+            font.bold: tabDisk.isTabActive
+            color: tabDisk.isTabActive ? Color.accent : Color.muted
             elide: Text.ElideRight
           }
         }
@@ -467,7 +559,9 @@ Item {
           Layout.fillWidth: true
           Layout.preferredHeight: 140
           radius: Style.cornerRadius || 8
-          color: Color.pickAlpha("surface.subtle", "#181b1d")
+          color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+          border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+          border.width: 1
 
           ColumnLayout {
             anchors.centerIn: parent
@@ -517,9 +611,16 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 40
             radius: 6
-            color: Color.pickAlpha("surface.subtle", "#181b1d")
-            border.color: Color.pickAlpha("border.subtle", "#262b30")
+            readonly property bool isHovered: pkgMouse.containsMouse
+            color: isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+            border.color: isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
             border.width: 1
+
+            MouseArea {
+              id: pkgMouse
+              anchors.fill: parent
+              hoverEnabled: true
+            }
 
             RowLayout {
               anchors.fill: parent
@@ -559,10 +660,12 @@ Item {
               }
 
               Rectangle {
-                Layout.preferredHeight: 20
-                Layout.preferredWidth: verText.implicitWidth + 12
+                Layout.preferredHeight: 22
+                Layout.preferredWidth: verText.implicitWidth + 14
                 radius: 4
-                color: Color.pickAlpha("accent.subtle", "#203a30")
+                color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                border.width: 1
 
                 Text {
                   id: verText
@@ -596,9 +699,16 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 40
             radius: 6
-            color: Color.pickAlpha("surface.subtle", "#181b1d")
-            border.color: Color.pickAlpha("border.subtle", "#262b30")
+            readonly property bool isHovered: aurMouse.containsMouse
+            color: isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+            border.color: isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
             border.width: 1
+
+            MouseArea {
+              id: aurMouse
+              anchors.fill: parent
+              hoverEnabled: true
+            }
 
             RowLayout {
               anchors.fill: parent
@@ -610,7 +720,7 @@ Item {
                 text: "󰣇"
                 font.family: Style.font.family
                 font.pixelSize: 14
-                color: "#7287fd"
+                color: Color.accent
               }
 
               Text {
@@ -638,10 +748,12 @@ Item {
               }
 
               Rectangle {
-                Layout.preferredHeight: 20
-                Layout.preferredWidth: aurVerText.implicitWidth + 12
+                Layout.preferredHeight: 22
+                Layout.preferredWidth: aurVerText.implicitWidth + 14
                 radius: 4
-                color: Color.pickAlpha("accent.subtle", "#203a30")
+                color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                border.width: 1
 
                 Text {
                   id: aurVerText
@@ -694,8 +806,8 @@ Item {
             implicitHeight: Math.max(76, partCol.implicitHeight + 24)
             Layout.preferredHeight: implicitHeight
             radius: Style.cornerRadius || 8
-            color: Color.pickAlpha("surface.subtle", "#181b1d")
-            border.color: Color.pickAlpha("border.subtle", "#262b30")
+            color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+            border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
             border.width: 1
 
             ColumnLayout {
@@ -733,7 +845,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 8
                 radius: 4
-                color: Color.pickAlpha("surface.hover", "#22272c")
+                color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
 
                 Rectangle {
                   width: Math.max(8, parent.width * (Math.min(100, modelData.percent) / 100))
@@ -784,14 +896,21 @@ Item {
           implicitHeight: Math.max(68, pacmanCol.implicitHeight + 24)
           Layout.preferredHeight: implicitHeight
           radius: Style.cornerRadius || 8
-          color: Color.pickAlpha("surface.subtle", "#181b1d")
-          border.color: (root.activeFocusSection && root.focusedAction === 1) ? Color.accent : Color.pickAlpha("border.subtle", "#262b30")
-          border.width: (root.activeFocusSection && root.focusedAction === 1) ? 2 : 1
+          readonly property bool isFocused: root.isContentFocused && root.focusedAction === 1
+          readonly property bool isHovered: pacmanMouse.containsMouse
+          color: isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.08 : 0.06) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+          border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+          border.width: isFocused ? 2 : 1
 
           MouseArea {
+            id: pacmanMouse
             anchors.fill: parent
+            hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.focusedAction = 1
+            onClicked: {
+              if (root.panelRoot) root.panelRoot.focusSection = "content"
+              root.focusedAction = 1
+            }
           }
 
           ColumnLayout {
@@ -825,10 +944,12 @@ Item {
                 }
 
                 Rectangle {
-                  height: 18
-                  width: pacSizeText.implicitWidth + 10
+                  height: 20
+                  width: pacSizeText.implicitWidth + 12
                   radius: 4
-                  color: Color.pickAlpha("accent.subtle", "#203a30")
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                  border.width: 1
 
                   Text {
                     id: pacSizeText
@@ -842,9 +963,35 @@ Item {
                 }
               }
 
-              Button {
-                text: "Prune Cache [P]"
-                onClicked: root.prunePacmanCache()
+              Rectangle {
+                implicitWidth: pruneBtnText.implicitWidth + 20
+                implicitHeight: 26
+                radius: 4
+                readonly property bool btnHover: pruneBtnMouse.containsMouse
+                color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
+                border.color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.3) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
+
+                Text {
+                  id: pruneBtnText
+                  anchors.centerIn: parent
+                  text: "Prune Cache [P]"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: parent.btnHover ? Color.foreground : Color.muted
+                }
+
+                MouseArea {
+                  id: pruneBtnMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
+                    root.focusedAction = 1
+                    root.prunePacmanCache()
+                  }
+                }
               }
             }
 
@@ -868,14 +1015,21 @@ Item {
           implicitHeight: Math.max(68, journalCol.implicitHeight + 24)
           Layout.preferredHeight: implicitHeight
           radius: Style.cornerRadius || 8
-          color: Color.pickAlpha("surface.subtle", "#181b1d")
-          border.color: (root.activeFocusSection && root.focusedAction === 2) ? Color.accent : Color.pickAlpha("border.subtle", "#262b30")
-          border.width: (root.activeFocusSection && root.focusedAction === 2) ? 2 : 1
+          readonly property bool isFocused: root.isContentFocused && root.focusedAction === 2
+          readonly property bool isHovered: journalMouse.containsMouse
+          color: isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.08 : 0.06) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+          border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+          border.width: isFocused ? 2 : 1
 
           MouseArea {
+            id: journalMouse
             anchors.fill: parent
+            hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.focusedAction = 2
+            onClicked: {
+              if (root.panelRoot) root.panelRoot.focusSection = "content"
+              root.focusedAction = 2
+            }
           }
 
           ColumnLayout {
@@ -897,7 +1051,7 @@ Item {
                   text: "󰌱"
                   font.family: Style.font.family
                   font.pixelSize: 18
-                  color: "#85c1dc"
+                  color: Color.accent
                 }
 
                 Text {
@@ -909,10 +1063,12 @@ Item {
                 }
 
                 Rectangle {
-                  height: 18
-                  width: jnlSizeText.implicitWidth + 10
+                  height: 20
+                  width: jnlSizeText.implicitWidth + 12
                   radius: 4
-                  color: Color.pickAlpha("surface.hover", "#22272c")
+                  color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                  border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                  border.width: 1
 
                   Text {
                     id: jnlSizeText
@@ -926,9 +1082,35 @@ Item {
                 }
               }
 
-              Button {
-                text: "Vacuum Logs [V]"
-                onClicked: root.vacuumJournal()
+              Rectangle {
+                implicitWidth: vacuumBtnText.implicitWidth + 20
+                implicitHeight: 26
+                radius: 4
+                readonly property bool btnHover: vacuumBtnMouse.containsMouse
+                color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
+                border.color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.3) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
+
+                Text {
+                  id: vacuumBtnText
+                  anchors.centerIn: parent
+                  text: "Vacuum Logs [V]"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: parent.btnHover ? Color.foreground : Color.muted
+                }
+
+                MouseArea {
+                  id: vacuumBtnMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
+                    root.focusedAction = 2
+                    root.vacuumJournal()
+                  }
+                }
               }
             }
 
@@ -952,14 +1134,21 @@ Item {
           implicitHeight: Math.max(68, orphansCol.implicitHeight + 24)
           Layout.preferredHeight: implicitHeight
           radius: Style.cornerRadius || 8
-          color: Color.pickAlpha("surface.subtle", "#181b1d")
-          border.color: (root.activeFocusSection && root.focusedAction === 3) ? Color.accent : Color.pickAlpha("border.subtle", "#262b30")
-          border.width: (root.activeFocusSection && root.focusedAction === 3) ? 2 : 1
+          readonly property bool isFocused: root.isContentFocused && root.focusedAction === 3
+          readonly property bool isHovered: orphansMouse.containsMouse
+          color: isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, isHovered ? 0.08 : 0.06) : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+          border.color: isFocused ? Color.accent : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+          border.width: isFocused ? 2 : 1
 
           MouseArea {
+            id: orphansMouse
             anchors.fill: parent
+            hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.focusedAction = 3
+            onClicked: {
+              if (root.panelRoot) root.panelRoot.focusSection = "content"
+              root.focusedAction = 3
+            }
           }
 
           ColumnLayout {
@@ -981,7 +1170,7 @@ Item {
                   text: "󰏗"
                   font.family: Style.font.family
                   font.pixelSize: 18
-                  color: "#ca9ee6"
+                  color: Color.accent
                 }
 
                 Text {
@@ -993,10 +1182,12 @@ Item {
                 }
 
                 Rectangle {
-                  height: 18
-                  width: orphText.implicitWidth + 10
+                  height: 20
+                  width: orphText.implicitWidth + 12
                   radius: 4
-                  color: Color.pickAlpha("surface.hover", "#22272c")
+                  color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                  border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                  border.width: 1
 
                   Text {
                     id: orphText
@@ -1010,9 +1201,35 @@ Item {
                 }
               }
 
-              Button {
-                text: "Check Orphans [O]"
-                onClicked: root.removeOrphans()
+              Rectangle {
+                implicitWidth: orphansBtnText.implicitWidth + 20
+                implicitHeight: 26
+                radius: 4
+                readonly property bool btnHover: orphansBtnMouse.containsMouse
+                color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
+                border.color: btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.3) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                border.width: 1
+
+                Text {
+                  id: orphansBtnText
+                  anchors.centerIn: parent
+                  text: "Check Orphans [O]"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: parent.btnHover ? Color.foreground : Color.muted
+                }
+
+                MouseArea {
+                  id: orphansBtnMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
+                    root.focusedAction = 3
+                    root.removeOrphans()
+                  }
+                }
               }
             }
 
