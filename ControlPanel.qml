@@ -564,9 +564,9 @@ Item {
               width: 82
               radius: 12
               color: root.focusSection === "sidebar"
-                ? Color.pickAlpha("accent.subtle", "#203a30")
-                : Color.pickAlpha("surface.subtle", "#181b1d")
-              border.color: root.focusSection === "sidebar" ? Color.accent : "transparent"
+                ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)
+              border.color: root.focusSection === "sidebar" ? Color.accent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12)
               border.width: 1
 
               MouseArea {
@@ -590,9 +590,9 @@ Item {
               width: 88
               radius: 12
               color: root.focusSection === "content"
-                ? Color.pickAlpha("accent.subtle", "#203a30")
-                : Color.pickAlpha("surface.subtle", "#181b1d")
-              border.color: root.focusSection === "content" ? Color.accent : "transparent"
+                ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)
+              border.color: root.focusSection === "content" ? Color.accent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12)
               border.width: 1
 
               MouseArea {
@@ -620,9 +620,9 @@ Item {
             implicitHeight: 26
             radius: 6
             color: root.showDiffInspector
-              ? Color.pickAlpha("accent.subtle", "#1f3b30")
-              : (diffBtnMouse.containsMouse ? Color.pickAlpha("surface.hover", "#22272c") : Color.pickAlpha("surface.subtle", "#181b1d"))
-            border.color: root.showDiffInspector ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
+              ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.22)
+              : (diffBtnMouse.containsMouse ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03))
+            border.color: root.showDiffInspector ? Color.accent : (diffBtnMouse.containsMouse ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10))
             border.width: root.showDiffInspector ? 2 : 1
 
             MouseArea {
@@ -666,8 +666,8 @@ Item {
             implicitWidth: 26
             implicitHeight: 26
             radius: 6
-            color: closeBtnMouse.containsMouse ? Color.pickAlpha("surface.hover", "#2a3036") : Color.pickAlpha("surface.subtle", "#181b1d")
-            border.color: Color.pickAlpha("surface.selected", "#2a3036")
+            color: closeBtnMouse.containsMouse ? Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.25) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)
+            border.color: closeBtnMouse.containsMouse ? Color.urgent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10)
             border.width: 1
 
             MouseArea {
@@ -683,7 +683,7 @@ Item {
               text: "✕"
               font.family: Style.font.family
               font.pixelSize: 11
-              color: closeBtnMouse.containsMouse ? Color.foreground : Color.muted
+              color: closeBtnMouse.containsMouse ? Color.urgent : Color.muted
             }
           }
         }
@@ -721,27 +721,40 @@ Item {
                 model: root.categories
 
                 delegate: Rectangle {
+                  id: sidebarItem
                   Layout.fillWidth: true
                   Layout.preferredHeight: root.isCompactScreen ? 38 : 44
                   radius: Style.cornerRadius || 6
-                  color: (root.currentCategory === modelData.id)
-                    ? (root.focusSection === "sidebar" ? Color.pickAlpha("surface.selected", "#2a3036") : Color.pickAlpha("surface.subtle", "#20252b"))
-                    : (mouseArea.containsMouse ? Color.pickAlpha("surface.hover", "#1b1f23") : "transparent")
-                  border.color: (root.currentCategory === modelData.id)
-                    ? (root.focusSection === "sidebar" ? Color.accent : Color.pickAlpha("accent.subtle", "#40ffffff"))
-                    : "transparent"
-                  border.width: (root.currentCategory === modelData.id && root.focusSection === "sidebar") ? 2 : 1
 
-                  // Accent bar when sidebar has focus
+                  readonly property bool isActive: (root.currentCategory === modelData.id)
+                  readonly property bool isFocused: isActive && (root.focusSection === "sidebar")
+                  readonly property bool isHovered: mouseArea.containsMouse
+
+                  color: {
+                    if (isFocused) return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.22)
+                    if (isActive) return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.12)
+                    if (isHovered) return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                    return "transparent"
+                  }
+
+                  border.color: {
+                    if (isFocused) return Color.accent
+                    if (isActive) return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.40)
+                    if (isHovered) return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.20)
+                    return "transparent"
+                  }
+                  border.width: isFocused ? 2 : (isActive || isHovered ? 1 : 0)
+
+                  // Accent bar indicator on left
                   Rectangle {
                     width: 3
                     height: 22
                     radius: 2
-                    color: Color.accent
+                    color: sidebarItem.isFocused ? Color.accent : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
                     anchors.left: parent.left
                     anchors.leftMargin: 3
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: (root.currentCategory === modelData.id) && (root.focusSection === "sidebar")
+                    visible: sidebarItem.isActive
                   }
 
                   MouseArea {
@@ -764,7 +777,7 @@ Item {
                       text: modelData.icon
                       font.family: Style.font.family
                       font.pixelSize: 16
-                      color: (root.currentCategory === modelData.id) ? Color.accent : Color.muted
+                      color: sidebarItem.isActive ? Color.accent : (sidebarItem.isHovered ? Color.foreground : Color.muted)
                     }
 
                     Text {
@@ -774,22 +787,23 @@ Item {
                       text: modelData.label
                       font.family: Style.font.family
                       font.pixelSize: Style.font.body || 13
-                      font.bold: (root.currentCategory === modelData.id)
-                      color: Color.foreground
+                      font.bold: sidebarItem.isActive
+                      color: sidebarItem.isActive ? (sidebarItem.isFocused ? Color.accent : Color.foreground) : (sidebarItem.isHovered ? Color.foreground : Color.muted)
                     }
 
                     Rectangle {
                       width: 18
                       height: 18
                       radius: 3
-                      color: Color.pickAlpha("surface.subtle", "#121416")
+                      color: sidebarItem.isActive ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
 
                       Text {
                         anchors.centerIn: parent
                         text: modelData.key
                         font.family: Style.font.family
                         font.pixelSize: 10
-                        color: Color.muted
+                        font.bold: sidebarItem.isActive
+                        color: sidebarItem.isActive ? Color.accent : Color.muted
                       }
                     }
                   }

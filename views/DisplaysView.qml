@@ -33,6 +33,7 @@ Item {
 
   property int scaleFocusIndex: -1
   property int modeFocusIndex: -1
+  property int nightlightTempFocusIndex: -1
 
   onCurrentScaleChanged: {
     if (!customScaleOpen) scaleFocusIndex = currentScaleIndex()
@@ -40,6 +41,10 @@ Item {
 
   onActiveMonitorChanged: {
     if (!customModeOpen) modeFocusIndex = currentModeIndex()
+  }
+
+  onNightlightTempChanged: {
+    nightlightTempFocusIndex = currentNightlightIndex()
   }
 
   readonly property bool isCustomScaleActive: {
@@ -226,8 +231,19 @@ Item {
   }
 
   property bool activeFocusSection: false
+  readonly property bool isContentFocused: {
+    if (root.panelRoot && root.panelRoot.focusSection !== undefined) {
+      return root.panelRoot.focusSection === "content"
+    }
+    return activeFocusSection
+  }
   property int focusedRow: 0   // 0: Brightness, 1: Night Light Toggle, 2: Warmth, 3: Scale, 4: Resolution
-  onFocusedRowChanged: ensureRowVisible(focusedRow)
+  onFocusedRowChanged: {
+    ensureRowVisible(focusedRow)
+    if (focusedRow !== 2) nightlightTempFocusIndex = currentNightlightIndex()
+    if (focusedRow !== 3 && !customScaleOpen) scaleFocusIndex = currentScaleIndex()
+    if (focusedRow !== 4 && !customModeOpen) modeFocusIndex = currentModeIndex()
+  }
 
   function ensureRowVisible(index) {
     if (!scrollArea || !scrollArea.contentItem) return
@@ -282,6 +298,14 @@ Item {
       if (diff < minDiff) { minDiff = diff; best = i }
     }
     return best
+  }
+
+  function currentNightlightOption() {
+    var idx = currentNightlightIndex()
+    if (idx >= 0 && idx < nightlightOptions.length) {
+      return nightlightOptions[idx]
+    }
+    return null
   }
 
   function cycleScale(delta) {
@@ -339,11 +363,11 @@ Item {
   }
 
   function cycleNightlightTemp(delta) {
-    var idx = currentNightlightIndex()
-    if (delta < 0 && idx === 0) return false
-    var next = Math.max(0, Math.min(nightlightOptions.length - 1, idx + delta))
-    if (next === idx) return false
-    setNightlightTemp(nightlightOptions[next].temp)
+    var cur = (nightlightTempFocusIndex >= 0) ? nightlightTempFocusIndex : currentNightlightIndex()
+    if (delta < 0 && cur === 0) return false
+    var next = Math.max(0, Math.min(nightlightOptions.length - 1, cur + delta))
+    if (next === cur) return false
+    nightlightTempFocusIndex = next
     return true
   }
 
@@ -381,7 +405,12 @@ Item {
     if (hasActiveInput) return
     if (focusedRow === 0) adjustBrightness(5)
     else if (focusedRow === 1) toggleNightlight()
-    else if (focusedRow === 2) cycleNightlightTemp(1)
+    else if (focusedRow === 2) {
+      var curTemp = (nightlightTempFocusIndex >= 0) ? nightlightTempFocusIndex : currentNightlightIndex()
+      if (curTemp >= 0 && curTemp < nightlightOptions.length) {
+        setNightlightTemp(nightlightOptions[curTemp].temp)
+      }
+    }
     else if (focusedRow === 3) {
       var curScale = (scaleFocusIndex >= 0) ? scaleFocusIndex : currentScaleIndex()
       if (curScale === scaleOptions.length) {
@@ -657,7 +686,7 @@ Item {
         Layout.preferredHeight: 32
         visible: root.statusMessage.length > 0
         radius: 6
-        color: Color.pickAlpha("accent.subtle", "#1f3b30")
+        color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
         border.color: Color.accent
         border.width: 1
 
@@ -682,7 +711,7 @@ Item {
         Layout.fillWidth: true
         implicitHeight: Math.max(76, displayHeroRow.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
+        color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)
         radius: Style.cornerRadius || 8
 
         RowLayout {
@@ -697,7 +726,7 @@ Item {
             width: 46
             height: 46
             radius: 8
-            color: Color.pickAlpha("surface.selected", "#2a3036")
+            color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
 
             Text {
               anchors.centerIn: parent
@@ -730,7 +759,7 @@ Item {
                 width: 72
                 height: 20
                 radius: 4
-                color: Color.pickAlpha("accent.subtle", "#1f3b30")
+                color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
 
                 Text {
                   anchors.centerIn: parent
@@ -769,15 +798,21 @@ Item {
         implicitHeight: Math.max(116, brightnessColLayout.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 0
-        color: brightnessCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: brightnessCard.isFocused ? Color.accent : "transparent"
-        border.width: brightnessCard.isFocused ? 2 : 1
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 0
+        readonly property bool isHovered: brightnessMouseArea.containsMouse
+        color: brightnessCard.isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.07) : (brightnessCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+        border.color: brightnessCard.isFocused ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35) : (brightnessCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.20) : "transparent")
+        border.width: 1
 
         MouseArea {
+          id: brightnessMouseArea
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
-          onClicked: root.focusedRow = 0
+          onClicked: {
+            root.focusedRow = 0
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
+          }
         }
 
         ColumnLayout {
@@ -858,6 +893,7 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 0
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
                   root.adjustBrightness(-5)
                 }
               }
@@ -869,6 +905,7 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 0
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
                   root.adjustBrightness(5)
                 }
               }
@@ -895,16 +932,20 @@ Item {
         implicitHeight: Math.max(74, nightlightToggleRowLayout.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 1
-        color: nightlightToggleCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: nightlightToggleCard.isFocused ? Color.accent : "transparent"
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 1
+        readonly property bool isHovered: nightlightToggleMouseArea.containsMouse
+        color: nightlightToggleCard.isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.07) : (nightlightToggleCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+        border.color: nightlightToggleCard.isFocused ? Color.accent : (nightlightToggleCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.20) : "transparent")
         border.width: nightlightToggleCard.isFocused ? 2 : 1
 
         MouseArea {
+          id: nightlightToggleMouseArea
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
           onClicked: {
             root.focusedRow = 1
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
             root.toggleNightlight()
           }
         }
@@ -921,7 +962,7 @@ Item {
             width: 44
             height: 44
             radius: 8
-            color: root.nightlightEnabled ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#20252b")
+            color: root.nightlightEnabled ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.25) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
 
             Text {
               anchors.centerIn: parent
@@ -979,9 +1020,9 @@ Item {
             Layout.preferredHeight: 32
             Layout.alignment: Qt.AlignVCenter
             radius: 16
-            color: root.nightlightEnabled ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
-            border.color: nightlightToggleCard.isFocused ? Color.accent : "transparent"
-            border.width: nightlightToggleCard.isFocused ? 2 : 0
+            color: root.nightlightEnabled ? Color.accent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10)
+            border.color: (nightlightToggleCard.isFocused || nightlightToggleCard.isHovered) ? Color.accent : "transparent"
+            border.width: nightlightToggleCard.isFocused ? 2 : (nightlightToggleCard.isHovered ? 1 : 0)
 
             Text {
               anchors.centerIn: parent
@@ -989,7 +1030,7 @@ Item {
               font.family: Style.font.family
               font.pixelSize: 11
               font.bold: true
-              color: root.nightlightEnabled ? "#000000" : Color.muted
+              color: root.nightlightEnabled ? "#000000" : (nightlightToggleCard.isFocused || nightlightToggleCard.isHovered ? Color.foreground : Color.muted)
             }
           }
         }
@@ -1002,15 +1043,21 @@ Item {
         implicitHeight: Math.max(116, nightlightTempColLayout.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 2
-        color: nightlightTempCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: nightlightTempCard.isFocused ? Color.accent : "transparent"
-        border.width: nightlightTempCard.isFocused ? 2 : 1
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 2
+        readonly property bool isHovered: nightlightTempMouseArea.containsMouse
+        color: nightlightTempCard.isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.07) : (nightlightTempCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+        border.color: nightlightTempCard.isFocused ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35) : (nightlightTempCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.20) : "transparent")
+        border.width: 1
 
         MouseArea {
+          id: nightlightTempMouseArea
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
-          onClicked: root.focusedRow = 2
+          onClicked: {
+            root.focusedRow = 2
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
+          }
         }
 
         ColumnLayout {
@@ -1050,9 +1097,31 @@ Item {
                   color: Color.foreground
                 }
 
+                Rectangle {
+                  height: 20
+                  width: activeNlTempText.implicitWidth + 12
+                  radius: 4
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  border.color: Color.accent
+                  border.width: 1
+
+                  Text {
+                    id: activeNlTempText
+                    anchors.centerIn: parent
+                    text: {
+                      var opt = root.currentNightlightOption()
+                      return opt ? opt.label : (root.nightlightTemp + "K")
+                    }
+                    font.family: Style.font.family
+                    font.pixelSize: 10
+                    font.bold: true
+                    color: Color.accent
+                  }
+                }
+
                 Text {
                   visible: nightlightTempCard.isFocused
-                  text: "• Use [←/→ or h/l] to cycle"
+                  text: "• Use [←/→ or h/l] to navigate • [Enter/Space] to set"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
@@ -1084,7 +1153,11 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 2
-                  root.cycleNightlightTemp(-1)
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
+                  var cur = (root.nightlightTempFocusIndex >= 0) ? root.nightlightTempFocusIndex : root.currentNightlightIndex()
+                  var next = Math.max(0, cur - 1)
+                  root.nightlightTempFocusIndex = next
+                  root.setNightlightTemp(root.nightlightOptions[next].temp)
                 }
               }
 
@@ -1095,7 +1168,11 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 2
-                  root.cycleNightlightTemp(1)
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
+                  var cur = (root.nightlightTempFocusIndex >= 0) ? root.nightlightTempFocusIndex : root.currentNightlightIndex()
+                  var next = Math.min(root.nightlightOptions.length - 1, cur + 1)
+                  root.nightlightTempFocusIndex = next
+                  root.setNightlightTemp(root.nightlightOptions[next].temp)
                 }
               }
             }
@@ -1117,33 +1194,76 @@ Item {
               model: root.nightlightOptions
 
               delegate: Rectangle {
+                id: nlOptionCard
                 width: nightlightFlow.itemWidth
                 height: 34
                 radius: 6
-                readonly property bool isSelected: Math.abs(root.nightlightTemp - modelData.temp) < 200
-                color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
-                border.color: isSelected ? Color.accent : "transparent"
-                border.width: isSelected ? 1 : 0
+                readonly property bool isActive: Math.abs(root.nightlightTemp - modelData.temp) < 200
+                readonly property bool isFocused: root.isContentFocused && (root.focusedRow === 2) && ((root.nightlightTempFocusIndex >= 0 ? root.nightlightTempFocusIndex : root.currentNightlightIndex()) === index)
+                readonly property bool isHovered: nlMouseArea.containsMouse
+
+                color: {
+                  if (isActive) {
+                    return isHovered ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.28)
+                                     : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  }
+                  if (isFocused) {
+                    return isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.18)
+                                     : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.14)
+                  }
+                  if (isHovered) {
+                    return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                  }
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)
+                }
+
+                border.color: {
+                  if (isFocused) {
+                    return Color.accent
+                  }
+                  if (isActive) {
+                    return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.6)
+                  }
+                  if (isHovered) {
+                    return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28)
+                  }
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                }
+                border.width: isFocused ? 2 : 1
 
                 MouseArea {
+                  id: nlMouseArea
                   anchors.fill: parent
+                  hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
                     root.focusedRow = 2
+                    root.nightlightTempFocusIndex = index
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.setNightlightTemp(modelData.temp)
                   }
                 }
 
-                Text {
+                RowLayout {
                   anchors.centerIn: parent
-                  width: Math.min(implicitWidth, parent.width - 8)
-                  elide: Text.ElideRight
-                  horizontalAlignment: Text.AlignHCenter
-                  text: modelData.label
-                  font.family: Style.font.family
-                  font.pixelSize: 11
-                  font.bold: isSelected
-                  color: isSelected ? Color.accent : Color.foreground
+                  spacing: 4
+
+                  Rectangle {
+                    visible: nlOptionCard.isActive
+                    width: 5
+                    height: 5
+                    radius: 2.5
+                    color: Color.accent
+                  }
+
+                  Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: modelData.label
+                    font.family: Style.font.family
+                    font.pixelSize: 11
+                    font.bold: nlOptionCard.isActive || nlOptionCard.isFocused
+                    color: nlOptionCard.isActive ? Color.accent : (nlOptionCard.isFocused || nlOptionCard.isHovered ? Color.foreground : Color.muted)
+                  }
                 }
               }
             }
@@ -1158,15 +1278,21 @@ Item {
         implicitHeight: Math.max(116, scaleColLayout.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 3
-        color: scaleCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: scaleCard.isFocused ? Color.accent : "transparent"
-        border.width: scaleCard.isFocused ? 2 : 1
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 3
+        readonly property bool isHovered: scaleCardMouseArea.containsMouse
+        color: scaleCard.isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.07) : (scaleCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+        border.color: scaleCard.isFocused ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35) : (scaleCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.20) : "transparent")
+        border.width: 1
 
         MouseArea {
+          id: scaleCardMouseArea
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
-          onClicked: root.focusedRow = 3
+          onClicked: {
+            root.focusedRow = 3
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
+          }
         }
 
         ColumnLayout {
@@ -1206,9 +1332,28 @@ Item {
                   color: Color.foreground
                 }
 
+                Rectangle {
+                  height: 20
+                  width: activeScaleText.implicitWidth + 12
+                  radius: 4
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  border.color: Color.accent
+                  border.width: 1
+
+                  Text {
+                    id: activeScaleText
+                    anchors.centerIn: parent
+                    text: Math.round(root.currentScale * 100) + "%"
+                    font.family: Style.font.family
+                    font.pixelSize: 10
+                    font.bold: true
+                    color: Color.accent
+                  }
+                }
+
                 Text {
                   visible: scaleCard.isFocused
-                  text: "• Use [←/→ or h/l] to cycle"
+                  text: "• Use [←/→ or h/l] to navigate • [Enter/Space] to set"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
@@ -1240,7 +1385,14 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 3
-                  root.cycleScale(-1)
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
+                  var cur = (root.scaleFocusIndex >= 0) ? root.scaleFocusIndex : root.currentScaleIndex()
+                  var next = Math.max(0, cur - 1)
+                  root.scaleFocusIndex = next
+                  if (next < root.scaleOptions.length) {
+                    root.customScaleOpen = false
+                    root.setScale(root.scaleOptions[next].value)
+                  }
                 }
               }
 
@@ -1251,7 +1403,12 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 3
-                  root.cycleScale(1)
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
+                  var cur = (root.scaleFocusIndex >= 0) ? root.scaleFocusIndex : root.currentScaleIndex()
+                  var next = Math.min(root.scaleOptions.length - 1, cur + 1)
+                  root.scaleFocusIndex = next
+                  root.customScaleOpen = false
+                  root.setScale(root.scaleOptions[next].value)
                 }
               }
             }
@@ -1273,38 +1430,77 @@ Item {
               model: root.scaleOptions
 
               delegate: Rectangle {
+                id: scaleOptionCard
                 width: scaleFlow.itemWidth
                 height: 34
                 radius: 6
-                readonly property bool isSelected: {
-                  var activeIdx = (root.scaleFocusIndex >= 0) ? root.scaleFocusIndex : root.currentScaleIndex()
-                  return activeIdx === index
+                readonly property bool isActive: Math.abs(root.currentScale - Number(modelData.value)) < 0.05
+                readonly property bool isFocused: root.isContentFocused && (root.focusedRow === 3) && (!root.customScaleOpen) && ((root.scaleFocusIndex >= 0 ? root.scaleFocusIndex : root.currentScaleIndex()) === index)
+                readonly property bool isHovered: scaleMouseArea.containsMouse
+
+                color: {
+                  if (isActive) {
+                    return isHovered ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.28)
+                                     : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  }
+                  if (isFocused) {
+                    return isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.18)
+                                     : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.14)
+                  }
+                  if (isHovered) {
+                    return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                  }
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)
                 }
-                color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
-                border.color: isSelected ? Color.accent : "transparent"
-                border.width: isSelected ? 1 : 0
+
+                border.color: {
+                  if (isFocused) {
+                    return Color.accent
+                  }
+                  if (isActive) {
+                    return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.6)
+                  }
+                  if (isHovered) {
+                    return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28)
+                  }
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                }
+                border.width: isFocused ? 2 : 1
 
                 MouseArea {
+                  id: scaleMouseArea
                   anchors.fill: parent
+                  hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
                     root.focusedRow = 3
                     root.scaleFocusIndex = index
                     root.customScaleOpen = false
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.setScale(modelData.value)
                   }
                 }
 
-                Text {
+                RowLayout {
                   anchors.centerIn: parent
-                  width: Math.min(implicitWidth, parent.width - 8)
-                  elide: Text.ElideRight
-                  horizontalAlignment: Text.AlignHCenter
-                  text: modelData.label
-                  font.family: Style.font.family
-                  font.pixelSize: 11
-                  font.bold: isSelected
-                  color: isSelected ? Color.accent : Color.foreground
+                  spacing: 4
+
+                  Rectangle {
+                    visible: scaleOptionCard.isActive
+                    width: 5
+                    height: 5
+                    radius: 2.5
+                    color: Color.accent
+                  }
+
+                  Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: modelData.label
+                    font.family: Style.font.family
+                    font.pixelSize: 11
+                    font.bold: scaleOptionCard.isActive || scaleOptionCard.isFocused
+                    color: scaleOptionCard.isActive ? Color.accent : (scaleOptionCard.isFocused || scaleOptionCard.isHovered ? Color.foreground : Color.muted)
+                  }
                 }
               }
             }
@@ -1315,16 +1511,47 @@ Item {
               width: Math.max(scaleFlow.itemWidth, 90)
               height: 34
               radius: 6
-              readonly property bool isSelected: root.customScaleOpen || (root.scaleFocusIndex >= 0 ? root.scaleFocusIndex === root.scaleOptions.length : root.isCustomScaleActive)
-              color: customScaleChip.isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
-              border.color: customScaleChip.isSelected ? Color.accent : "transparent"
-              border.width: customScaleChip.isSelected ? 1 : 0
+              readonly property bool isActive: root.isCustomScaleActive
+              readonly property bool isFocused: root.isContentFocused && (root.focusedRow === 3) && (root.customScaleOpen || ((root.scaleFocusIndex >= 0 ? root.scaleFocusIndex : root.currentScaleIndex()) === root.scaleOptions.length))
+              readonly property bool isHovered: customScaleMouse.containsMouse
+
+              color: {
+                if (isActive) {
+                  return isHovered ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.28)
+                                   : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                }
+                if (isFocused) {
+                  return isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.18)
+                                   : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.14)
+                }
+                if (isHovered) {
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                }
+                return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)
+              }
+
+              border.color: {
+                if (isFocused) {
+                  return Color.accent
+                }
+                if (isActive) {
+                  return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.6)
+                }
+                if (isHovered) {
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28)
+                }
+                return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+              }
+              border.width: isFocused ? 2 : 1
 
               MouseArea {
+                id: customScaleMouse
                 anchors.fill: parent
+                hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                   root.focusedRow = 3
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
                   if (root.customScaleOpen) {
                     root.customScaleOpen = false
                     root.scaleFocusIndex = root.currentScaleIndex()
@@ -1339,11 +1566,19 @@ Item {
                 width: Math.min(implicitWidth, parent.width - 8)
                 spacing: 4
 
+                Rectangle {
+                  visible: customScaleChip.isActive
+                  width: 5
+                  height: 5
+                  radius: 2.5
+                  color: Color.accent
+                }
+
                 Text {
                   text: "󰍹"
                   font.family: Style.font.family
                   font.pixelSize: 11
-                  color: customScaleChip.isSelected ? Color.accent : Color.muted
+                  color: customScaleChip.isActive ? Color.accent : (customScaleChip.isFocused || customScaleChip.isHovered ? Color.foreground : Color.muted)
                 }
 
                 Text {
@@ -1353,8 +1588,8 @@ Item {
                   text: root.isCustomScaleActive ? ("Custom: " + Math.round(root.currentScale * 100) + "%") : "Custom..."
                   font.family: Style.font.family
                   font.pixelSize: 11
-                  font.bold: customScaleChip.isSelected
-                  color: customScaleChip.isSelected ? Color.accent : Color.foreground
+                  font.bold: customScaleChip.isActive || customScaleChip.isFocused
+                  color: customScaleChip.isActive ? Color.accent : (customScaleChip.isFocused || customScaleChip.isHovered ? Color.foreground : Color.muted)
                 }
               }
             }
@@ -1369,8 +1604,7 @@ Item {
             Rectangle {
               Layout.fillWidth: true
               height: 1
-              color: Color.pickAlpha("border.subtle", "#262b30")
-              opacity: 0.5
+              color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12)
             }
 
             RowLayout {
@@ -1381,8 +1615,8 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 34
                 radius: 6
-                color: Color.pickAlpha("surface.selected", "#1a1f24")
-                border.color: (customScaleInput.activeFocus) ? Color.accent : Color.pickAlpha("border.subtle", "#2a3036")
+                color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05)
+                border.color: (customScaleInput.activeFocus) ? Color.accent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
                 border.width: (customScaleInput.activeFocus) ? 2 : 1
 
                 RowLayout {
@@ -1498,15 +1732,21 @@ Item {
         implicitHeight: Math.max(116, modeColLayout.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 4
-        color: modeCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: modeCard.isFocused ? Color.accent : "transparent"
-        border.width: modeCard.isFocused ? 2 : 1
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 4
+        readonly property bool isHovered: modeCardMouseArea.containsMouse
+        color: modeCard.isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.07) : (modeCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+        border.color: modeCard.isFocused ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35) : (modeCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.20) : "transparent")
+        border.width: 1
 
         MouseArea {
+          id: modeCardMouseArea
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
-          onClicked: root.focusedRow = 4
+          onClicked: {
+            root.focusedRow = 4
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
+          }
         }
 
         ColumnLayout {
@@ -1551,7 +1791,7 @@ Item {
                   height: 20
                   width: activeResLabel.implicitWidth + 12
                   radius: 4
-                  color: Color.pickAlpha("accent.subtle", "#1f3b30")
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
                   border.color: Color.accent
                   border.width: 1
 
@@ -1575,7 +1815,7 @@ Item {
 
                 Text {
                   visible: modeCard.isFocused
-                  text: "• Use [←/→ or h/l] to cycle"
+                  text: "• Use [←/→ or h/l] to navigate • [Enter/Space] to set"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
@@ -1607,7 +1847,14 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 4
-                  root.cycleMode(-1)
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
+                  var cur = (root.modeFocusIndex >= 0) ? root.modeFocusIndex : root.currentModeIndex()
+                  var next = Math.max(0, cur - 1)
+                  root.modeFocusIndex = next
+                  if (next < root.displayModes.length) {
+                    root.customModeOpen = false
+                    root.setMode(root.displayModes[next].mode)
+                  }
                 }
               }
 
@@ -1618,7 +1865,12 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 4
-                  root.cycleMode(1)
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
+                  var cur = (root.modeFocusIndex >= 0) ? root.modeFocusIndex : root.currentModeIndex()
+                  var next = Math.min(root.displayModes.length - 1, cur + 1)
+                  root.modeFocusIndex = next
+                  root.customModeOpen = false
+                  root.setMode(root.displayModes[next].mode)
                 }
               }
             }
@@ -1640,24 +1892,53 @@ Item {
               model: root.displayModes
 
               delegate: Rectangle {
+                id: modeOptionCard
                 width: modeFlow.itemWidth
                 height: 34
                 radius: 6
-                readonly property bool isSelected: {
-                  var activeIdx = (root.modeFocusIndex >= 0) ? root.modeFocusIndex : root.currentModeIndex()
-                  return activeIdx === index
+                readonly property bool isActive: (root.currentModeIndex() === index)
+                readonly property bool isFocused: root.isContentFocused && (root.focusedRow === 4) && (!root.customModeOpen) && ((root.modeFocusIndex >= 0 ? root.modeFocusIndex : root.currentModeIndex()) === index)
+                readonly property bool isHovered: modeMouseArea.containsMouse
+
+                color: {
+                  if (isActive) {
+                    return isHovered ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.28)
+                                     : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  }
+                  if (isFocused) {
+                    return isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.18)
+                                     : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.14)
+                  }
+                  if (isHovered) {
+                    return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                  }
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)
                 }
-                color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
-                border.color: isSelected ? Color.accent : (modelData.isNative ? Color.pickAlpha("accent.subtle", "#304036") : "transparent")
-                border.width: isSelected ? 1 : (modelData.isNative ? 1 : 0)
+
+                border.color: {
+                  if (isFocused) {
+                    return Color.accent
+                  }
+                  if (isActive) {
+                    return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.6)
+                  }
+                  if (isHovered) {
+                    return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28)
+                  }
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                }
+                border.width: isFocused ? 2 : 1
 
                 MouseArea {
+                  id: modeMouseArea
                   anchors.fill: parent
+                  hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
                     root.focusedRow = 4
                     root.modeFocusIndex = index
                     root.customModeOpen = false
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.setMode(modelData.mode)
                   }
                 }
@@ -1667,12 +1948,20 @@ Item {
                   width: Math.min(implicitWidth, parent.width - 8)
                   spacing: 4
 
+                  Rectangle {
+                    visible: modeOptionCard.isActive
+                    width: 5
+                    height: 5
+                    radius: 2.5
+                    color: Color.accent
+                  }
+
                   Text {
                     visible: modelData.isNative
                     text: "★"
                     font.family: Style.font.family
                     font.pixelSize: 11
-                    color: isSelected ? Color.accent : "#e5c890"
+                    color: modeOptionCard.isActive ? Color.accent : "#e5c890"
                   }
 
                   Text {
@@ -1682,8 +1971,8 @@ Item {
                     text: modelData.label
                     font.family: Style.font.family
                     font.pixelSize: 11
-                    font.bold: isSelected || modelData.isNative
-                    color: isSelected ? Color.accent : (modelData.isNative ? Color.foreground : Color.muted)
+                    font.bold: modeOptionCard.isActive || modeOptionCard.isFocused || modelData.isNative
+                    color: modeOptionCard.isActive ? Color.accent : (modeOptionCard.isFocused || modeOptionCard.isHovered ? Color.foreground : (modelData.isNative ? Color.foreground : Color.muted))
                   }
                 }
               }
@@ -1695,16 +1984,47 @@ Item {
               width: Math.max(modeFlow.itemWidth, 140)
               height: 34
               radius: 6
-              readonly property bool isSelected: root.customModeOpen || (root.modeFocusIndex >= 0 ? root.modeFocusIndex === root.displayModes.length : root.isCustomModeActive)
-              color: customModeChip.isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
-              border.color: customModeChip.isSelected ? Color.accent : "transparent"
-              border.width: customModeChip.isSelected ? 1 : 0
+              readonly property bool isActive: root.isCustomModeActive
+              readonly property bool isFocused: root.isContentFocused && (root.focusedRow === 4) && (root.customModeOpen || ((root.modeFocusIndex >= 0 ? root.modeFocusIndex : root.currentModeIndex()) === root.displayModes.length))
+              readonly property bool isHovered: customModeMouse.containsMouse
+
+              color: {
+                if (isActive) {
+                  return isHovered ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.28)
+                                   : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                }
+                if (isFocused) {
+                  return isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.18)
+                                   : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.14)
+                }
+                if (isHovered) {
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                }
+                return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)
+              }
+
+              border.color: {
+                if (isFocused) {
+                  return Color.accent
+                }
+                if (isActive) {
+                  return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.6)
+                }
+                if (isHovered) {
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28)
+                }
+                return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+              }
+              border.width: isFocused ? 2 : 1
 
               MouseArea {
+                id: customModeMouse
                 anchors.fill: parent
+                hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                   root.focusedRow = 4
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
                   if (root.customModeOpen) {
                     root.customModeOpen = false
                     root.modeFocusIndex = root.currentModeIndex()
@@ -1719,11 +2039,19 @@ Item {
                 width: Math.min(implicitWidth, parent.width - 8)
                 spacing: 5
 
+                Rectangle {
+                  visible: customModeChip.isActive
+                  width: 5
+                  height: 5
+                  radius: 2.5
+                  color: Color.accent
+                }
+
                 Text {
                   text: "󰒓"
                   font.family: Style.font.family
                   font.pixelSize: 12
-                  color: customModeChip.isSelected ? Color.accent : Color.muted
+                  color: customModeChip.isActive ? Color.accent : (customModeChip.isFocused || customModeChip.isHovered ? Color.foreground : Color.muted)
                 }
 
                 Text {
@@ -1733,8 +2061,8 @@ Item {
                   text: root.isCustomModeActive ? ("Custom: " + (activeMonitor ? (activeMonitor.width + "×" + activeMonitor.height) : "Active")) : "Custom Mode..."
                   font.family: Style.font.family
                   font.pixelSize: 11
-                  font.bold: customModeChip.isSelected
-                  color: customModeChip.isSelected ? Color.accent : Color.foreground
+                  font.bold: customModeChip.isActive || customModeChip.isFocused
+                  color: customModeChip.isActive ? Color.accent : (customModeChip.isFocused || customModeChip.isHovered ? Color.foreground : Color.muted)
                 }
               }
             }
@@ -1749,8 +2077,7 @@ Item {
             Rectangle {
               Layout.fillWidth: true
               height: 1
-              color: Color.pickAlpha("border.subtle", "#262b30")
-              opacity: 0.5
+              color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12)
             }
 
             RowLayout {
@@ -1761,8 +2088,8 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 34
                 radius: 6
-                color: Color.pickAlpha("surface.selected", "#1a1f24")
-                border.color: (customModeInput.activeFocus) ? Color.accent : Color.pickAlpha("border.subtle", "#2a3036")
+                color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05)
+                border.color: (customModeInput.activeFocus) ? Color.accent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
                 border.width: (customModeInput.activeFocus) ? 2 : 1
 
                 RowLayout {
