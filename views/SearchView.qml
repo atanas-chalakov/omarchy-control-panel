@@ -13,6 +13,7 @@ Item {
   property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
   property var panelRoot: null
   property bool activeFocusSection: false
+  readonly property bool isContentFocused: panelRoot ? panelRoot.focusSection === "content" : activeFocusSection
   property string focusZone: "input" // "input", "chips", "tiles", "results"
   property int selectedChipIndex: 0
   property int selectedTileIndex: 0
@@ -381,10 +382,12 @@ Item {
     Rectangle {
       Layout.fillWidth: true
       Layout.preferredHeight: 46
-      color: Color.pickAlpha("surface.subtle", "#181b1d")
+      color: (searchField && searchField.activeFocus)
+        ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+        : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)
       radius: Style.cornerRadius || 8
-      border.color: (root.focusZone === "input" && searchField && searchField.activeFocus) ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
-      border.width: (root.focusZone === "input" && searchField && searchField.activeFocus) ? 2 : 1
+      border.color: (searchField && searchField.activeFocus) ? Color.accent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+      border.width: (searchField && searchField.activeFocus) ? 2 : 1
 
       MouseArea {
         anchors.fill: parent
@@ -518,7 +521,9 @@ Item {
           Layout.preferredHeight: 22
           Layout.preferredWidth: searchHintBadgeText.implicitWidth + 12
           radius: 4
-          color: searchHintBadgeMouse.containsMouse ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
+          color: searchHintBadgeMouse.containsMouse ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
+          border.color: searchHintBadgeMouse.containsMouse ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.30) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12)
+          border.width: 1
 
           MouseArea {
             id: searchHintBadgeMouse
@@ -535,7 +540,7 @@ Item {
             font.family: Style.font.family
             font.pixelSize: 10
             font.bold: true
-            color: searchHintBadgeMouse.containsMouse ? Color.background : Color.muted
+            color: searchHintBadgeMouse.containsMouse ? Color.foreground : Color.muted
           }
         }
 
@@ -544,7 +549,9 @@ Item {
           Layout.preferredHeight: 22
           Layout.preferredWidth: inputHintBadgeText.implicitWidth + 12
           radius: 4
-          color: Color.pickAlpha("surface.selected", "#2a3036")
+          color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
+          border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12)
+          border.width: 1
 
           Text {
             id: inputHintBadgeText
@@ -562,10 +569,12 @@ Item {
           Layout.preferredWidth: 24
           radius: 12
           visible: searchField.text.length > 0
-          color: Color.pickAlpha("surface.selected", "#2a3036")
+          color: clearSearchMouse.containsMouse ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
 
           MouseArea {
+            id: clearSearchMouse
             anchors.fill: parent
+            hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: {
               searchField.text = ""
@@ -608,13 +617,16 @@ Item {
           height: 26
           width: chipContent.implicitWidth + 16
           radius: 5
-          color: (root.focusZone === "chips" && index === root.selectedChipIndex)
-            ? Color.pickAlpha("accent.subtle", "#203a30")
-            : (chipMouse.containsMouse ? Color.pickAlpha("surface.hover", "#22272c") : Color.pickAlpha("surface.subtle", "#181b1d"))
-          border.color: (root.focusZone === "chips" && index === root.selectedChipIndex)
+          readonly property bool isChipFocused: (root.focusZone === "chips" && index === root.selectedChipIndex)
+          readonly property bool isChipHovered: chipMouse.containsMouse
+
+          color: isChipFocused
+            ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isChipHovered ? 0.28 : 0.20)
+            : (isChipHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04))
+          border.color: isChipFocused
             ? Color.accent
-            : (chipMouse.containsMouse ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036"))
-          border.width: (root.focusZone === "chips" && index === root.selectedChipIndex) ? 2 : 1
+            : (isChipHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12))
+          border.width: isChipFocused ? 2 : 1
 
           MouseArea {
             id: chipMouse
@@ -622,6 +634,7 @@ Item {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: {
+              if (root.panelRoot) root.panelRoot.focusSection = "content"
               root.selectedChipIndex = index
               root.activateChip(index)
             }
@@ -630,7 +643,15 @@ Item {
           RowLayout {
             id: chipContent
             anchors.centerIn: parent
-            spacing: 4
+            spacing: 5
+
+            Rectangle {
+              visible: chipCard.isChipFocused
+              width: 5
+              height: 5
+              radius: 2.5
+              color: Color.accent
+            }
 
             Text {
               text: modelData.icon
@@ -643,24 +664,8 @@ Item {
               text: modelData.label
               font.family: Style.font.family
               font.pixelSize: 10
-              font.bold: (root.focusZone === "chips" && index === root.selectedChipIndex)
-              color: (root.focusZone === "chips" && index === root.selectedChipIndex) ? Color.accent : Color.foreground
-            }
-
-            Rectangle {
-              visible: root.focusZone === "chips" && index === root.selectedChipIndex
-              width: 14
-              height: 14
-              radius: 2
-              color: Color.accent
-
-              Text {
-                anchors.centerIn: parent
-                text: "󰌑"
-                font.family: Style.font.family
-                font.pixelSize: 8
-                color: Color.background
-              }
+              font.bold: chipCard.isChipFocused
+              color: chipCard.isChipFocused ? Color.accent : (chipCard.isChipHovered ? Color.foreground : Color.muted)
             }
           }
         }
@@ -683,18 +688,29 @@ Item {
 
       Rectangle {
         Layout.preferredHeight: 18
-        Layout.preferredWidth: countText.implicitWidth + 12
+        Layout.preferredWidth: countText.implicitWidth + 14
         radius: 4
-        color: Color.pickAlpha("accent.subtle", "#1f3b30")
+        color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+        border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+        border.width: 1
 
-        Text {
-          id: countText
+        RowLayout {
           anchors.centerIn: parent
-          text: root.searchResults.length + " matching " + (root.searchResults.length === 1 ? "setting" : "settings")
-          font.family: Style.font.family
-          font.pixelSize: 10
-          font.bold: true
-          color: Color.accent
+          spacing: 4
+          Rectangle {
+            width: 5
+            height: 5
+            radius: 2.5
+            color: Color.accent
+          }
+          Text {
+            id: countText
+            text: root.searchResults.length + " matching " + (root.searchResults.length === 1 ? "setting" : "settings")
+            font.family: Style.font.family
+            font.pixelSize: 10
+            font.bold: true
+            color: Color.accent
+          }
         }
       }
 
@@ -727,7 +743,9 @@ Item {
           Layout.fillWidth: true
           Layout.preferredHeight: 120
           visible: root.searchResults.length === 0
-          color: Color.pickAlpha("surface.subtle", "#181b1d")
+          color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+          border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+          border.width: 1
           radius: Style.cornerRadius || 8
 
           ColumnLayout {
@@ -770,16 +788,28 @@ Item {
             implicitHeight: Math.max(64, resultInnerRow.implicitHeight + 20)
             Layout.preferredHeight: implicitHeight
             radius: Style.cornerRadius || 8
-            color: (index === root.selectedResultIndex) ? Color.pickAlpha("surface.selected", "#222a30") : Color.pickAlpha("surface.subtle", "#181b1d")
-            border.color: (index === root.selectedResultIndex) ? Color.accent : "transparent"
-            border.width: (index === root.selectedResultIndex) ? 2 : 0
+            readonly property bool isResultFocused: (index === root.selectedResultIndex)
+            readonly property bool isResultHovered: resMouse.containsMouse
+
+            color: isResultFocused
+              ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+              : (isResultHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+            border.color: isResultFocused
+              ? Color.accent
+              : (isResultHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+            border.width: isResultFocused ? 2 : 1
 
             MouseArea {
+              id: resMouse
               anchors.fill: parent
               cursorShape: Qt.PointingHandCursor
               hoverEnabled: true
               onEntered: root.selectedResultIndex = index
-              onClicked: root.activateResult(index)
+              onClicked: {
+                if (root.panelRoot) root.panelRoot.focusSection = "content"
+                root.selectedResultIndex = index
+                root.activateResult(index)
+              }
             }
 
             RowLayout {
@@ -795,7 +825,9 @@ Item {
                 width: 38
                 height: 38
                 radius: 8
-                color: Color.pickAlpha("accent.subtle", "#1f3b30")
+                color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                border.width: 1
 
                 Text {
                   anchors.centerIn: parent
@@ -809,7 +841,6 @@ Item {
               // Title and Description
               ColumnLayout {
                 Layout.fillWidth: true
-                Layout.preferredWidth: 0
                 Layout.minimumWidth: 0
                 spacing: 2
 
@@ -823,14 +854,16 @@ Item {
                     font.family: Style.font.family
                     font.pixelSize: Style.font.body || 13
                     font.bold: true
-                    color: (index === root.selectedResultIndex) ? Color.accent : Color.foreground
+                    color: resultCard.isResultFocused ? Color.accent : Color.foreground
                   }
 
                   Rectangle {
                     width: catBadgeText.implicitWidth + 10
                     height: 18
                     radius: 4
-                    color: Color.pickAlpha("surface.selected", "#2a3036")
+                    color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
+                    border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12)
+                    border.width: 1
 
                     Text {
                       id: catBadgeText
@@ -861,7 +894,13 @@ Item {
                 Layout.preferredWidth: 84
                 Layout.minimumWidth: 84
                 radius: 5
-                color: (index === root.selectedResultIndex) ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
+                color: resultCard.isResultFocused
+                  ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.25)
+                  : (resultCard.isResultHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06))
+                border.color: resultCard.isResultFocused
+                  ? Color.accent
+                  : (resultCard.isResultHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12))
+                border.width: resultCard.isResultFocused ? 2 : 1
 
                 RowLayout {
                   anchors.centerIn: parent
@@ -871,8 +910,8 @@ Item {
                     text: "Open 󰅂"
                     font.family: Style.font.family
                     font.pixelSize: 11
-                    font.bold: true
-                    color: (index === root.selectedResultIndex) ? Color.background : Color.foreground
+                    font.bold: resultCard.isResultFocused
+                    color: resultCard.isResultFocused ? Color.accent : Color.foreground
                   }
                 }
               }
@@ -920,13 +959,16 @@ Item {
               implicitHeight: Math.max(76, tileRow.implicitHeight + 20)
               height: implicitHeight
               radius: 8
-              color: (root.focusZone === "tiles" && index === root.selectedTileIndex)
-                ? Color.pickAlpha("surface.selected", "#222a30")
-                : (tileMouse.containsMouse ? Color.pickAlpha("surface.hover", "#20252a") : Color.pickAlpha("surface.subtle", "#181b1d"))
-              border.color: (root.focusZone === "tiles" && index === root.selectedTileIndex)
+              readonly property bool isTileFocused: (root.focusZone === "tiles" && index === root.selectedTileIndex)
+              readonly property bool isTileHovered: tileMouse.containsMouse
+
+              color: isTileFocused
+                ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                : (isTileHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+              border.color: isTileFocused
                 ? Color.accent
-                : (tileMouse.containsMouse ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036"))
-              border.width: (root.focusZone === "tiles" && index === root.selectedTileIndex) ? 2 : 1
+                : (isTileHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+              border.width: isTileFocused ? 2 : 1
 
               MouseArea {
                 id: tileMouse
@@ -934,6 +976,7 @@ Item {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
                   root.selectedTileIndex = index
                   root.activateTile(index)
                 }
@@ -951,24 +994,23 @@ Item {
                   width: 36
                   height: 36
                   radius: 8
-                  color: (root.focusZone === "tiles" && index === root.selectedTileIndex)
-                    ? Color.accent
-                    : Color.pickAlpha("accent.subtle", "#1f3b30")
+                  color: tileCard.isTileFocused
+                    ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.25)
+                    : (tileCard.isTileHovered ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15))
+                  border.color: tileCard.isTileFocused ? Color.accent : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.50)
+                  border.width: 1
 
                   Text {
                     anchors.centerIn: parent
                     text: modelData.icon
                     font.family: Style.font.family
                     font.pixelSize: 18
-                    color: (root.focusZone === "tiles" && index === root.selectedTileIndex)
-                      ? Color.background
-                      : Color.accent
+                    color: Color.accent
                   }
                 }
 
                 ColumnLayout {
                   Layout.fillWidth: true
-                  Layout.preferredWidth: 0
                   Layout.minimumWidth: 0
                   spacing: 2
 
@@ -979,9 +1021,7 @@ Item {
                     font.family: Style.font.family
                     font.pixelSize: 12
                     font.bold: true
-                    color: (root.focusZone === "tiles" && index === root.selectedTileIndex)
-                      ? Color.accent
-                      : Color.foreground
+                    color: tileCard.isTileFocused ? Color.accent : Color.foreground
                     wrapMode: Text.WordWrap
                     maximumLineCount: 2
                   }
@@ -989,13 +1029,13 @@ Item {
                   Text {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
-                    text: (root.focusZone === "tiles" && index === root.selectedTileIndex)
+                    text: tileCard.isTileFocused
                       ? ("󰌑 Enter to open • " + modelData.subtitle)
                       : modelData.subtitle
                     font.family: Style.font.family
                     font.pixelSize: 10
-                    font.bold: (root.focusZone === "tiles" && index === root.selectedTileIndex)
-                    color: (root.focusZone === "tiles" && index === root.selectedTileIndex) ? Color.accent : Color.muted
+                    font.bold: tileCard.isTileFocused
+                    color: tileCard.isTileFocused ? Color.accent : Color.muted
                     wrapMode: Text.WordWrap
                     maximumLineCount: 2
                   }
@@ -1020,7 +1060,9 @@ Item {
           implicitHeight: Math.max(74, searchHintRow.implicitHeight + 28)
           Layout.preferredHeight: implicitHeight
           radius: 8
-          color: Color.pickAlpha("surface.subtle", "#181b1d")
+          color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+          border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+          border.width: 1
 
           RowLayout {
             id: searchHintRow
