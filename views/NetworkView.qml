@@ -17,6 +17,9 @@ Item {
   property var activeConnection: null
   property var networks: []
   property string statusMessage: ""
+  property bool isScanning: false
+  property bool wasScanning: false
+  property double lastScanTime: 0
 
   property string passwordSsid: ""
   property string passwordText: ""
@@ -179,7 +182,7 @@ Item {
     } else if (key === "l" || key === "L") {
       return handleMove(1, 0)
     } else if (key === "r" || key === "R") {
-      rescan()
+      rescan(true)
       return true
     } else if (key === "w" || key === "W") {
       focusedRow = 0
@@ -193,13 +196,30 @@ Item {
   }
 
   function refresh() {
+    refreshState()
+    if (root.wifiEnabled) {
+      var now = Date.now()
+      if (now - lastScanTime >= 4000) {
+        rescan(false)
+      }
+    }
+  }
+
+  function refreshState() {
     if (!stateProcess.running && pluginPath.length > 0) {
       stateProcess.command = [pluginPath + "/scripts/network-control.sh", "get-state"]
       stateProcess.running = true
     }
   }
 
-  function rescan() {
+  function rescan(force) {
+    if (!root.wifiEnabled) return
+    var now = Date.now()
+    if (!force && root.isScanning) return
+    if (!force && (now - lastScanTime < 4000)) return
+    lastScanTime = now
+    root.isScanning = true
+    root.wasScanning = true
     notifyStatus("Scanning for Wi-Fi networks...")
     rescanProcess.command = [pluginPath + "/scripts/network-control.sh", "wifi-rescan"]
     rescanProcess.running = true
@@ -275,6 +295,10 @@ Item {
           if (Array.isArray(data.networks)) {
             root.networks = data.networks
           }
+          if (root.wasScanning) {
+            root.wasScanning = false
+            root.notifyStatus("Scan complete • " + root.networks.length + " networks found")
+          }
         } catch (e) {
           console.warn("NetworkView: JSON parse error", e)
         }
@@ -287,7 +311,10 @@ Item {
     id: toggleWifiProcess
     onRunningChanged: {
       if (!running) {
-        root.refresh()
+        root.refreshState()
+        if (root.wifiEnabled) {
+          root.rescan(true)
+        }
         if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
           panelRoot.notifySettingChanged()
         }
@@ -298,7 +325,12 @@ Item {
   // Rescan Process
   Process {
     id: rescanProcess
-    onRunningChanged: if (!running) root.refresh()
+    onRunningChanged: {
+      if (!running) {
+        root.isScanning = false
+        root.refreshState()
+      }
+    }
   }
 
   // Connect Process
@@ -469,7 +501,7 @@ Item {
               wrapMode: Text.WordWrap
               text: root.activeConnection
                 ? ("IP: " + (root.activeConnection.ip || "Obtaining...") + "  •  Signal: " + (root.activeConnection.signal || 100) + "%  •  Band: " + (root.activeConnection.frequency || "2.4GHz"))
-                : (root.wifiEnabled ? "Select a network below or press [r] to scan" : "Turn on Wi-Fi interface to discover wireless networks")
+                : (root.wifiEnabled ? (root.isScanning ? "Scanning for available wireless networks..." : "Select a network below or press [r] to scan") : "Turn on Wi-Fi interface to discover wireless networks")
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 12
               color: Color.muted
@@ -477,10 +509,10 @@ Item {
           }
 
           Button {
-            text: "Scan"
+            text: root.isScanning ? "Scanning..." : "Scan"
             iconText: ""
-            enabled: root.wifiEnabled
-            onClicked: root.rescan()
+            enabled: root.wifiEnabled && !root.isScanning
+            onClicked: root.rescan(true)
           }
         }
       }
@@ -576,7 +608,7 @@ Item {
               Layout.fillWidth: true
               Layout.minimumWidth: 0
               wrapMode: Text.WordWrap
-              text: root.wifiEnabled ? "Wireless network interface is active and scanning." : "Wireless radio is switched off."
+              text: root.wifiEnabled ? (root.isScanning ? "Wireless network interface is active and scanning..." : "Wireless network interface is active.") : "Wireless radio is switched off."
               font.family: Style.font.family
               font.pixelSize: Style.font.subtext || 11
               color: Color.muted

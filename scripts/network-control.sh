@@ -92,7 +92,11 @@ case "$cmd" in
     ;;
 
   wifi-rescan)
-    nmcli dev wifi rescan >/dev/null 2>&1 || true
+    wifi_status=$(nmcli -t radio wifi 2>/dev/null || echo "disabled")
+    if [[ "$wifi_status" == "enabled" ]]; then
+      nmcli dev wifi rescan >/dev/null 2>&1 || true
+      sleep 1.5
+    fi
     ;;
 
   wifi-connect)
