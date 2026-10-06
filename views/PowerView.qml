@@ -45,6 +45,7 @@ Item {
   }
 
   readonly property bool isCustomScreensaverActive: {
+    if (root.screensaverTimeout === 0) return false
     for (var i = 0; i < screensaverOptions.length; i++) {
       if (screensaverOptions[i].seconds === root.screensaverTimeout) return false
     }
@@ -52,6 +53,7 @@ Item {
   }
 
   readonly property bool isCustomLockActive: {
+    if (root.lockTimeout === 0) return false
     for (var j = 0; j < lockOptions.length; j++) {
       if (lockOptions[j].seconds === root.lockTimeout) return false
     }
@@ -158,6 +160,7 @@ Item {
 
   readonly property var screensaverOptions: [
     { label: "1 min", seconds: 60 },
+    { label: "2.5 min", seconds: 150 },
     { label: "5 min", seconds: 300 },
     { label: "15 min", seconds: 900 },
     { label: "30 min", seconds: 1800 },
@@ -220,9 +223,7 @@ Item {
   }
 
   function currentScreensaverIndex() {
-    if (customScreensaverOpen || isCustomScreensaverActive) {
-      return screensaverOptions.length
-    }
+    if (customScreensaverOpen) return screensaverOptions.length
     for (var i = 0; i < screensaverOptions.length; i++) {
       if (screensaverOptions[i].seconds === root.screensaverTimeout) return i
     }
@@ -230,9 +231,7 @@ Item {
   }
 
   function currentLockIndex() {
-    if (customLockOpen || isCustomLockActive) {
-      return lockOptions.length
-    }
+    if (customLockOpen) return lockOptions.length
     for (var i = 0; i < lockOptions.length; i++) {
       if (lockOptions[i].seconds === root.lockTimeout) return i
     }
@@ -389,7 +388,7 @@ Item {
       return handleMove(-1, 0)
     } else if (key === "l" || key === "L") {
       return handleMove(1, 0)
-    } else if (key >= "1" && key <= "5") {
+    } else if (key >= "1" && key <= "6") {
       var n = parseInt(key) - 1
       if (focusedRow === 0 && n < powerProfiles.length) {
         setProfile(powerProfiles[n].id)
@@ -431,8 +430,20 @@ Item {
   }
 
   function setIdle(newScreensaver, newLock) {
+    root.customScreensaverOpen = false
+    root.customLockOpen = false
     root.screensaverTimeout = newScreensaver
     root.lockTimeout = newLock
+    var sIdx = screensaverOptions.length
+    for (var i = 0; i < screensaverOptions.length; i++) {
+      if (screensaverOptions[i].seconds === newScreensaver) { sIdx = i; break }
+    }
+    var lIdx = lockOptions.length
+    for (var j = 0; j < lockOptions.length; j++) {
+      if (lockOptions[j].seconds === newLock) { lIdx = j; break }
+    }
+    root.screensaverFocusIndex = sIdx
+    root.lockFocusIndex = lIdx
     setIdleProcess.command = [
       pluginPath + "/scripts/power-control.sh",
       "set-idle",
@@ -1128,7 +1139,7 @@ Item {
               width: Math.max(screensaverFlow.itemWidth, 80)
               height: 34
               radius: 6
-              readonly property bool isSelected: root.isCustomScreensaverActive || root.customScreensaverOpen || ((root.screensaverFocusIndex >= 0 ? root.screensaverFocusIndex : root.currentScreensaverIndex()) === root.screensaverOptions.length)
+              readonly property bool isSelected: root.customScreensaverOpen || (root.screensaverFocusIndex >= 0 ? root.screensaverFocusIndex === root.screensaverOptions.length : root.isCustomScreensaverActive)
               color: customScreensaverChip.isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
               border.color: customScreensaverChip.isSelected ? Color.accent : "transparent"
               border.width: customScreensaverChip.isSelected ? 1 : 0
@@ -1138,9 +1149,9 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                   root.focusedRow = 2
-                  root.screensaverFocusIndex = root.screensaverOptions.length
                   if (root.customScreensaverOpen) {
                     root.customScreensaverOpen = false
+                    root.screensaverFocusIndex = root.currentScreensaverIndex()
                   } else {
                     root.openCustomScreensaver()
                   }
@@ -1223,6 +1234,8 @@ Item {
                     Keys.onEscapePressed: function(event) {
                       event.accepted = true
                       root.customScreensaverOpen = false
+                      root.customScreensaverError = ""
+                      root.screensaverFocusIndex = root.currentScreensaverIndex()
                       if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
                         root.panelRoot.returnFocusToKeyCatcher()
                       } else {
@@ -1263,6 +1276,7 @@ Item {
                 onClicked: {
                   root.customScreensaverOpen = false
                   root.customScreensaverError = ""
+                  root.screensaverFocusIndex = root.currentScreensaverIndex()
                   if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
                     root.panelRoot.returnFocusToKeyCatcher()
                   }
@@ -1472,7 +1486,7 @@ Item {
               width: Math.max(lockFlow.itemWidth, 80)
               height: 34
               radius: 6
-              readonly property bool isSelected: root.isCustomLockActive || root.customLockOpen || ((root.lockFocusIndex >= 0 ? root.lockFocusIndex : root.currentLockIndex()) === root.lockOptions.length)
+              readonly property bool isSelected: root.customLockOpen || (root.lockFocusIndex >= 0 ? root.lockFocusIndex === root.lockOptions.length : root.isCustomLockActive)
               color: customLockChip.isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
               border.color: customLockChip.isSelected ? Color.accent : "transparent"
               border.width: customLockChip.isSelected ? 1 : 0
@@ -1482,9 +1496,9 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                   root.focusedRow = 3
-                  root.lockFocusIndex = root.lockOptions.length
                   if (root.customLockOpen) {
                     root.customLockOpen = false
+                    root.lockFocusIndex = root.currentLockIndex()
                   } else {
                     root.openCustomLock()
                   }
@@ -1567,6 +1581,8 @@ Item {
                     Keys.onEscapePressed: function(event) {
                       event.accepted = true
                       root.customLockOpen = false
+                      root.customLockError = ""
+                      root.lockFocusIndex = root.currentLockIndex()
                       if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
                         root.panelRoot.returnFocusToKeyCatcher()
                       } else {
@@ -1607,6 +1623,7 @@ Item {
                 onClicked: {
                   root.customLockOpen = false
                   root.customLockError = ""
+                  root.lockFocusIndex = root.currentLockIndex()
                   if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
                     root.panelRoot.returnFocusToKeyCatcher()
                   }

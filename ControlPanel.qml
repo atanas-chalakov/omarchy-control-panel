@@ -67,8 +67,11 @@ Item {
     var maxW = Math.max(320, scrW - marginH)
     var maxH = Math.max(260, scrH - marginV)
 
-    var targetW = Math.min(1886, maxW)
-    var targetH = Math.min(880, maxH)
+    var desiredW = root.showDiffInspector ? (root.isCompactScreen ? 1120 : 1260) : (root.isCompactScreen ? 880 : 1060)
+    var desiredH = root.isCompactScreen ? 620 : 740
+
+    var targetW = Math.min(desiredW, maxW)
+    var targetH = Math.min(desiredH, maxH)
 
     if (forceReset || screenChanged || window.width > maxW || window.height > maxH || window.width <= 0 || window.height <= 0) {
       window.width = targetW
@@ -78,7 +81,14 @@ Item {
 
   Timer {
     id: screenRefitTimer
-    interval: 300
+    interval: 250
+    repeat: false
+    onTriggered: root.fitWindowToScreen(true)
+  }
+
+  Timer {
+    id: screenRefitSecondaryTimer
+    interval: 650
     repeat: false
     onTriggered: root.fitWindowToScreen(true)
   }
@@ -89,6 +99,7 @@ Item {
     }
     root.fitWindowToScreen(true)
     screenRefitTimer.restart()
+    screenRefitSecondaryTimer.restart()
   }
 
   readonly property var categories: [
@@ -248,8 +259,18 @@ Item {
     id: window
     title: "Control Panel"
     color: Color.background
-    implicitWidth: window.screen ? Math.max(480, Math.min(1886, window.screen.width - (window.screen.width < 800 ? 16 : 34))) : 1280
-    implicitHeight: window.screen ? Math.max(260, Math.min(880, window.screen.height - (window.screen.height < 600 ? 48 : (window.screen.height < 800 ? 64 : 80)))) : 680
+    implicitWidth: {
+      var scrW = window.screen ? window.screen.width : 1280
+      var marginH = scrW < 800 ? 16 : 34
+      var desiredW = root.showDiffInspector ? (root.isCompactScreen ? 1120 : 1260) : (root.isCompactScreen ? 880 : 1060)
+      return Math.max(480, Math.min(desiredW, scrW - marginH))
+    }
+    implicitHeight: {
+      var scrH = window.screen ? window.screen.height : 720
+      var marginV = scrH < 600 ? 48 : (scrH < 800 ? 64 : 80)
+      var desiredH = root.isCompactScreen ? 620 : 740
+      return Math.max(260, Math.min(desiredH, scrH - marginV))
+    }
     minimumSize: {
       var scrW = window.screen ? window.screen.width : 1280
       var scrH = window.screen ? window.screen.height : 720

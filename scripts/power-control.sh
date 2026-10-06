@@ -41,7 +41,7 @@ case "$cmd" in
     fi
 
     # If screensaver-off toggle is active, report 0 (Never)
-    if omarchy-toggle-enabled screensaver-off 2>/dev/null; then
+    if [[ -f "$HOME/.local/state/omarchy/toggles/screensaver-off" ]] || omarchy-toggle-enabled screensaver-off 2>/dev/null; then
       screensaver=0
     elif (( screensaver == 0 )); then
       screensaver=0

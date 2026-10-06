@@ -44,7 +44,7 @@ Item {
 
   readonly property bool isCustomScaleActive: {
     for (var i = 0; i < scaleOptions.length; i++) {
-      if (Math.abs(root.currentScale - Number(scaleOptions[i].value)) < 0.05) {
+      if (Math.abs(root.currentScale - Number(scaleOptions[i].value)) < 0.1) {
         return false
       }
     }
@@ -178,7 +178,7 @@ Item {
         seen[key] = true
         list.push({
           label: "★ Native (" + nativeW + " × " + nativeH + " @ " + hz + "Hz)",
-          mode: clean,
+          mode: "preferred",
           w: nativeW,
           h: nativeH,
           hz: hz,
@@ -195,7 +195,7 @@ Item {
       seen[mkey] = true
       list.push({
         label: "★ Native (" + nativeW + " × " + nativeH + " @ " + mhz + "Hz)",
-        mode: nativeW + "x" + nativeH + "@" + mhz,
+        mode: "preferred",
         w: nativeW,
         h: nativeH,
         hz: mhz,
@@ -252,23 +252,19 @@ Item {
   }
 
   function currentScaleIndex() {
-    if (customScaleOpen || isCustomScaleActive) {
-      return scaleOptions.length
-    }
-    var best = 0
+    if (customScaleOpen) return scaleOptions.length
+    var best = -1
     var minDiff = 999
     for (var i = 0; i < scaleOptions.length; i++) {
       var diff = Math.abs(root.currentScale - Number(scaleOptions[i].value))
       if (diff < minDiff) { minDiff = diff; best = i }
     }
-    if (minDiff > 0.05) return scaleOptions.length
-    return best
+    if (minDiff > 0.1) return scaleOptions.length
+    return best >= 0 ? best : scaleOptions.length
   }
 
   function currentModeIndex() {
-    if (customModeOpen || isCustomModeActive) {
-      return displayModes.length
-    }
+    if (customModeOpen) return displayModes.length
     if (!activeMonitor) return 0
     for (var i = 0; i < displayModes.length; i++) {
       if (displayModes[i].w === activeMonitor.width && displayModes[i].h === activeMonitor.height) {
@@ -452,6 +448,19 @@ Item {
       return handleMove(-1, 0)
     } else if (key === "l" || key === "L") {
       return handleMove(1, 0)
+    } else if (key >= "1" && key <= "4") {
+      var n = parseInt(key) - 1
+      if (focusedRow === 3 && n < scaleOptions.length) {
+        scaleFocusIndex = n
+        customScaleOpen = false
+        setScale(scaleOptions[n].value)
+        return true
+      } else if (focusedRow === 4 && n < displayModes.length) {
+        modeFocusIndex = n
+        customModeOpen = false
+        setMode(displayModes[n].mode)
+        return true
+      }
     }
     return false
   }
@@ -486,6 +495,16 @@ Item {
   }
 
   function setScale(scaleVal) {
+    root.customScaleOpen = false
+    var targetNum = Number(scaleVal)
+    var foundIdx = -1
+    for (var i = 0; i < scaleOptions.length; i++) {
+      if (Math.abs(targetNum - Number(scaleOptions[i].value)) < 0.1) {
+        foundIdx = i
+        break
+      }
+    }
+    root.scaleFocusIndex = (foundIdx >= 0) ? foundIdx : root.currentScaleIndex()
     var mon = activeMonitor ? activeMonitor.name : ""
     setScaleProcess.command = [pluginPath + "/scripts/display-control.sh", "set-scale", String(scaleVal), mon]
     setScaleProcess.running = true
@@ -494,6 +513,15 @@ Item {
 
   function setMode(modeVal) {
     if (!activeMonitor) return
+    root.customModeOpen = false
+    var foundIdx = -1
+    for (var i = 0; i < displayModes.length; i++) {
+      if (displayModes[i].mode === modeVal || (displayModes[i].isNative && (modeVal === "preferred" || modeVal === displayModes[i].mode))) {
+        foundIdx = i
+        break
+      }
+    }
+    root.modeFocusIndex = (foundIdx >= 0) ? foundIdx : root.currentModeIndex()
     setModeProcess.command = [
       pluginPath + "/scripts/display-control.sh",
       "set-mode",
@@ -1293,7 +1321,7 @@ Item {
               width: Math.max(scaleFlow.itemWidth, 90)
               height: 34
               radius: 6
-              readonly property bool isSelected: root.isCustomScaleActive || root.customScaleOpen || ((root.scaleFocusIndex >= 0 ? root.scaleFocusIndex : root.currentScaleIndex()) === root.scaleOptions.length)
+              readonly property bool isSelected: root.customScaleOpen || (root.scaleFocusIndex >= 0 ? root.scaleFocusIndex === root.scaleOptions.length : root.isCustomScaleActive)
               color: customScaleChip.isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
               border.color: customScaleChip.isSelected ? Color.accent : "transparent"
               border.width: customScaleChip.isSelected ? 1 : 0
@@ -1303,9 +1331,9 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                   root.focusedRow = 3
-                  root.scaleFocusIndex = root.scaleOptions.length
                   if (root.customScaleOpen) {
                     root.customScaleOpen = false
+                    root.scaleFocusIndex = root.currentScaleIndex()
                   } else {
                     root.openCustomScale()
                   }
@@ -1400,6 +1428,8 @@ Item {
                     Keys.onEscapePressed: function(event) {
                       event.accepted = true
                       root.customScaleOpen = false
+                      root.customScaleError = ""
+                      root.scaleFocusIndex = root.currentScaleIndex()
                       if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
                         root.panelRoot.returnFocusToKeyCatcher()
                       } else {
@@ -1440,6 +1470,7 @@ Item {
                 onClicked: {
                   root.customScaleOpen = false
                   root.customScaleError = ""
+                  root.scaleFocusIndex = root.currentScaleIndex()
                   if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
                     root.panelRoot.returnFocusToKeyCatcher()
                   }
@@ -1533,7 +1564,14 @@ Item {
                   Text {
                     id: activeResLabel
                     anchors.centerIn: parent
-                    text: activeMonitor ? (activeMonitor.width + " × " + activeMonitor.height + (activeMonitor.refreshRate ? (" @ " + activeMonitor.refreshRate + "Hz") : "")) : ""
+                    text: {
+                      if (!activeMonitor) return ""
+                      var res = activeMonitor.width + " × " + activeMonitor.height + (activeMonitor.refreshRate ? (" @ " + activeMonitor.refreshRate + "Hz") : "")
+                      if (root.displayModes.length > 0 && root.displayModes[0].isNative && activeMonitor.width === root.displayModes[0].w && activeMonitor.height === root.displayModes[0].h) {
+                        return "★ Native (" + res + ")"
+                      }
+                      return res
+                    }
                     font.family: Style.font.family
                     font.pixelSize: 10
                     font.bold: true
@@ -1663,7 +1701,7 @@ Item {
               width: Math.max(modeFlow.itemWidth, 140)
               height: 34
               radius: 6
-              readonly property bool isSelected: root.isCustomModeActive || root.customModeOpen || ((root.modeFocusIndex >= 0 ? root.modeFocusIndex : root.currentModeIndex()) === root.displayModes.length)
+              readonly property bool isSelected: root.customModeOpen || (root.modeFocusIndex >= 0 ? root.modeFocusIndex === root.displayModes.length : root.isCustomModeActive)
               color: customModeChip.isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
               border.color: customModeChip.isSelected ? Color.accent : "transparent"
               border.width: customModeChip.isSelected ? 1 : 0
@@ -1673,9 +1711,9 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                   root.focusedRow = 4
-                  root.modeFocusIndex = root.displayModes.length
                   if (root.customModeOpen) {
                     root.customModeOpen = false
+                    root.modeFocusIndex = root.currentModeIndex()
                   } else {
                     root.openCustomMode()
                   }
@@ -1770,6 +1808,8 @@ Item {
                     Keys.onEscapePressed: function(event) {
                       event.accepted = true
                       root.customModeOpen = false
+                      root.customModeError = ""
+                      root.modeFocusIndex = root.currentModeIndex()
                       if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
                         root.panelRoot.returnFocusToKeyCatcher()
                       } else {
@@ -1810,6 +1850,7 @@ Item {
                 onClicked: {
                   root.customModeOpen = false
                   root.customModeError = ""
+                  root.modeFocusIndex = root.currentModeIndex()
                   if (root.panelRoot && typeof root.panelRoot.returnFocusToKeyCatcher === "function") {
                     root.panelRoot.returnFocusToKeyCatcher()
                   }
