@@ -130,7 +130,14 @@ Item {
         var parsed = JSON.parse(String(payloadJson))
         if (parsed && typeof parsed.category === "string") {
           currentCategory = parsed.category
-          focusSection = (parsed.category === "search") ? "content" : "sidebar"
+          focusSection = "content"
+          if (typeof parsed.row === "number") {
+            Qt.callLater(function() {
+              if (categoryLoader.item && "focusedRow" in categoryLoader.item) {
+                categoryLoader.item.focusedRow = parsed.row
+              }
+            })
+          }
         }
         if (parsed && typeof parsed.diff === "boolean") {
           showDiffInspector = parsed.diff
