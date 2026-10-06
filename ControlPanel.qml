@@ -881,7 +881,7 @@ Item {
                   Layout.preferredWidth: navHintText.implicitWidth + 12
                   radius: 4
                   visible: root.currentCategory !== "search" && rightPanelView.width > 300
-                  color: Color.pickAlpha("surface.subtle", "#181b1d")
+                  color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)
 
                   Text {
                     id: navHintText
@@ -942,7 +942,7 @@ Item {
                 Rectangle {
                   anchors.fill: parent
                   visible: categoryLoader.status !== Loader.Ready
-                  color: Color.pickAlpha("surface.subtle", "#181b1d")
+                  color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)
                   radius: Style.cornerRadius || 8
 
                   Text {

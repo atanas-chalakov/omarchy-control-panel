@@ -13,8 +13,8 @@ Rectangle {
   Layout.maximumWidth: 380
   Layout.fillHeight: true
   width: 360
-  color: Color.pickAlpha("surface.subtle", "#131619")
-  border.color: Color.pickAlpha("surface.selected", "#22272c")
+  color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)
+  border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12)
   border.width: 1
   radius: 8
   clip: true
@@ -199,7 +199,9 @@ Rectangle {
         width: 26
         height: 26
         radius: 6
-        color: Color.pickAlpha("accent.subtle", "#1f3b30")
+        color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+        border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+        border.width: 1
 
         Text {
           anchors.centerIn: parent
@@ -235,7 +237,7 @@ Rectangle {
         width: 24
         height: 24
         radius: 4
-        color: closeMouse.containsMouse ? Color.pickAlpha("surface.selected", "#2a3036") : "transparent"
+        color: closeMouse.containsMouse ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12) : "transparent"
 
         MouseArea {
           id: closeMouse
@@ -262,7 +264,7 @@ Rectangle {
       Layout.fillWidth: true
       Layout.preferredHeight: 30
       radius: 6
-      color: Color.pickAlpha("surface.hover", "#1b1f23")
+      color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)
 
       RowLayout {
         anchors.fill: parent
@@ -274,12 +276,18 @@ Rectangle {
           Layout.fillWidth: true
           Layout.fillHeight: true
           radius: 4
-          color: root.currentTab === "diff" ? Color.pickAlpha("surface.selected", "#2b323a") : "transparent"
-          border.color: root.currentTab === "diff" ? Color.accent : "transparent"
-          border.width: root.currentTab === "diff" ? 1 : 0
+          readonly property bool isTabActive: root.currentTab === "diff"
+          readonly property bool isTabHovered: tabDiffMouse.containsMouse
+          color: isTabActive
+            ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isTabHovered ? 0.28 : 0.20)
+            : (isTabHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : "transparent")
+          border.color: isTabActive ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : "transparent"
+          border.width: isTabActive ? 1 : 0
 
           MouseArea {
+            id: tabDiffMouse
             anchors.fill: parent
+            hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: root.currentTab = "diff"
           }
@@ -292,16 +300,16 @@ Rectangle {
               text: "󰊢 Diff"
               font.family: Style.font.family
               font.pixelSize: 10
-              font.bold: root.currentTab === "diff"
-              color: root.currentTab === "diff" ? Color.accent : Color.muted
+              font.bold: isTabActive
+              color: isTabActive ? Color.accent : (parent.parent.isTabHovered ? Color.foreground : Color.muted)
             }
 
             Rectangle {
               visible: root.hasDiff
-              Layout.preferredHeight: 12
-              Layout.preferredWidth: 12
-              radius: 6
-              color: "#73daca"
+              Layout.preferredHeight: 6
+              Layout.preferredWidth: 6
+              radius: 3
+              color: Color.accent
             }
           }
         }
@@ -311,12 +319,18 @@ Rectangle {
           Layout.fillWidth: true
           Layout.fillHeight: true
           radius: 4
-          color: root.currentTab === "file" ? Color.pickAlpha("surface.selected", "#2b323a") : "transparent"
-          border.color: root.currentTab === "file" ? Color.accent : "transparent"
-          border.width: root.currentTab === "file" ? 1 : 0
+          readonly property bool isTabActive: root.currentTab === "file"
+          readonly property bool isTabHovered: tabFileMouse.containsMouse
+          color: isTabActive
+            ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isTabHovered ? 0.28 : 0.20)
+            : (isTabHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : "transparent")
+          border.color: isTabActive ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : "transparent"
+          border.width: isTabActive ? 1 : 0
 
           MouseArea {
+            id: tabFileMouse
             anchors.fill: parent
+            hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: root.currentTab = "file"
           }
@@ -326,8 +340,8 @@ Rectangle {
             text: " File"
             font.family: Style.font.family
             font.pixelSize: 10
-            font.bold: root.currentTab === "file"
-            color: root.currentTab === "file" ? Color.accent : Color.muted
+            font.bold: isTabActive
+            color: isTabActive ? Color.accent : (parent.isTabHovered ? Color.foreground : Color.muted)
           }
         }
 
@@ -336,12 +350,18 @@ Rectangle {
           Layout.fillWidth: true
           Layout.fillHeight: true
           radius: 4
-          color: root.currentTab === "history" ? Color.pickAlpha("surface.selected", "#2b323a") : "transparent"
-          border.color: root.currentTab === "history" ? Color.accent : "transparent"
-          border.width: root.currentTab === "history" ? 1 : 0
+          readonly property bool isTabActive: root.currentTab === "history"
+          readonly property bool isTabHovered: tabHistMouse.containsMouse
+          color: isTabActive
+            ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isTabHovered ? 0.28 : 0.20)
+            : (isTabHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : "transparent")
+          border.color: isTabActive ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : "transparent"
+          border.width: isTabActive ? 1 : 0
 
           MouseArea {
+            id: tabHistMouse
             anchors.fill: parent
+            hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: root.currentTab = "history"
           }
@@ -354,16 +374,16 @@ Rectangle {
               text: " History"
               font.family: Style.font.family
               font.pixelSize: 10
-              font.bold: root.currentTab === "history"
-              color: root.currentTab === "history" ? Color.accent : Color.muted
+              font.bold: isTabActive
+              color: isTabActive ? Color.accent : (parent.parent.isTabHovered ? Color.foreground : Color.muted)
             }
 
             Rectangle {
               visible: root.historyList.length > 0
               Layout.preferredHeight: 14
-              Layout.preferredWidth: histCountText.implicitWidth + 6
-              radius: 3
-              color: Color.pickAlpha("surface.selected", "#323a42")
+              Layout.preferredWidth: histCountText.implicitWidth + 8
+              radius: 4
+              color: isTabActive ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.30) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10)
 
               Text {
                 id: histCountText
@@ -372,7 +392,7 @@ Rectangle {
                 font.family: Style.font.family
                 font.pixelSize: 8
                 font.bold: true
-                color: Color.foreground
+                color: isTabActive ? Color.accent : Color.foreground
               }
             }
           }
@@ -385,7 +405,7 @@ Rectangle {
       Layout.fillWidth: true
       Layout.preferredHeight: 32
       radius: 6
-      color: Color.pickAlpha("surface.selected", "#1e2328")
+      color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05)
 
       RowLayout {
         anchors.fill: parent
@@ -423,7 +443,9 @@ Rectangle {
           Layout.preferredHeight: 22
           Layout.preferredWidth: openBtnText.implicitWidth + 12
           radius: 4
-          color: openBtnMouse.containsMouse ? Color.accent : Color.pickAlpha("accent.subtle", "#1f3b30")
+          color: openBtnMouse.containsMouse ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.30) : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+          border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+          border.width: 1
 
           MouseArea {
             id: openBtnMouse
@@ -484,8 +506,8 @@ Rectangle {
               Layout.fillWidth: true
               Layout.preferredHeight: 46
               radius: 6
-              color: Color.pickAlpha("surface.subtle", "#191d21")
-              border.color: Color.pickAlpha("surface.selected", "#2a3036")
+              color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)
+              border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
               border.width: 1
 
               RowLayout {
@@ -560,7 +582,7 @@ Rectangle {
               Layout.fillWidth: true
               Layout.preferredHeight: 180
               radius: 6
-              color: Color.pickAlpha("surface.subtle", "#181b1e")
+              color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
 
               ColumnLayout {
                 anchors.centerIn: parent
@@ -672,8 +694,8 @@ Rectangle {
               Layout.fillHeight: true
               Layout.minimumHeight: 280
               radius: 6
-              color: Color.pickAlpha("surface.subtle", "#16191c")
-              border.color: Color.pickAlpha("surface.selected", "#252b31")
+              color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+              border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
               border.width: 1
 
               ScrollView {
@@ -730,7 +752,7 @@ Rectangle {
                 Layout.preferredHeight: 18
                 Layout.preferredWidth: clearTxt.implicitWidth + 8
                 radius: 3
-                color: clearMouse.containsMouse ? "#42181c" : Color.pickAlpha("surface.selected", "#2a3036")
+                color: clearMouse.containsMouse ? Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.25) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
 
                 MouseArea {
                   id: clearMouse
@@ -757,7 +779,7 @@ Rectangle {
               Layout.fillWidth: true
               Layout.preferredHeight: 140
               radius: 6
-              color: Color.pickAlpha("surface.subtle", "#181b1e")
+              color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
 
               ColumnLayout {
                 anchors.centerIn: parent
@@ -790,11 +812,15 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 52
                 radius: 6
-                color: (histMouse.containsMouse || (root.latestDiff && root.latestDiff.id === modelData.id))
-                  ? Color.pickAlpha("surface.selected", "#222a30")
-                  : Color.pickAlpha("surface.subtle", "#181b1e")
-                border.color: (root.latestDiff && root.latestDiff.id === modelData.id) ? Color.accent : "transparent"
-                border.width: (root.latestDiff && root.latestDiff.id === modelData.id) ? 1 : 0
+                readonly property bool isSelected: (root.latestDiff && root.latestDiff.id === modelData.id)
+                readonly property bool isHovered: histMouse.containsMouse
+                color: isSelected
+                  ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, isHovered ? 0.28 : 0.20)
+                  : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03))
+                border.color: isSelected
+                  ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                  : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08))
+                border.width: 1
 
                 MouseArea {
                   id: histMouse
@@ -822,7 +848,7 @@ Rectangle {
                         font.family: Style.font.family
                         font.pixelSize: 11
                         font.bold: true
-                        color: Color.foreground
+                        color: histCard.isSelected ? Color.accent : Color.foreground
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                       }
@@ -850,7 +876,11 @@ Rectangle {
                     Layout.preferredHeight: 20
                     Layout.preferredWidth: changesTxt.implicitWidth + 8
                     radius: 3
-                    color: Color.pickAlpha("surface.selected", "#2c333a")
+                    color: histCard.isSelected
+                      ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.30)
+                      : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                    border.color: histCard.isSelected ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                    border.width: 1
 
                     Text {
                       id: changesTxt
