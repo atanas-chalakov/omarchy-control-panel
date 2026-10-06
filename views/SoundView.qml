@@ -23,8 +23,24 @@ Item {
   property string statusMessage: ""
 
   property bool activeFocusSection: false
+  readonly property bool isContentFocused: {
+    if (root.panelRoot && root.panelRoot.focusSection !== undefined) {
+      return root.panelRoot.focusSection === "content"
+    }
+    return activeFocusSection
+  }
+  property int sinkFocusIndex: -1
+  property int sourceFocusIndex: -1
+
+  onSinksChanged: sinkFocusIndex = currentSinkIndex()
+  onSourcesChanged: sourceFocusIndex = currentSourceIndex()
+
   property int focusedRow: 0   // 0: Vol, 1: Mute, 2: Sink, 3: Mic Vol, 4: Mic Mute, 5: Mic Source, 6+: Apps
-  onFocusedRowChanged: ensureRowVisible(focusedRow)
+  onFocusedRowChanged: {
+    ensureRowVisible(focusedRow)
+    if (focusedRow !== 2) sinkFocusIndex = currentSinkIndex()
+    if (focusedRow !== 5) sourceFocusIndex = currentSourceIndex()
+  }
 
   function ensureRowVisible(index) {
     if (!scrollArea || !scrollArea.contentItem) return
@@ -60,11 +76,11 @@ Item {
 
   function cycleSink(delta) {
     if (sinks.length === 0) return false
-    var idx = currentSinkIndex()
-    if (delta < 0 && idx === 0) return false
-    var next = Math.max(0, Math.min(sinks.length - 1, idx + delta))
-    if (next === idx) return false
-    setDefaultSink(sinks[next].id, sinks[next].name)
+    var cur = (sinkFocusIndex >= 0) ? sinkFocusIndex : currentSinkIndex()
+    if (delta < 0 && cur === 0) return false
+    var next = Math.max(0, Math.min(sinks.length - 1, cur + delta))
+    if (next === cur) return false
+    sinkFocusIndex = next
     return true
   }
 
@@ -85,11 +101,11 @@ Item {
 
   function cycleSource(delta) {
     if (sources.length === 0) return false
-    var idx = currentSourceIndex()
+    var idx = (sourceFocusIndex >= 0) ? sourceFocusIndex : currentSourceIndex()
     if (delta < 0 && idx === 0) return false
     var next = Math.max(0, Math.min(sources.length - 1, idx + delta))
     if (next === idx) return false
-    setDefaultSource(sources[next].id, sources[next].name)
+    sourceFocusIndex = next
     return true
   }
 
@@ -150,10 +166,20 @@ Item {
   function handleActivate() {
     if (focusedRow === 0) toggleMute()
     else if (focusedRow === 1) toggleMute()
-    else if (focusedRow === 2) cycleSink(1)
+    else if (focusedRow === 2) {
+      var curSink = (sinkFocusIndex >= 0) ? sinkFocusIndex : currentSinkIndex()
+      if (curSink >= 0 && curSink < sinks.length) {
+        setDefaultSink(sinks[curSink].id, sinks[curSink].name)
+      }
+    }
     else if (focusedRow === 3) toggleInputMute()
     else if (focusedRow === 4) toggleInputMute()
-    else if (focusedRow === 5) cycleSource(1)
+    else if (focusedRow === 5) {
+      var curSource = (sourceFocusIndex >= 0) ? sourceFocusIndex : currentSourceIndex()
+      if (curSource >= 0 && curSource < sources.length) {
+        setDefaultSource(sources[curSource].id, sources[curSource].name)
+      }
+    }
     else if (focusedRow >= 6) {
       var appIdx = focusedRow - 6
       if (appIdx >= 0 && appIdx < root.apps.length) {
@@ -367,7 +393,7 @@ Item {
         Layout.preferredHeight: 32
         visible: root.statusMessage.length > 0
         radius: 6
-        color: Color.pickAlpha("accent.subtle", "#1f3b30")
+        color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
         border.color: Color.accent
         border.width: 1
 
@@ -403,15 +429,21 @@ Item {
         implicitHeight: Math.max(116, volumeColLayout.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 0
-        color: volumeCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: volumeCard.isFocused ? Color.accent : "transparent"
-        border.width: volumeCard.isFocused ? 2 : 1
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 0
+        readonly property bool isHovered: volumeCardMouseArea.containsMouse
+        color: volumeCard.isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.07) : (volumeCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+        border.color: volumeCard.isFocused ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35) : (volumeCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.20) : "transparent")
+        border.width: 1
 
         MouseArea {
+          id: volumeCardMouseArea
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
-          onClicked: root.focusedRow = 0
+          onClicked: {
+            root.focusedRow = 0
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
+          }
         }
 
         ColumnLayout {
@@ -489,6 +521,7 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 0
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
                   root.adjustVolume(-5)
                 }
               }
@@ -500,6 +533,7 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 0
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
                   root.adjustVolume(5)
                 }
               }
@@ -526,16 +560,20 @@ Item {
         implicitHeight: Math.max(74, muteRowLayout.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 1
-        color: muteCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: muteCard.isFocused ? Color.accent : "transparent"
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 1
+        readonly property bool isHovered: muteCardMouseArea.containsMouse
+        color: muteCard.isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.07) : (muteCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+        border.color: muteCard.isFocused ? Color.accent : (muteCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.20) : "transparent")
         border.width: muteCard.isFocused ? 2 : 1
 
         MouseArea {
+          id: muteCardMouseArea
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
           onClicked: {
             root.focusedRow = 1
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
             root.toggleMute()
           }
         }
@@ -552,7 +590,7 @@ Item {
             width: 44
             height: 44
             radius: 8
-            color: root.muted ? Color.pickAlpha("urgent.subtle", "#3a1f1f") : Color.pickAlpha("surface.hover", "#20252b")
+            color: root.muted ? Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.25) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
 
             Text {
               anchors.centerIn: parent
@@ -605,9 +643,9 @@ Item {
             width: 90
             height: 32
             radius: 16
-            color: root.muted ? Color.urgent : Color.pickAlpha("surface.selected", "#2a3036")
-            border.color: muteCard.isFocused ? Color.accent : "transparent"
-            border.width: muteCard.isFocused ? 2 : 0
+            color: root.muted ? Color.urgent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10)
+            border.color: (muteCard.isFocused || muteCard.isHovered) ? (root.muted ? Color.urgent : Color.accent) : "transparent"
+            border.width: muteCard.isFocused ? 2 : (muteCard.isHovered ? 1 : 0)
 
             Text {
               anchors.centerIn: parent
@@ -615,7 +653,7 @@ Item {
               font.family: Style.font.family
               font.pixelSize: 11
               font.bold: true
-              color: root.muted ? "#ffffff" : Color.muted
+              color: root.muted ? "#ffffff" : (muteCard.isFocused || muteCard.isHovered ? Color.foreground : Color.muted)
             }
           }
         }
@@ -628,15 +666,21 @@ Item {
         implicitHeight: Math.max(124, sinkColLayout.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 2
-        color: sinkCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: sinkCard.isFocused ? Color.accent : "transparent"
-        border.width: sinkCard.isFocused ? 2 : 1
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 2
+        readonly property bool isHovered: sinkCardMouseArea.containsMouse
+        color: sinkCard.isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.07) : (sinkCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+        border.color: sinkCard.isFocused ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35) : (sinkCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.20) : "transparent")
+        border.width: 1
 
         MouseArea {
+          id: sinkCardMouseArea
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
-          onClicked: root.focusedRow = 2
+          onClicked: {
+            root.focusedRow = 2
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
+          }
         }
 
         ColumnLayout {
@@ -667,6 +711,7 @@ Item {
                 Layout.fillWidth: true
                 width: parent.width
                 spacing: 8
+
                 Text {
                   text: "Audio Output Device"
                   font.family: Style.font.family
@@ -674,9 +719,33 @@ Item {
                   font.bold: true
                   color: Color.foreground
                 }
+
+                Rectangle {
+                  height: 20
+                  width: activeSinkLabel.implicitWidth + 12
+                  radius: 4
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  border.color: Color.accent
+                  border.width: 1
+
+                  Text {
+                    id: activeSinkLabel
+                    anchors.centerIn: parent
+                    text: {
+                      var idx = root.currentSinkIndex()
+                      return (root.sinks.length > idx && root.sinks[idx]) ? root.sinks[idx].name : "Default"
+                    }
+                    font.family: Style.font.family
+                    font.pixelSize: 10
+                    font.bold: true
+                    color: Color.accent
+                    elide: Text.ElideRight
+                  }
+                }
+
                 Text {
                   visible: sinkCard.isFocused
-                  text: "• Use [←/→ or h/l] to cycle"
+                  text: "• Use [←/→ or h/l] to navigate • [Enter/Space] to set"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
@@ -705,7 +774,13 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 2
-                  root.cycleSink(-1)
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
+                  var cur = (root.sinkFocusIndex >= 0) ? root.sinkFocusIndex : root.currentSinkIndex()
+                  var next = Math.max(0, cur - 1)
+                  root.sinkFocusIndex = next
+                  if (next < root.sinks.length) {
+                    root.setDefaultSink(root.sinks[next].id, root.sinks[next].name)
+                  }
                 }
               }
 
@@ -716,7 +791,13 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 2
-                  root.cycleSink(1)
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
+                  var cur = (root.sinkFocusIndex >= 0) ? root.sinkFocusIndex : root.currentSinkIndex()
+                  var next = Math.min(root.sinks.length - 1, cur + 1)
+                  root.sinkFocusIndex = next
+                  if (next < root.sinks.length) {
+                    root.setDefaultSink(root.sinks[next].id, root.sinks[next].name)
+                  }
                 }
               }
             }
@@ -739,15 +820,49 @@ Item {
                 implicitHeight: Math.max(36, sinkPillRow.implicitHeight + 12)
                 Layout.preferredHeight: implicitHeight
                 radius: 6
-                color: modelData.isDefault ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
-                border.color: modelData.isDefault ? Color.accent : "transparent"
-                border.width: modelData.isDefault ? 1 : 0
+
+                readonly property bool isActive: modelData.isDefault
+                readonly property bool isFocused: root.isContentFocused && (root.focusedRow === 2) && ((root.sinkFocusIndex >= 0 ? root.sinkFocusIndex : root.currentSinkIndex()) === index)
+                readonly property bool isHovered: sinkPillMouse.containsMouse
+
+                color: {
+                  if (isActive) {
+                    return isHovered ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.28)
+                                     : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  }
+                  if (isFocused) {
+                    return isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.18)
+                                     : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.14)
+                  }
+                  if (isHovered) {
+                    return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                  }
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)
+                }
+
+                border.color: {
+                  if (isFocused) {
+                    return Color.accent
+                  }
+                  if (isActive) {
+                    return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.6)
+                  }
+                  if (isHovered) {
+                    return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28)
+                  }
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                }
+                border.width: isFocused ? 2 : 1
 
                 MouseArea {
+                  id: sinkPillMouse
                   anchors.fill: parent
+                  hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
                     root.focusedRow = 2
+                    root.sinkFocusIndex = index
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.setDefaultSink(modelData.id, modelData.name)
                   }
                 }
@@ -760,11 +875,19 @@ Item {
                   anchors.margins: 8
                   spacing: 6
 
+                  Rectangle {
+                    visible: sinkPillRect.isActive
+                    width: 5
+                    height: 5
+                    radius: 2.5
+                    color: Color.accent
+                  }
+
                   Text {
                     text: modelData.name.indexOf("Charge") !== -1 ? "󰥰" : "󰕾"
                     font.family: Style.font.family
                     font.pixelSize: 14
-                    color: modelData.isDefault ? Color.accent : Color.muted
+                    color: sinkPillRect.isActive ? Color.accent : (sinkPillRect.isFocused || sinkPillRect.isHovered ? Color.foreground : Color.muted)
                   }
 
                   Text {
@@ -773,16 +896,17 @@ Item {
                     text: modelData.name
                     font.family: Style.font.family
                     font.pixelSize: 11
-                    font.bold: modelData.isDefault
-                    color: modelData.isDefault ? Color.accent : Color.foreground
+                    font.bold: sinkPillRect.isActive || sinkPillRect.isFocused
+                    color: sinkPillRect.isActive ? Color.accent : (sinkPillRect.isFocused || sinkPillRect.isHovered ? Color.foreground : Color.muted)
                     elide: Text.ElideRight
                   }
 
                   Text {
-                    visible: modelData.isDefault
+                    visible: sinkPillRect.isActive
                     text: "✓"
                     font.family: Style.font.family
                     font.pixelSize: 11
+                    font.bold: true
                     color: Color.accent
                   }
                 }
@@ -809,15 +933,21 @@ Item {
         implicitHeight: Math.max(116, inputVolColLayout.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 3
-        color: inputVolCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: inputVolCard.isFocused ? Color.accent : "transparent"
-        border.width: inputVolCard.isFocused ? 2 : 1
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 3
+        readonly property bool isHovered: inputVolMouseArea.containsMouse
+        color: inputVolCard.isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.07) : (inputVolCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+        border.color: inputVolCard.isFocused ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35) : (inputVolCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.20) : "transparent")
+        border.width: 1
 
         MouseArea {
+          id: inputVolMouseArea
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
-          onClicked: root.focusedRow = 3
+          onClicked: {
+            root.focusedRow = 3
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
+          }
         }
 
         ColumnLayout {
@@ -848,6 +978,7 @@ Item {
                 Layout.fillWidth: true
                 width: parent.width
                 spacing: 8
+
                 Text {
                   text: "Microphone Input Volume"
                   font.family: Style.font.family
@@ -855,6 +986,7 @@ Item {
                   font.bold: true
                   color: Color.foreground
                 }
+
                 Text {
                   visible: inputVolCard.isFocused
                   text: "• Use [←/→ or h/l] to adjust ±5%"
@@ -893,6 +1025,7 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 3
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
                   root.adjustInputVolume(-5)
                 }
               }
@@ -904,6 +1037,7 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 3
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
                   root.adjustInputVolume(5)
                 }
               }
@@ -930,16 +1064,20 @@ Item {
         implicitHeight: Math.max(74, inputMuteRowLayout.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 4
-        color: inputMuteCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: inputMuteCard.isFocused ? Color.accent : "transparent"
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 4
+        readonly property bool isHovered: inputMuteMouseArea.containsMouse
+        color: inputMuteCard.isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.07) : (inputMuteCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+        border.color: inputMuteCard.isFocused ? Color.accent : (inputMuteCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.20) : "transparent")
         border.width: inputMuteCard.isFocused ? 2 : 1
 
         MouseArea {
+          id: inputMuteMouseArea
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
           onClicked: {
             root.focusedRow = 4
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
             root.toggleInputMute()
           }
         }
@@ -956,7 +1094,7 @@ Item {
             width: 44
             height: 44
             radius: 8
-            color: root.inputMuted ? Color.pickAlpha("urgent.subtle", "#3a1f1f") : Color.pickAlpha("surface.hover", "#20252b")
+            color: root.inputMuted ? Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.25) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
 
             Text {
               anchors.centerIn: parent
@@ -976,6 +1114,7 @@ Item {
               Layout.fillWidth: true
               width: parent.width
               spacing: 8
+
               Text {
                 text: "Mute Microphone"
                 font.family: Style.font.family
@@ -983,6 +1122,7 @@ Item {
                 font.bold: true
                 color: Color.foreground
               }
+
               Text {
                 visible: inputMuteCard.isFocused
                 text: "• Press [Enter/Space or m] to toggle"
@@ -1007,9 +1147,9 @@ Item {
             width: 90
             height: 32
             radius: 16
-            color: root.inputMuted ? Color.urgent : Color.pickAlpha("surface.selected", "#2a3036")
-            border.color: inputMuteCard.isFocused ? Color.accent : "transparent"
-            border.width: inputMuteCard.isFocused ? 2 : 0
+            color: root.inputMuted ? Color.urgent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10)
+            border.color: (inputMuteCard.isFocused || inputMuteCard.isHovered) ? (root.inputMuted ? Color.urgent : Color.accent) : "transparent"
+            border.width: inputMuteCard.isFocused ? 2 : (inputMuteCard.isHovered ? 1 : 0)
 
             Text {
               anchors.centerIn: parent
@@ -1017,7 +1157,7 @@ Item {
               font.family: Style.font.family
               font.pixelSize: 11
               font.bold: true
-              color: root.inputMuted ? "#ffffff" : Color.muted
+              color: root.inputMuted ? "#ffffff" : (inputMuteCard.isFocused || inputMuteCard.isHovered ? Color.foreground : Color.muted)
             }
           }
         }
@@ -1030,15 +1170,21 @@ Item {
         implicitHeight: Math.max(124, sourceColLayout.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 5
-        color: sourceCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: sourceCard.isFocused ? Color.accent : "transparent"
-        border.width: sourceCard.isFocused ? 2 : 1
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 5
+        readonly property bool isHovered: sourceCardMouseArea.containsMouse
+        color: sourceCard.isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.07) : (sourceCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+        border.color: sourceCard.isFocused ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35) : (sourceCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.20) : "transparent")
+        border.width: 1
 
         MouseArea {
+          id: sourceCardMouseArea
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
-          onClicked: root.focusedRow = 5
+          onClicked: {
+            root.focusedRow = 5
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
+          }
         }
 
         ColumnLayout {
@@ -1069,6 +1215,7 @@ Item {
                 Layout.fillWidth: true
                 width: parent.width
                 spacing: 8
+
                 Text {
                   text: "Microphone Input Device"
                   font.family: Style.font.family
@@ -1076,9 +1223,33 @@ Item {
                   font.bold: true
                   color: Color.foreground
                 }
+
+                Rectangle {
+                  height: 20
+                  width: activeSourceLabel.implicitWidth + 12
+                  radius: 4
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  border.color: Color.accent
+                  border.width: 1
+
+                  Text {
+                    id: activeSourceLabel
+                    anchors.centerIn: parent
+                    text: {
+                      var idx = root.currentSourceIndex()
+                      return (root.sources.length > idx && root.sources[idx]) ? root.sources[idx].name : "Default"
+                    }
+                    font.family: Style.font.family
+                    font.pixelSize: 10
+                    font.bold: true
+                    color: Color.accent
+                    elide: Text.ElideRight
+                  }
+                }
+
                 Text {
                   visible: sourceCard.isFocused
-                  text: "• Use [←/→ or h/l] to cycle"
+                  text: "• Use [←/→ or h/l] to navigate • [Enter/Space] to set"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
@@ -1107,7 +1278,13 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 5
-                  root.cycleSource(-1)
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
+                  var cur = (root.sourceFocusIndex >= 0) ? root.sourceFocusIndex : root.currentSourceIndex()
+                  var next = Math.max(0, cur - 1)
+                  root.sourceFocusIndex = next
+                  if (next < root.sources.length) {
+                    root.setDefaultSource(root.sources[next].id, root.sources[next].name)
+                  }
                 }
               }
 
@@ -1118,7 +1295,13 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 5
-                  root.cycleSource(1)
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
+                  var cur = (root.sourceFocusIndex >= 0) ? root.sourceFocusIndex : root.currentSourceIndex()
+                  var next = Math.min(root.sources.length - 1, cur + 1)
+                  root.sourceFocusIndex = next
+                  if (next < root.sources.length) {
+                    root.setDefaultSource(root.sources[next].id, root.sources[next].name)
+                  }
                 }
               }
             }
@@ -1141,15 +1324,49 @@ Item {
                 implicitHeight: Math.max(36, sourcePillRow.implicitHeight + 12)
                 Layout.preferredHeight: implicitHeight
                 radius: 6
-                color: modelData.isDefault ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
-                border.color: modelData.isDefault ? Color.accent : "transparent"
-                border.width: modelData.isDefault ? 1 : 0
+
+                readonly property bool isActive: modelData.isDefault
+                readonly property bool isFocused: root.isContentFocused && (root.focusedRow === 5) && ((root.sourceFocusIndex >= 0 ? root.sourceFocusIndex : root.currentSourceIndex()) === index)
+                readonly property bool isHovered: sourcePillMouse.containsMouse
+
+                color: {
+                  if (isActive) {
+                    return isHovered ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.28)
+                                     : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  }
+                  if (isFocused) {
+                    return isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.18)
+                                     : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.14)
+                  }
+                  if (isHovered) {
+                    return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                  }
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)
+                }
+
+                border.color: {
+                  if (isFocused) {
+                    return Color.accent
+                  }
+                  if (isActive) {
+                    return Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.6)
+                  }
+                  if (isHovered) {
+                    return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28)
+                  }
+                  return Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+                }
+                border.width: isFocused ? 2 : 1
 
                 MouseArea {
+                  id: sourcePillMouse
                   anchors.fill: parent
+                  hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
                     root.focusedRow = 5
+                    root.sourceFocusIndex = index
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.setDefaultSource(modelData.id, modelData.name)
                   }
                 }
@@ -1162,11 +1379,19 @@ Item {
                   anchors.margins: 8
                   spacing: 6
 
+                  Rectangle {
+                    visible: sourcePillRect.isActive
+                    width: 5
+                    height: 5
+                    radius: 2.5
+                    color: Color.accent
+                  }
+
                   Text {
                     text: "󰍬"
                     font.family: Style.font.family
                     font.pixelSize: 14
-                    color: modelData.isDefault ? Color.accent : Color.muted
+                    color: sourcePillRect.isActive ? Color.accent : (sourcePillRect.isFocused || sourcePillRect.isHovered ? Color.foreground : Color.muted)
                   }
 
                   Text {
@@ -1175,16 +1400,17 @@ Item {
                     text: modelData.name
                     font.family: Style.font.family
                     font.pixelSize: 11
-                    font.bold: modelData.isDefault
-                    color: modelData.isDefault ? Color.accent : Color.foreground
+                    font.bold: sourcePillRect.isActive || sourcePillRect.isFocused
+                    color: sourcePillRect.isActive ? Color.accent : (sourcePillRect.isFocused || sourcePillRect.isHovered ? Color.foreground : Color.muted)
                     elide: Text.ElideRight
                   }
 
                   Text {
-                    visible: modelData.isDefault
+                    visible: sourcePillRect.isActive
                     text: "✓"
                     font.family: Style.font.family
                     font.pixelSize: 11
+                    font.bold: true
                     color: Color.accent
                   }
                 }
@@ -1211,8 +1437,8 @@ Item {
         implicitHeight: Math.max(64, soundEmptyRow.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        color: Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: Color.pickAlpha("border.subtle", "#262b30")
+        color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.03)
+        border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
         border.width: 1
 
         RowLayout {
@@ -1271,15 +1497,21 @@ Item {
           implicitHeight: Math.max(104, appColLayout.implicitHeight + 24)
           Layout.preferredHeight: implicitHeight
           radius: Style.cornerRadius || 8
-          readonly property bool isFocused: root.activeFocusSection && root.focusedRow === (6 + index)
-          color: appCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-          border.color: appCard.isFocused ? Color.accent : Color.pickAlpha("border.subtle", "#262b30")
-          border.width: appCard.isFocused ? 2 : 1
+          readonly property bool isFocused: root.isContentFocused && root.focusedRow === (6 + index)
+          readonly property bool isHovered: appCardMouseArea.containsMouse
+          color: appCard.isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.07) : (appCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
+          border.color: appCard.isFocused ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35) : (appCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.20) : "transparent")
+          border.width: 1
 
           MouseArea {
+            id: appCardMouseArea
             anchors.fill: parent
+            hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.focusedRow = 6 + index
+            onClicked: {
+              root.focusedRow = 6 + index
+              if (root.panelRoot) root.panelRoot.focusSection = "content"
+            }
           }
 
           ColumnLayout {
@@ -1298,7 +1530,7 @@ Item {
                 width: 32
                 height: 32
                 radius: 6
-                color: modelData.muted ? Color.pickAlpha("urgent.subtle", "#3a1f1f") : Color.pickAlpha("surface.hover", "#20252b")
+                color: modelData.muted ? Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.25) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
 
                 Text {
                   anchors.centerIn: parent
@@ -1356,6 +1588,7 @@ Item {
                 implicitHeight: 28
                 onClicked: {
                   root.focusedRow = 6 + index
+                  if (root.panelRoot) root.panelRoot.focusSection = "content"
                   root.toggleAppMute(modelData.id, modelData.name)
                 }
               }
@@ -1369,6 +1602,7 @@ Item {
                   implicitHeight: 28
                   onClicked: {
                     root.focusedRow = 6 + index
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.adjustAppVolume(modelData.id, -5, modelData.name)
                   }
                 }
@@ -1379,6 +1613,7 @@ Item {
                   implicitHeight: 28
                   onClicked: {
                     root.focusedRow = 6 + index
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
                     root.adjustAppVolume(modelData.id, 5, modelData.name)
                   }
                 }
