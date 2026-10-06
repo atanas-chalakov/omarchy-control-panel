@@ -290,11 +290,8 @@ Item {
     var next = Math.max(0, Math.min(scaleOptions.length, cur + delta))
     if (next === cur) return false
     scaleFocusIndex = next
-    if (next < scaleOptions.length) {
-      if (customScaleOpen) customScaleOpen = false
-      setScale(scaleOptions[next].value)
-    } else {
-      if (customScaleOpen) customScaleOpen = false
+    if (customScaleOpen && next < scaleOptions.length) {
+      customScaleOpen = false
     }
     return true
   }
@@ -320,11 +317,8 @@ Item {
     var next = Math.max(0, Math.min(displayModes.length, cur + delta))
     if (next === cur) return false
     modeFocusIndex = next
-    if (next < displayModes.length) {
-      if (customModeOpen) customModeOpen = false
-      setMode(displayModes[next].mode)
-    } else {
-      if (customModeOpen) customModeOpen = false
+    if (customModeOpen && next < displayModes.length) {
+      customModeOpen = false
     }
     return true
   }
@@ -396,8 +390,8 @@ Item {
         } else {
           openCustomScale()
         }
-      } else {
-        cycleScale(1)
+      } else if (curScale >= 0 && curScale < scaleOptions.length) {
+        setScale(scaleOptions[curScale].value)
       }
     } else if (focusedRow === 4) {
       var curMode = (modeFocusIndex >= 0) ? modeFocusIndex : currentModeIndex()
@@ -407,8 +401,8 @@ Item {
         } else {
           openCustomMode()
         }
-      } else {
-        cycleMode(1)
+      } else if (curMode >= 0 && curMode < displayModes.length) {
+        setMode(displayModes[curMode].mode)
       }
     }
   }

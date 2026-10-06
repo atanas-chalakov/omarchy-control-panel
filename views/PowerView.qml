@@ -33,8 +33,11 @@ Item {
   property string customLockError: ""
   property Item customLockInputItem: null
 
+  property int profileFocusIndex: -1
   property int screensaverFocusIndex: -1
   property int lockFocusIndex: -1
+
+  onCurrentProfileChanged: profileFocusIndex = currentProfileIndex()
 
   onScreensaverTimeoutChanged: {
     if (!customScreensaverOpen) screensaverFocusIndex = currentScreensaverIndex()
@@ -191,7 +194,12 @@ Item {
 
   property bool activeFocusSection: false
   property int focusedRow: 0   // 0: Profiles, 1: Stay Awake, 2: Screen Off, 3: Lock Screen
-  onFocusedRowChanged: ensureRowVisible(focusedRow)
+  onFocusedRowChanged: {
+    ensureRowVisible(focusedRow)
+    if (focusedRow !== 0) profileFocusIndex = currentProfileIndex()
+    if (focusedRow !== 2 && !customScreensaverOpen) screensaverFocusIndex = currentScreensaverIndex()
+    if (focusedRow !== 3 && !customLockOpen) lockFocusIndex = currentLockIndex()
+  }
 
   function ensureRowVisible(index) {
     if (!scrollArea || !scrollArea.contentItem) return
@@ -239,11 +247,11 @@ Item {
   }
 
   function cycleProfile(delta) {
-    var idx = currentProfileIndex()
-    if (delta < 0 && idx === 0) return false
-    var next = Math.max(0, Math.min(powerProfiles.length - 1, idx + delta))
-    if (next === idx) return false
-    setProfile(powerProfiles[next].id)
+    var cur = (profileFocusIndex >= 0) ? profileFocusIndex : currentProfileIndex()
+    if (delta < 0 && cur === 0) return false
+    var next = Math.max(0, Math.min(powerProfiles.length - 1, cur + delta))
+    if (next === cur) return false
+    profileFocusIndex = next
     return true
   }
 
@@ -253,11 +261,8 @@ Item {
     var next = Math.max(0, Math.min(screensaverOptions.length, cur + delta))
     if (next === cur) return false
     screensaverFocusIndex = next
-    if (next < screensaverOptions.length) {
-      if (customScreensaverOpen) customScreensaverOpen = false
-      setIdle(screensaverOptions[next].seconds, root.lockTimeout)
-    } else {
-      if (customScreensaverOpen) customScreensaverOpen = false
+    if (customScreensaverOpen && next < screensaverOptions.length) {
+      customScreensaverOpen = false
     }
     return true
   }
@@ -283,11 +288,8 @@ Item {
     var next = Math.max(0, Math.min(lockOptions.length, cur + delta))
     if (next === cur) return false
     lockFocusIndex = next
-    if (next < lockOptions.length) {
-      if (customLockOpen) customLockOpen = false
-      setIdle(root.screensaverTimeout, lockOptions[next].seconds)
-    } else {
-      if (customLockOpen) customLockOpen = false
+    if (customLockOpen && next < lockOptions.length) {
+      customLockOpen = false
     }
     return true
   }
@@ -329,9 +331,14 @@ Item {
 
   function handleActivate() {
     if (hasActiveInput) return
-    if (focusedRow === 0) cycleProfile(1)
-    else if (focusedRow === 1) toggleStayAwake()
-    else if (focusedRow === 2) {
+    if (focusedRow === 0) {
+      var curProf = (profileFocusIndex >= 0) ? profileFocusIndex : currentProfileIndex()
+      if (curProf >= 0 && curProf < powerProfiles.length) {
+        setProfile(powerProfiles[curProf].id)
+      }
+    } else if (focusedRow === 1) {
+      toggleStayAwake()
+    } else if (focusedRow === 2) {
       var curSs = (screensaverFocusIndex >= 0) ? screensaverFocusIndex : currentScreensaverIndex()
       if (curSs === screensaverOptions.length) {
         if (customScreensaverOpen) {
@@ -339,8 +346,8 @@ Item {
         } else {
           openCustomScreensaver()
         }
-      } else {
-        cycleScreensaver(1)
+      } else if (curSs >= 0 && curSs < screensaverOptions.length) {
+        setIdle(screensaverOptions[curSs].seconds, root.lockTimeout)
       }
     } else if (focusedRow === 3) {
       var curLk = (lockFocusIndex >= 0) ? lockFocusIndex : currentLockIndex()
@@ -350,8 +357,8 @@ Item {
         } else {
           openCustomLock()
         }
-      } else {
-        cycleLock(1)
+      } else if (curLk >= 0 && curLk < lockOptions.length) {
+        setIdle(root.screensaverTimeout, lockOptions[curLk].seconds)
       }
     }
   }
@@ -424,6 +431,7 @@ Item {
 
   function setProfile(profileId) {
     root.currentProfile = profileId
+    root.profileFocusIndex = currentProfileIndex()
     setProfileProcess.command = [pluginPath + "/scripts/power-control.sh", "set-profile", profileId]
     setProfileProcess.running = true
     notifyStatus("Power Profile: " + profileId)
@@ -681,12 +689,15 @@ Item {
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 0
-        color: profileCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: profileCard.isFocused ? Color.accent : "transparent"
+        readonly property bool isHovered: profileCardMouseArea.containsMouse
+        color: profileCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : (profileCard.isHovered ? Color.pickAlpha("surface.hover", "#1b1f23") : Color.pickAlpha("surface.subtle", "#181b1d"))
+        border.color: profileCard.isFocused ? Color.accent : (profileCard.isHovered ? Color.pickAlpha("border.hover", "#3e4752") : "transparent")
         border.width: profileCard.isFocused ? 2 : 1
 
         MouseArea {
+          id: profileCardMouseArea
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
           onClicked: root.focusedRow = 0
         }
@@ -735,7 +746,7 @@ Item {
 
                 Text {
                   visible: profileCard.isFocused
-                  text: "• Use [←/→ or h/l] to cycle"
+                  text: "• Use [←/→ or h/l] to navigate • [Enter/Space] to set"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
@@ -772,7 +783,10 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 0
-                  root.cycleProfile(-1)
+                  var cur = (root.profileFocusIndex >= 0) ? root.profileFocusIndex : root.currentProfileIndex()
+                  var next = Math.max(0, cur - 1)
+                  root.profileFocusIndex = next
+                  root.setProfile(root.powerProfiles[next].id)
                 }
               }
 
@@ -783,7 +797,10 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 0
-                  root.cycleProfile(1)
+                  var cur = (root.profileFocusIndex >= 0) ? root.profileFocusIndex : root.currentProfileIndex()
+                  var next = Math.min(root.powerProfiles.length - 1, cur + 1)
+                  root.profileFocusIndex = next
+                  root.setProfile(root.powerProfiles[next].id)
                 }
               }
             }
@@ -805,19 +822,50 @@ Item {
               model: root.powerProfiles
 
               delegate: Rectangle {
+                id: profileChip
                 width: profileFlow.itemWidth
                 height: 34
                 radius: 6
-                readonly property bool isSelected: root.currentProfile === modelData.id
-                color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
-                border.color: isSelected ? Color.accent : "transparent"
-                border.width: isSelected ? 1 : 0
+
+                readonly property bool isActive: (root.currentProfile === modelData.id)
+                readonly property bool isFocused: root.activeFocusSection && (root.focusedRow === 0) && ((root.profileFocusIndex >= 0 ? root.profileFocusIndex : root.currentProfileIndex()) === index)
+                readonly property bool isHovered: profileChipMouse.containsMouse
+
+                color: {
+                  if (isActive) {
+                    return isHovered ? Color.pickAlpha("accent.subtle", "#2a483c") : Color.pickAlpha("accent.subtle", "#1f3b30")
+                  }
+                  if (isFocused) {
+                    return Color.pickAlpha("surface.selected", "#22272e")
+                  }
+                  if (isHovered) {
+                    return Color.pickAlpha("surface.hover", "#1f2429")
+                  }
+                  return Color.pickAlpha("surface.subtle", "#16191c")
+                }
+
+                border.color: {
+                  if (isFocused) {
+                    return Color.accent
+                  }
+                  if (isActive) {
+                    return Color.pickAlpha("accent", "#388e68")
+                  }
+                  if (isHovered) {
+                    return Color.pickAlpha("border.hover", "#3e4752")
+                  }
+                  return Color.pickAlpha("border.subtle", "#23272c")
+                }
+                border.width: isFocused ? 2 : 1
 
                 MouseArea {
+                  id: profileChipMouse
                   anchors.fill: parent
+                  hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
                     root.focusedRow = 0
+                    root.profileFocusIndex = index
                     root.setProfile(modelData.id)
                   }
                 }
@@ -826,12 +874,22 @@ Item {
                   anchors.centerIn: parent
                   width: Math.min(implicitWidth, parent.width - 8)
                   spacing: 4
+
+                  Rectangle {
+                    visible: profileChip.isActive
+                    width: 5
+                    height: 5
+                    radius: 2.5
+                    color: Color.accent
+                  }
+
                   Text {
                     text: modelData.icon
                     font.family: Style.font.family
                     font.pixelSize: 13
-                    color: isSelected ? Color.accent : Color.muted
+                    color: profileChip.isActive ? Color.accent : (profileChip.isFocused || profileChip.isHovered ? Color.foreground : Color.muted)
                   }
+
                   Text {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
@@ -839,8 +897,8 @@ Item {
                     text: modelData.title
                     font.family: Style.font.family
                     font.pixelSize: 11
-                    font.bold: isSelected
-                    color: isSelected ? Color.accent : Color.foreground
+                    font.bold: profileChip.isActive || profileChip.isFocused
+                    color: profileChip.isActive ? Color.accent : (profileChip.isFocused || profileChip.isHovered ? Color.foreground : Color.muted)
                   }
                 }
               }
@@ -857,12 +915,15 @@ Item {
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 1
-        color: stayAwakeCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: stayAwakeCard.isFocused ? Color.accent : "transparent"
+        readonly property bool isHovered: stayAwakeMouseArea.containsMouse
+        color: stayAwakeCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : (stayAwakeCard.isHovered ? Color.pickAlpha("surface.hover", "#1b1f23") : Color.pickAlpha("surface.subtle", "#181b1d"))
+        border.color: stayAwakeCard.isFocused ? Color.accent : (stayAwakeCard.isHovered ? Color.pickAlpha("border.hover", "#3e4752") : "transparent")
         border.width: stayAwakeCard.isFocused ? 2 : 1
 
         MouseArea {
+          id: stayAwakeMouseArea
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
           onClicked: {
             root.focusedRow = 1
@@ -941,8 +1002,8 @@ Item {
             Layout.alignment: Qt.AlignVCenter
             radius: 16
             color: root.stayAwake ? Color.accent : Color.pickAlpha("surface.selected", "#2a3036")
-            border.color: stayAwakeCard.isFocused ? Color.accent : "transparent"
-            border.width: stayAwakeCard.isFocused ? 2 : 0
+            border.color: (stayAwakeCard.isFocused || stayAwakeCard.isHovered) ? Color.accent : "transparent"
+            border.width: stayAwakeCard.isFocused ? 2 : (stayAwakeCard.isHovered ? 1 : 0)
 
             Text {
               anchors.centerIn: parent
@@ -950,7 +1011,7 @@ Item {
               font.family: Style.font.family
               font.pixelSize: 11
               font.bold: true
-              color: root.stayAwake ? "#000000" : Color.muted
+              color: root.stayAwake ? "#000000" : (stayAwakeCard.isFocused || stayAwakeCard.isHovered ? Color.foreground : Color.muted)
             }
           }
         }
@@ -964,12 +1025,15 @@ Item {
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 2
-        color: screensaverCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: screensaverCard.isFocused ? Color.accent : "transparent"
+        readonly property bool isHovered: screensaverCardMouseArea.containsMouse
+        color: screensaverCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : (screensaverCard.isHovered ? Color.pickAlpha("surface.hover", "#1b1f23") : Color.pickAlpha("surface.subtle", "#181b1d"))
+        border.color: screensaverCard.isFocused ? Color.accent : (screensaverCard.isHovered ? Color.pickAlpha("border.hover", "#3e4752") : "transparent")
         border.width: screensaverCard.isFocused ? 2 : 1
 
         MouseArea {
+          id: screensaverCardMouseArea
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
           onClicked: root.focusedRow = 2
         }
@@ -1032,7 +1096,7 @@ Item {
 
                 Text {
                   visible: screensaverCard.isFocused
-                  text: "• Use [←/→ or h/l] to cycle"
+                  text: "• Use [←/→ or h/l] to navigate • [Enter/Space] to set"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
@@ -1064,7 +1128,12 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 2
-                  root.cycleScreensaver(-1)
+                  var cur = (root.screensaverFocusIndex >= 0) ? root.screensaverFocusIndex : root.currentScreensaverIndex()
+                  var next = Math.max(0, cur - 1)
+                  root.screensaverFocusIndex = next
+                  if (next < root.screensaverOptions.length) {
+                    root.setIdle(root.screensaverOptions[next].seconds, root.lockTimeout)
+                  }
                 }
               }
 
@@ -1075,7 +1144,10 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 2
-                  root.cycleScreensaver(1)
+                  var cur = (root.screensaverFocusIndex >= 0) ? root.screensaverFocusIndex : root.currentScreensaverIndex()
+                  var next = Math.min(root.screensaverOptions.length - 1, cur + 1)
+                  root.screensaverFocusIndex = next
+                  root.setIdle(root.screensaverOptions[next].seconds, root.lockTimeout)
                 }
               }
             }
@@ -1097,19 +1169,46 @@ Item {
               model: root.screensaverOptions
 
               delegate: Rectangle {
+                id: ssOptionCard
                 width: screensaverFlow.itemWidth
                 height: 34
                 radius: 6
-                readonly property bool isSelected: {
-                  var activeIdx = (root.screensaverFocusIndex >= 0) ? root.screensaverFocusIndex : root.currentScreensaverIndex()
-                  return activeIdx === index
+
+                readonly property bool isActive: (root.screensaverTimeout === modelData.seconds)
+                readonly property bool isFocused: root.activeFocusSection && (root.focusedRow === 2) && ((root.screensaverFocusIndex >= 0 ? root.screensaverFocusIndex : root.currentScreensaverIndex()) === index)
+                readonly property bool isHovered: ssMouseArea.containsMouse
+
+                color: {
+                  if (isActive) {
+                    return isHovered ? Color.pickAlpha("accent.subtle", "#2a483c") : Color.pickAlpha("accent.subtle", "#1f3b30")
+                  }
+                  if (isFocused) {
+                    return Color.pickAlpha("surface.selected", "#22272e")
+                  }
+                  if (isHovered) {
+                    return Color.pickAlpha("surface.hover", "#1f2429")
+                  }
+                  return Color.pickAlpha("surface.subtle", "#16191c")
                 }
-                color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
-                border.color: isSelected ? Color.accent : "transparent"
-                border.width: isSelected ? 1 : 0
+
+                border.color: {
+                  if (isFocused) {
+                    return Color.accent
+                  }
+                  if (isActive) {
+                    return Color.pickAlpha("accent", "#388e68")
+                  }
+                  if (isHovered) {
+                    return Color.pickAlpha("border.hover", "#3e4752")
+                  }
+                  return Color.pickAlpha("border.subtle", "#23272c")
+                }
+                border.width: isFocused ? 2 : 1
 
                 MouseArea {
+                  id: ssMouseArea
                   anchors.fill: parent
+                  hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
                     root.focusedRow = 2
@@ -1119,16 +1218,28 @@ Item {
                   }
                 }
 
-                Text {
+                RowLayout {
                   anchors.centerIn: parent
-                  width: Math.min(implicitWidth, parent.width - 8)
-                  elide: Text.ElideRight
-                  horizontalAlignment: Text.AlignHCenter
-                  text: modelData.label
-                  font.family: Style.font.family
-                  font.pixelSize: 11
-                  font.bold: isSelected
-                  color: isSelected ? Color.accent : Color.foreground
+                  spacing: 4
+
+                  Rectangle {
+                    visible: ssOptionCard.isActive
+                    width: 5
+                    height: 5
+                    radius: 2.5
+                    color: Color.accent
+                  }
+
+                  Text {
+                    width: Math.min(implicitWidth, ssOptionCard.width - (ssOptionCard.isActive ? 18 : 8))
+                    elide: Text.ElideRight
+                    horizontalAlignment: Text.AlignHCenter
+                    text: modelData.label
+                    font.family: Style.font.family
+                    font.pixelSize: 11
+                    font.bold: ssOptionCard.isActive || ssOptionCard.isFocused
+                    color: ssOptionCard.isActive ? Color.accent : (ssOptionCard.isFocused || ssOptionCard.isHovered ? Color.foreground : Color.muted)
+                  }
                 }
               }
             }
@@ -1139,13 +1250,46 @@ Item {
               width: Math.max(screensaverFlow.itemWidth, 80)
               height: 34
               radius: 6
-              readonly property bool isSelected: root.customScreensaverOpen || (root.screensaverFocusIndex >= 0 ? root.screensaverFocusIndex === root.screensaverOptions.length : root.isCustomScreensaverActive)
-              color: customScreensaverChip.isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
-              border.color: customScreensaverChip.isSelected ? Color.accent : "transparent"
-              border.width: customScreensaverChip.isSelected ? 1 : 0
+
+              readonly property bool isActive: root.isCustomScreensaverActive
+              readonly property bool isFocused: root.activeFocusSection && (root.focusedRow === 2) && ((root.screensaverFocusIndex >= 0 ? root.screensaverFocusIndex : root.currentScreensaverIndex()) === root.screensaverOptions.length)
+              readonly property bool isHovered: customSsMouseArea.containsMouse
+              readonly property bool isOpen: root.customScreensaverOpen
+
+              color: {
+                if (isOpen) {
+                  return Color.pickAlpha("surface.selected", "#22272e")
+                }
+                if (isActive) {
+                  return isHovered ? Color.pickAlpha("accent.subtle", "#2a483c") : Color.pickAlpha("accent.subtle", "#1f3b30")
+                }
+                if (isFocused) {
+                  return Color.pickAlpha("surface.selected", "#22272e")
+                }
+                if (isHovered) {
+                  return Color.pickAlpha("surface.hover", "#1f2429")
+                }
+                return Color.pickAlpha("surface.subtle", "#16191c")
+              }
+
+              border.color: {
+                if (isOpen || isFocused) {
+                  return Color.accent
+                }
+                if (isActive) {
+                  return Color.pickAlpha("accent", "#388e68")
+                }
+                if (isHovered) {
+                  return Color.pickAlpha("border.hover", "#3e4752")
+                }
+                return Color.pickAlpha("border.subtle", "#23272c")
+              }
+              border.width: (isOpen || isFocused) ? 2 : 1
 
               MouseArea {
+                id: customSsMouseArea
                 anchors.fill: parent
+                hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                   root.focusedRow = 2
@@ -1158,16 +1302,28 @@ Item {
                 }
               }
 
-              Text {
+              RowLayout {
                 anchors.centerIn: parent
-                width: Math.min(implicitWidth, parent.width - 8)
-                elide: Text.ElideRight
-                horizontalAlignment: Text.AlignHCenter
-                text: root.isCustomScreensaverActive ? ("Custom: " + root.formatDuration(root.screensaverTimeout)) : "+ Custom..."
-                font.family: Style.font.family
-                font.pixelSize: 11
-                font.bold: customScreensaverChip.isSelected
-                color: customScreensaverChip.isSelected ? Color.accent : Color.foreground
+                spacing: 4
+
+                Rectangle {
+                  visible: customScreensaverChip.isActive
+                  width: 5
+                  height: 5
+                  radius: 2.5
+                  color: Color.accent
+                }
+
+                Text {
+                  width: Math.min(implicitWidth, customScreensaverChip.width - (customScreensaverChip.isActive ? 18 : 8))
+                  elide: Text.ElideRight
+                  horizontalAlignment: Text.AlignHCenter
+                  text: root.isCustomScreensaverActive ? ("Custom: " + root.formatDuration(root.screensaverTimeout)) : "+ Custom..."
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: customScreensaverChip.isActive || customScreensaverChip.isFocused || customScreensaverChip.isOpen
+                  color: customScreensaverChip.isActive ? Color.accent : ((customScreensaverChip.isFocused || customScreensaverChip.isHovered || customScreensaverChip.isOpen) ? Color.foreground : Color.muted)
+                }
               }
             }
           }
@@ -1311,12 +1467,15 @@ Item {
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
         readonly property bool isFocused: root.activeFocusSection && root.focusedRow === 3
-        color: lockCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : Color.pickAlpha("surface.subtle", "#181b1d")
-        border.color: lockCard.isFocused ? Color.accent : "transparent"
+        readonly property bool isHovered: lockCardMouseArea.containsMouse
+        color: lockCard.isFocused ? Color.pickAlpha("surface.selected", "#22272e") : (lockCard.isHovered ? Color.pickAlpha("surface.hover", "#1b1f23") : Color.pickAlpha("surface.subtle", "#181b1d"))
+        border.color: lockCard.isFocused ? Color.accent : (lockCard.isHovered ? Color.pickAlpha("border.hover", "#3e4752") : "transparent")
         border.width: lockCard.isFocused ? 2 : 1
 
         MouseArea {
+          id: lockCardMouseArea
           anchors.fill: parent
+          hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
           onClicked: root.focusedRow = 3
         }
@@ -1379,7 +1538,7 @@ Item {
 
                 Text {
                   visible: lockCard.isFocused
-                  text: "• Use [←/→ or h/l] to cycle"
+                  text: "• Use [←/→ or h/l] to navigate • [Enter/Space] to set"
                   font.family: Style.font.family
                   font.pixelSize: 11
                   color: Color.accent
@@ -1411,7 +1570,12 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 3
-                  root.cycleLock(-1)
+                  var cur = (root.lockFocusIndex >= 0) ? root.lockFocusIndex : root.currentLockIndex()
+                  var next = Math.max(0, cur - 1)
+                  root.lockFocusIndex = next
+                  if (next < root.lockOptions.length) {
+                    root.setIdle(root.screensaverTimeout, root.lockOptions[next].seconds)
+                  }
                 }
               }
 
@@ -1422,7 +1586,10 @@ Item {
                 bordered: true
                 onClicked: {
                   root.focusedRow = 3
-                  root.cycleLock(1)
+                  var cur = (root.lockFocusIndex >= 0) ? root.lockFocusIndex : root.currentLockIndex()
+                  var next = Math.min(root.lockOptions.length - 1, cur + 1)
+                  root.lockFocusIndex = next
+                  root.setIdle(root.screensaverTimeout, root.lockOptions[next].seconds)
                 }
               }
             }
@@ -1444,19 +1611,46 @@ Item {
               model: root.lockOptions
 
               delegate: Rectangle {
+                id: lockOptionCard
                 width: lockFlow.itemWidth
                 height: 34
                 radius: 6
-                readonly property bool isSelected: {
-                  var activeIdx = (root.lockFocusIndex >= 0) ? root.lockFocusIndex : root.currentLockIndex()
-                  return activeIdx === index
+
+                readonly property bool isActive: (root.lockTimeout === modelData.seconds)
+                readonly property bool isFocused: root.activeFocusSection && (root.focusedRow === 3) && ((root.lockFocusIndex >= 0 ? root.lockFocusIndex : root.currentLockIndex()) === index)
+                readonly property bool isHovered: lockMouseArea.containsMouse
+
+                color: {
+                  if (isActive) {
+                    return isHovered ? Color.pickAlpha("accent.subtle", "#2a483c") : Color.pickAlpha("accent.subtle", "#1f3b30")
+                  }
+                  if (isFocused) {
+                    return Color.pickAlpha("surface.selected", "#22272e")
+                  }
+                  if (isHovered) {
+                    return Color.pickAlpha("surface.hover", "#1f2429")
+                  }
+                  return Color.pickAlpha("surface.subtle", "#16191c")
                 }
-                color: isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
-                border.color: isSelected ? Color.accent : "transparent"
-                border.width: isSelected ? 1 : 0
+
+                border.color: {
+                  if (isFocused) {
+                    return Color.accent
+                  }
+                  if (isActive) {
+                    return Color.pickAlpha("accent", "#388e68")
+                  }
+                  if (isHovered) {
+                    return Color.pickAlpha("border.hover", "#3e4752")
+                  }
+                  return Color.pickAlpha("border.subtle", "#23272c")
+                }
+                border.width: isFocused ? 2 : 1
 
                 MouseArea {
+                  id: lockMouseArea
                   anchors.fill: parent
+                  hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
                     root.focusedRow = 3
@@ -1466,16 +1660,28 @@ Item {
                   }
                 }
 
-                Text {
+                RowLayout {
                   anchors.centerIn: parent
-                  width: Math.min(implicitWidth, parent.width - 8)
-                  elide: Text.ElideRight
-                  horizontalAlignment: Text.AlignHCenter
-                  text: modelData.label
-                  font.family: Style.font.family
-                  font.pixelSize: 11
-                  font.bold: isSelected
-                  color: isSelected ? Color.accent : Color.foreground
+                  spacing: 4
+
+                  Rectangle {
+                    visible: lockOptionCard.isActive
+                    width: 5
+                    height: 5
+                    radius: 2.5
+                    color: Color.accent
+                  }
+
+                  Text {
+                    width: Math.min(implicitWidth, lockOptionCard.width - (lockOptionCard.isActive ? 18 : 8))
+                    elide: Text.ElideRight
+                    horizontalAlignment: Text.AlignHCenter
+                    text: modelData.label
+                    font.family: Style.font.family
+                    font.pixelSize: 11
+                    font.bold: lockOptionCard.isActive || lockOptionCard.isFocused
+                    color: lockOptionCard.isActive ? Color.accent : (lockOptionCard.isFocused || lockOptionCard.isHovered ? Color.foreground : Color.muted)
+                  }
                 }
               }
             }
@@ -1486,13 +1692,46 @@ Item {
               width: Math.max(lockFlow.itemWidth, 80)
               height: 34
               radius: 6
-              readonly property bool isSelected: root.customLockOpen || (root.lockFocusIndex >= 0 ? root.lockFocusIndex === root.lockOptions.length : root.isCustomLockActive)
-              color: customLockChip.isSelected ? Color.pickAlpha("accent.subtle", "#1f3b30") : Color.pickAlpha("surface.hover", "#1b1f23")
-              border.color: customLockChip.isSelected ? Color.accent : "transparent"
-              border.width: customLockChip.isSelected ? 1 : 0
+
+              readonly property bool isActive: root.isCustomLockActive
+              readonly property bool isFocused: root.activeFocusSection && (root.focusedRow === 3) && ((root.lockFocusIndex >= 0 ? root.lockFocusIndex : root.currentLockIndex()) === root.lockOptions.length)
+              readonly property bool isHovered: customLockMouseArea.containsMouse
+              readonly property bool isOpen: root.customLockOpen
+
+              color: {
+                if (isOpen) {
+                  return Color.pickAlpha("surface.selected", "#22272e")
+                }
+                if (isActive) {
+                  return isHovered ? Color.pickAlpha("accent.subtle", "#2a483c") : Color.pickAlpha("accent.subtle", "#1f3b30")
+                }
+                if (isFocused) {
+                  return Color.pickAlpha("surface.selected", "#22272e")
+                }
+                if (isHovered) {
+                  return Color.pickAlpha("surface.hover", "#1f2429")
+                }
+                return Color.pickAlpha("surface.subtle", "#16191c")
+              }
+
+              border.color: {
+                if (isOpen || isFocused) {
+                  return Color.accent
+                }
+                if (isActive) {
+                  return Color.pickAlpha("accent", "#388e68")
+                }
+                if (isHovered) {
+                  return Color.pickAlpha("border.hover", "#3e4752")
+                }
+                return Color.pickAlpha("border.subtle", "#23272c")
+              }
+              border.width: (isOpen || isFocused) ? 2 : 1
 
               MouseArea {
+                id: customLockMouseArea
                 anchors.fill: parent
+                hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                   root.focusedRow = 3
@@ -1505,16 +1744,28 @@ Item {
                 }
               }
 
-              Text {
+              RowLayout {
                 anchors.centerIn: parent
-                width: Math.min(implicitWidth, parent.width - 8)
-                elide: Text.ElideRight
-                horizontalAlignment: Text.AlignHCenter
-                text: root.isCustomLockActive ? ("Custom: " + root.formatDuration(root.lockTimeout)) : "+ Custom..."
-                font.family: Style.font.family
-                font.pixelSize: 11
-                font.bold: customLockChip.isSelected
-                color: customLockChip.isSelected ? Color.accent : Color.foreground
+                spacing: 4
+
+                Rectangle {
+                  visible: customLockChip.isActive
+                  width: 5
+                  height: 5
+                  radius: 2.5
+                  color: Color.accent
+                }
+
+                Text {
+                  width: Math.min(implicitWidth, customLockChip.width - (customLockChip.isActive ? 18 : 8))
+                  elide: Text.ElideRight
+                  horizontalAlignment: Text.AlignHCenter
+                  text: root.isCustomLockActive ? ("Custom: " + root.formatDuration(root.lockTimeout)) : "+ Custom..."
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: customLockChip.isActive || customLockChip.isFocused || customLockChip.isOpen
+                  color: customLockChip.isActive ? Color.accent : ((customLockChip.isFocused || customLockChip.isHovered || customLockChip.isOpen) ? Color.foreground : Color.muted)
+                }
               }
             }
           }
