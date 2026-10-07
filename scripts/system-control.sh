@@ -39,59 +39,85 @@ case "$cmd" in
 
   audio-get)
     # 1. Volume & Mute
+    vol_num="0.5"
     vol_raw=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || echo "Volume: 0.5")
-    vol_num=$(echo "$vol_raw" | awk '{print $2}')
+    if [[ -n "$vol_raw" ]]; then
+      vol_num=$(echo "$vol_raw" | awk '{print $2}' || echo "0.5")
+    fi
     is_muted=false
     [[ "$vol_raw" =~ \[MUTED\] ]] && is_muted=true
 
-    vol_percent=$(awk -v v="$vol_num" 'BEGIN { printf "%d", (v * 100) + 0.5 }')
+    vol_percent=50
+    if [[ -n "$vol_num" ]]; then
+      vol_percent=$(awk -v v="$vol_num" 'BEGIN { printf "%d", (v * 100) + 0.5 }' 2>/dev/null || echo "50")
+    fi
+    if ! [[ "$vol_percent" =~ ^[0-9]+$ ]]; then vol_percent=50; fi
     if (( vol_percent > 100 )); then vol_percent=100; fi
     if (( vol_percent < 0 )); then vol_percent=0; fi
 
     # 2. Sinks
-    sinks_json=$(wpctl status 2>/dev/null | awk '
-      /Audio/,/Sources/ {
-        if ($0 ~ /Sinks:/) { in_sinks=1; next }
-        if ($0 ~ /Sources:/) { in_sinks=0 }
-        if (in_sinks && match($0, /([0-9]+)\.[[:space:]]+(.*)[[:space:]]+\[vol:/, m)) {
-          is_default = ($0 ~ /\*/) ? "true" : "false"
-          gsub(/[[:space:]]+$/, "", m[2])
-          printf "%s\t%s\t%s\n", m[1], m[2], is_default
+    sinks_json=""
+    if command -v wpctl >/dev/null 2>&1; then
+      sinks_json=$(wpctl status 2>/dev/null | awk '
+        /Audio/,/Sources/ {
+          if ($0 ~ /Sinks:/) { in_sinks=1; next }
+          if ($0 ~ /Sources:/) { in_sinks=0 }
+          if (in_sinks && match($0, /([0-9]+)\.[[:space:]]+(.*)[[:space:]]+\[vol:/, m)) {
+            is_default = ($0 ~ /\*/) ? "true" : "false"
+            gsub(/[[:space:]]+$/, "", m[2])
+            printf "%s\t%s\t%s\n", m[1], m[2], is_default
+          }
         }
-      }
-    ' | jq -R 'split("\t") | {id: .[0], name: .[1], isDefault: (.[2] == "true")}' | jq -s .)
+      ' | jq -R 'split("\t") | {id: .[0], name: .[1], isDefault: (.[2] == "true")}' | jq -s . 2>/dev/null || echo "[]")
+    fi
+    [[ -z "$sinks_json" ]] && sinks_json="[]"
 
     # 3. Input (Microphone) Volume & Mute
+    input_vol_num="1.0"
     input_vol_raw=$(wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null || echo "Volume: 1.0")
-    input_vol_num=$(echo "$input_vol_raw" | awk '{print $2}')
+    if [[ -n "$input_vol_raw" ]]; then
+      input_vol_num=$(echo "$input_vol_raw" | awk '{print $2}' || echo "1.0")
+    fi
     input_is_muted=false
     [[ "$input_vol_raw" =~ \[MUTED\] ]] && input_is_muted=true
 
-    input_vol_percent=$(awk -v v="$input_vol_num" 'BEGIN { printf "%d", (v * 100) + 0.5 }')
+    input_vol_percent=100
+    if [[ -n "$input_vol_num" ]]; then
+      input_vol_percent=$(awk -v v="$input_vol_num" 'BEGIN { printf "%d", (v * 100) + 0.5 }' 2>/dev/null || echo "100")
+    fi
+    if ! [[ "$input_vol_percent" =~ ^[0-9]+$ ]]; then input_vol_percent=100; fi
     if (( input_vol_percent > 100 )); then input_vol_percent=100; fi
     if (( input_vol_percent < 0 )); then input_vol_percent=0; fi
 
     # 4. Input Sources (Microphones)
-    sources_json=$(wpctl status 2>/dev/null | awk '
-      /Sources:/,/Filters:/ {
-        if ($0 ~ /Sources:/) { in_sources=1; next }
-        if ($0 ~ /Filters:/ || $0 ~ /Streams:/) { in_sources=0 }
-        if (in_sources && match($0, /([0-9]+)\.[[:space:]]+(.*)[[:space:]]+\[vol:/, m)) {
-          is_default = ($0 ~ /\*/) ? "true" : "false"
-          gsub(/[[:space:]]+$/, "", m[2])
-          printf "%s\t%s\t%s\n", m[1], m[2], is_default
+    sources_json=""
+    if command -v wpctl >/dev/null 2>&1; then
+      sources_json=$(wpctl status 2>/dev/null | awk '
+        /Sources:/,/Filters:/ {
+          if ($0 ~ /Sources:/) { in_sources=1; next }
+          if ($0 ~ /Filters:/ || $0 ~ /Streams:/) { in_sources=0 }
+          if (in_sources && match($0, /([0-9]+)\.[[:space:]]+(.*)[[:space:]]+\[vol:/, m)) {
+            is_default = ($0 ~ /\*/) ? "true" : "false"
+            gsub(/[[:space:]]+$/, "", m[2])
+            printf "%s\t%s\t%s\n", m[1], m[2], is_default
+          }
         }
-      }
-    ' | jq -R 'split("\t") | {id: .[0], name: .[1], isDefault: (.[2] == "true")}' | jq -s .)
+      ' | jq -R 'split("\t") | {id: .[0], name: .[1], isDefault: (.[2] == "true")}' | jq -s . 2>/dev/null || echo "[]")
+    fi
+    [[ -z "$sources_json" ]] && sources_json="[]"
 
     # 5. Application Playback Streams
-    apps_json=$(pactl -f json list sink-inputs 2>/dev/null | jq -c '[.[] | {
-      id: .index,
-      name: (.properties["application.name"] // "Application"),
-      icon: (.properties["application.icon_name"] // "audio-speakers"),
-      muted: .mute,
-      volume: ((.volume["front-left"].value_percent // "100%") | rtrimstr("%") | tonumber)
-    }]' 2>/dev/null || echo "[]")
+    apps_json="[]"
+    if command -v pactl >/dev/null 2>&1; then
+      apps_json=$(pactl -f json list sink-inputs 2>/dev/null | jq -c '[.[] | {
+        id: .index,
+        name: (.properties["application.name"] // "Application"),
+        icon: (.properties["application.icon_name"] // "audio-speakers"),
+        muted: .mute,
+        volume: ((.volume["front-left"].value_percent // "100%") | rtrimstr("%") | tonumber)
+      }]' 2>/dev/null || echo "[]")
+    fi
+    [[ -z "$apps_json" ]] && apps_json="[]"
 
     jq -n \
       --argjson volume "$vol_percent" \
@@ -100,7 +126,7 @@ case "$cmd" in
       --argjson inputVolume "$input_vol_percent" \
       --argjson inputMuted "$input_is_muted" \
       --argjson sources "$sources_json" \
-      --argjson apps "${apps_json:-[]}" \
+      --argjson apps "$apps_json" \
       '{
         volume: $volume,
         muted: $muted,
