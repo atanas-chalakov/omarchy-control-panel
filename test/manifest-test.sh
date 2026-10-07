@@ -65,3 +65,15 @@ if [[ -L "$target_link" ]]; then
 else
   skip "plugin symlink in ~/.config/omarchy/plugins/ac.control-panel not found"
 fi
+
+# 10. CLI launcher, installer, and desktop entry validation
+[[ -x "$ROOT/bin/omarchy-control-panel" ]] || fail "bin/omarchy-control-panel exists and is executable"
+pass "CLI launcher bin/omarchy-control-panel is executable"
+
+[[ -x "$ROOT/install.sh" && -x "$ROOT/uninstall.sh" ]] || fail "install.sh and uninstall.sh exist and are executable"
+pass "installer scripts (install.sh & uninstall.sh) are executable"
+
+[[ -f "$ROOT/omarchy-control-panel.desktop" ]] || fail "omarchy-control-panel.desktop exists"
+grep -q "Type=Application" "$ROOT/omarchy-control-panel.desktop" || fail "desktop file has Type=Application"
+grep -q "Exec=" "$ROOT/omarchy-control-panel.desktop" || fail "desktop file has Exec line"
+pass "omarchy-control-panel.desktop is a valid desktop entry"

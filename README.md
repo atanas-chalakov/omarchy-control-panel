@@ -106,50 +106,67 @@ The Control Panel is designed for seamless keyboard-driven navigation:
 
 ## 🚀 Installation & Setup
 
-### 1. Link Plugin into Omarchy
-Clone or symlink the repository into your Omarchy plugins directory:
+### Quick Install (Automated)
+Run the automated installer script:
 
 ```bash
-mkdir -p ~/.config/omarchy/plugins
+git clone https://github.com/atanas-chalakov/omarchy-control-panel.git
+cd omarchy-control-panel
+./install.sh
+```
+
+The script automatically:
+1. Links the plugin into `~/.config/omarchy/plugins/ac.control-panel`.
+2. Installs the CLI runner `omarchy-control-panel` into `~/.local/bin/`.
+3. Registers the desktop entry into `~/.local/share/applications/omarchy-control-panel.desktop` for Rofi, Walker, and Omarchy application menu.
+4. Validates the manifest and enables the plugin in your Omarchy status bar.
+
+### Manual Setup
+```bash
+# 1. Link plugin into Omarchy
+mkdir -p ~/.config/omarchy/plugins ~/.local/bin ~/.local/share/applications
 ln -s "$(pwd)" ~/.config/omarchy/plugins/ac.control-panel
-```
 
-### 2. Enable Plugin
-Enable the plugin in your Omarchy shell:
-
-```bash
+# 2. Enable in Omarchy shell
 omarchy plugin enable ac.control-panel --section right
+
+# 3. Install CLI launcher
+ln -sf "$(pwd)/bin/omarchy-control-panel" ~/.local/bin/omarchy-control-panel
 ```
 
-### 3. Keybinding Setup (Hyprland)
-Add a shortcut in `~/.config/hypr/bindings.lua` or `bindings.conf`:
+### Keybinding Setup (Hyprland)
+Add a shortcut in `~/.config/hypr/bindings.lua` (or `bindings.conf`):
 
 ```lua
 -- Toggle Omarchy Control Panel with Super + I
-{"SUPER", "i", "omarchy-shell shell toggle ac.control-panel"}
+o.bind("SUPER + I", "Control Panel", "omarchy-control-panel")
 ```
 
 ---
 
-## 📡 IPC Integration & CLI Control
+## 💻 CLI Launcher & Desktop Entry
 
-The control panel can be controlled programmatically via the `omarchy-shell` IPC interface:
+The plugin includes a dedicated CLI command `omarchy-control-panel`:
 
 ```bash
-# Toggle control panel
-omarchy-shell shell toggle ac.control-panel
+# Toggle the overlay
+omarchy-control-panel
 
-# Summon directly to a specific category
-omarchy-shell shell summon ac.control-panel '{"category":"displays"}'
-omarchy-shell shell summon ac.control-panel '{"category":"appearance"}'
-omarchy-shell shell summon ac.control-panel '{"category":"search"}'
-
-# Summon with Diff Inspector drawer open
-omarchy-shell shell summon ac.control-panel '{"diff":true,"category":"windows"}'
-
-# Hide control panel
-omarchy-shell shell hide ac.control-panel
+# Jump directly into specific categories
+omarchy-control-panel sound       # Audio & Volume streams
+omarchy-control-panel displays    # Displays & Scaling
+omarchy-control-panel power       # Power Profiles & Gaming Mode
+omarchy-control-panel wifi        # Wi-Fi Networks
+omarchy-control-panel bluetooth   # Bluetooth Devices
+omarchy-control-panel theme       # Themes & Wallpaper
+omarchy-control-panel --diff      # Summon with Live Diff Inspector
+omarchy-control-panel --search    # Summon with Global Search active
+omarchy-control-panel hide        # Hide overlay
 ```
+
+### Desktop Menu & App Launcher Integration
+The registered desktop file (`omarchy-control-panel.desktop`) provides desktop quick actions in your application launcher (Rofi / Walker / Omarchy menu):
+- **Right-click actions**: *Live Diff Inspector*, *Search Settings*, *Sound & Volume*, *Displays & Brightness*, *Power & Gaming Mode*.
 
 ---
 

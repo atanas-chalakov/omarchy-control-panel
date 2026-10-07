@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+# omarchy-control-panel — CLI launcher for Omarchy Control Panel
+set -euo pipefail
+
+PLUGIN_ID="ac.control-panel"
+
+usage() {
+  cat << 'EOF'
+Usage: omarchy-control-panel [COMMAND|CATEGORY|OPTION]
+
+Unified settings and preferences hub for Omarchy Linux desktop and Hyprland.
+
+Commands & Options:
+  (no args)             Toggle the Control Panel open or closed
+  toggle                Toggle the Control Panel open or closed
+  show, open            Summon the Control Panel
+  hide, close           Hide the Control Panel
+  -d, --diff, diff      Open Control Panel with Live Diff Inspector
+  -s, --search, search  Open Control Panel with Global Search active
+  -h, --help            Show this help message
+
+Direct Categories:
+  displays              Displays, resolution, refresh rate, scaling & night light
+  sound, audio          Output volume, sinks, sources & application streams
+  power, battery        CPU governors, battery telemetry & gaming mode
+  network, wifi         Wi-Fi scanning, ethernet & connections
+  bluetooth             Paired devices, adapter toggle & discovery
+  appearance, theme     Desktop themes, wallpapers & palette tokens
+  windows, wm           Hyprland animations, gaps & border styling
+  input, touchpad       Touchscreen, touchpad gestures & scrolling
+  region, time          Clock format, timezone, layouts & locales
+  shortcuts, keys       Hyprland keybindings & application shortcuts
+  agents, ai            Coding agents (Antigravity, Claude, Copilot)
+  defaults              Default browser, terminal, editor & file manager
+  updates, storage      Pacman updates, disk usage & cache cleaner
+  notifications, dnd    Do Not Disturb & alert history
+  about, system         Hardware specs, config backups & cloud sync
+
+Examples:
+  omarchy-control-panel                # Toggle overlay
+  omarchy-control-panel sound          # Jump directly to audio settings
+  omarchy-control-panel --diff         # Inspect recent config diffs
+  omarchy-control-panel power          # Open power & gaming mode
+EOF
+}
+
+cmd="${1:-toggle}"
+
+case "$cmd" in
+  -h|--help|help)
+    usage
+    exit 0
+    ;;
+
+  toggle)
+    exec omarchy-shell shell toggle "$PLUGIN_ID"
+    ;;
+
+  show|open)
+    exec omarchy-shell shell summon "$PLUGIN_ID"
+    ;;
+
+  hide|close)
+    exec omarchy-shell -q shell hide "$PLUGIN_ID"
+    ;;
+
+  -d|--diff|diff)
+    exec omarchy-shell shell summon "$PLUGIN_ID" '{"diff":true}'
+    ;;
+
+  -s|--search|search)
+    exec omarchy-shell shell summon "$PLUGIN_ID" '{"category":"search"}'
+    ;;
+
+  audio)
+    exec omarchy-shell shell summon "$PLUGIN_ID" '{"category":"sound"}'
+    ;;
+
+  battery)
+    exec omarchy-shell shell summon "$PLUGIN_ID" '{"category":"power"}'
+    ;;
+
+  wifi)
+    exec omarchy-shell shell summon "$PLUGIN_ID" '{"category":"network"}'
+    ;;
+
+  theme)
+    exec omarchy-shell shell summon "$PLUGIN_ID" '{"category":"appearance"}'
+    ;;
+
+  wm)
+    exec omarchy-shell shell summon "$PLUGIN_ID" '{"category":"windows"}'
+    ;;
+
+  touchpad)
+    exec omarchy-shell shell summon "$PLUGIN_ID" '{"category":"input"}'
+    ;;
+
+  time)
+    exec omarchy-shell shell summon "$PLUGIN_ID" '{"category":"region"}'
+    ;;
+
+  keys)
+    exec omarchy-shell shell summon "$PLUGIN_ID" '{"category":"shortcuts"}'
+    ;;
+
+  ai)
+    exec omarchy-shell shell summon "$PLUGIN_ID" '{"category":"agents"}'
+    ;;
+
+  storage)
+    exec omarchy-shell shell summon "$PLUGIN_ID" '{"category":"updates"}'
+    ;;
+
+  dnd)
+    exec omarchy-shell shell summon "$PLUGIN_ID" '{"category":"notifications"}'
+    ;;
+
+  system)
+    exec omarchy-shell shell summon "$PLUGIN_ID" '{"category":"about"}'
+    ;;
+
+  displays|sound|power|network|bluetooth|appearance|windows|input|region|shortcuts|agents|defaults|updates|notifications|about|search)
+    exec omarchy-shell shell summon "$PLUGIN_ID" "{\"category\":\"$cmd\"}"
+    ;;
+
+  *)
+    echo "Unknown category or option: $cmd" >&2
+    echo "Run 'omarchy-control-panel --help' for available commands." >&2
+    exit 1
+    ;;
+esac

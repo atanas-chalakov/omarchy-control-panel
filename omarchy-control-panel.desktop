@@ -1,0 +1,32 @@
+[Desktop Entry]
+Name=Control Panel
+GenericName=System Settings & Preferences
+Comment=Unified graphical settings, live diff inspector, and preferences hub for Omarchy
+Exec=omarchy-control-panel
+Icon=preferences-system
+Terminal=false
+Type=Application
+Categories=Settings;System;DesktopSettings;
+Keywords=settings;preferences;control;panel;omarchy;hyprland;theme;display;audio;sound;wifi;bluetooth;diff;backup;
+StartupNotify=true
+Actions=Diff;Search;Sound;Displays;Power;
+
+[Desktop Action Diff]
+Name=Live Diff Inspector
+Exec=omarchy-control-panel --diff
+
+[Desktop Action Search]
+Name=Search Settings
+Exec=omarchy-control-panel --search
+
+[Desktop Action Sound]
+Name=Sound & Volume
+Exec=omarchy-control-panel sound
+
+[Desktop Action Displays]
+Name=Displays & Brightness
+Exec=omarchy-control-panel displays
+
+[Desktop Action Power]
+Name=Power & Gaming Mode
+Exec=omarchy-control-panel power
