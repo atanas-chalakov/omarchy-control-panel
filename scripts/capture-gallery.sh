@@ -41,13 +41,17 @@ echo "============================================================"
 echo " Capturing Omarchy Control Panel Screenshot Gallery"
 echo "============================================================"
 
-capture_view "overview" '{"category":"search"}'
+capture_view "overview" '{"category":"search","diff":false}'
 capture_view "diff-inspector" '{"category":"appearance","diff":true}'
-capture_view "power-gaming" '{"category":"power"}'
-capture_view "sound-audio" '{"category":"sound"}'
-capture_view "network-wifi" '{"category":"network"}'
-capture_view "appearance" '{"category":"appearance"}'
-capture_view "displays" '{"category":"displays"}'
+capture_view "power-gaming" '{"category":"power","diff":false}'
+capture_view "sound-audio" '{"category":"sound","diff":false}'
+capture_view "network-wifi" '{"category":"network","diff":false}'
+capture_view "wifi-share-qr" '{"category":"network","action":"qr","diff":false}'
+capture_view "appearance" '{"category":"appearance","diff":false}'
+capture_view "displays" '{"category":"displays","diff":false}'
+
+# Copy primary overview to root preview.png for marketplace
+cp "$ASSETS_DIR/overview.png" "$PROJECT_ROOT/preview.png"
 
 # Hide panel after capturing
 omarchy-shell -q shell hide "$PLUGIN_ID" >/dev/null 2>&1 || true

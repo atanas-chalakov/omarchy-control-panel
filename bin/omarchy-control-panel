@@ -96,6 +96,10 @@ case "$cmd" in
     exec omarchy-shell shell summon "$PLUGIN_ID" '{"category":"network"}'
     ;;
 
+  qr|wifi-qr)
+    exec omarchy-shell shell summon "$PLUGIN_ID" '{"category":"network","action":"qr","diff":false}'
+    ;;
+
   theme)
     exec omarchy-shell shell summon "$PLUGIN_ID" '{"category":"appearance"}'
     ;;

@@ -23,6 +23,19 @@ Item {
     fitWindowToScreen(false)
   }
 
+  property string pendingAction: ""
+
+  function triggerPendingAction() {
+    if (!root.pendingAction || !categoryLoader.item) return
+    var action = root.pendingAction
+    root.pendingAction = ""
+    Qt.callLater(function() {
+      if (action === "qr" && categoryLoader.item && typeof categoryLoader.item.openWifiQrModal === "function") {
+        categoryLoader.item.openWifiQrModal()
+      }
+    })
+  }
+
   function toggleFocusSection() {
     root.focusSection = (root.focusSection === "sidebar" ? "content" : "sidebar")
   }
@@ -155,6 +168,10 @@ Item {
         }
         if (parsed && typeof parsed.diff === "boolean") {
           showDiffInspector = parsed.diff
+        }
+        if (parsed && typeof parsed.action === "string") {
+          root.pendingAction = parsed.action
+          root.triggerPendingAction()
         }
         if (parsed && typeof parsed.tab === "number") {
           Qt.callLater(function() {
@@ -933,6 +950,7 @@ Item {
                   if (item && typeof item.refresh === "function") {
                     item.refresh()
                   }
+                  root.triggerPendingAction()
                 }
 
                 Rectangle {

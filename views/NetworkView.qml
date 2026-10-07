@@ -122,14 +122,13 @@ Item {
   }
 
   function openWifiQrModal(ssid) {
-    var target = ssid || (root.activeConnection ? root.activeConnection.ssid : "")
-    if (!target) {
-      notifyStatus("No Wi-Fi network selected")
-      return
-    }
     isLoadingQr = true
     showWifiQrModal = true
-    wifiQrProcess.command = [pluginPath + "/scripts/network-control.sh", "wifi-get-qr", target]
+    if (ssid && ssid.length > 0) {
+      wifiQrProcess.command = [pluginPath + "/scripts/network-control.sh", "wifi-get-qr", ssid]
+    } else {
+      wifiQrProcess.command = [pluginPath + "/scripts/network-control.sh", "wifi-get-qr"]
+    }
     wifiQrProcess.running = true
   }
 
