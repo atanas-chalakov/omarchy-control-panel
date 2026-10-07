@@ -4,9 +4,13 @@ set -euo pipefail
 source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/base-test.sh"
 
 require_command jq
-require_command omarchy-shell
 
 require_compositor "live shell IPC integration"
+
+if ! command -v omarchy-shell >/dev/null 2>&1; then
+  skip "omarchy-shell not installed; skipping live shell IPC"
+  exit 0
+fi
 
 # 1. Shell responds to ping
 ping_out=$(omarchy-shell shell ping 2>/dev/null || true)

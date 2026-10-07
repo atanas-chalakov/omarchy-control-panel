@@ -40,8 +40,19 @@ all_file_managers = [
     {"id": "org.kde.dolphin.desktop", "name": "Dolphin", "icon": "", "bin": "dolphin"}
 ]
 
-cur_browser = subprocess.run(["omarchy-cmd-default-browser"], capture_output=True, text=True).stdout.strip()
-if not cur_browser: cur_browser = "chromium.desktop"
+cur_browser = "chromium.desktop"
+if shutil.which("omarchy-cmd-default-browser"):
+    try:
+        out = subprocess.run(["omarchy-cmd-default-browser"], capture_output=True, text=True).stdout.strip()
+        if out: cur_browser = out
+    except Exception:
+        pass
+elif shutil.which("xdg-settings"):
+    try:
+        out = subprocess.run(["xdg-settings", "get", "default-web-browser"], capture_output=True, text=True).stdout.strip()
+        if out: cur_browser = out
+    except Exception:
+        pass
 
 home = os.path.expanduser("~")
 ed_file = os.path.join(home, ".local/state/omarchy/defaults/editor")
@@ -59,8 +70,13 @@ if os.path.exists(term_file):
                 cur_term = line
                 break
 
-cur_fm = subprocess.run(["xdg-mime", "query", "default", "inode/directory"], capture_output=True, text=True).stdout.strip()
-if not cur_fm: cur_fm = "org.gnome.Nautilus.desktop"
+cur_fm = "org.gnome.Nautilus.desktop"
+if shutil.which("xdg-mime"):
+    try:
+        out = subprocess.run(["xdg-mime", "query", "default", "inode/directory"], capture_output=True, text=True).stdout.strip()
+        if out: cur_fm = out
+    except Exception:
+        pass
 
 res = {
     "browser": {
