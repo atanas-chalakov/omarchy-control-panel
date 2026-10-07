@@ -6,6 +6,26 @@
 
 A comprehensive graphical settings and control panel plugin for **Omarchy Linux** and **Hyprland**, built with **Quickshell** and **QML**. It provides a macOS/GNOME-grade unified preferences hub designed with full keyboard-first ergonomics, live configuration tracking with two-column split diff inspection, one-click rollbacks, and full system backup/restore capabilities.
 
+<p align="center">
+  <img src="assets/screenshots/overview.png" alt="Omarchy Control Panel Overview" width="850">
+</p>
+
+---
+
+## 📸 Visual Showcase
+
+| Global Search & Overview | Live Diff Inspector & Revert Engine |
+| :---: | :---: |
+| ![Global Search & Overview](assets/screenshots/overview.png) | ![Live Diff Inspector](assets/screenshots/diff-inspector.png) |
+
+| Power & Gaming Mode Preset | Speaker Channel Audio Test |
+| :---: | :---: |
+| ![Gaming Mode Preset](assets/screenshots/power-gaming.png) | ![Speaker Audio Test](assets/screenshots/sound-audio.png) |
+
+| Wi-Fi Scanning & QR Sharing | Theme Palette Swatches |
+| :---: | :---: |
+| ![Wi-Fi & QR Sharing](assets/screenshots/network-wifi.png) | ![Theme Palette Swatches](assets/screenshots/appearance.png) |
+
 ---
 
 ## 🌟 Highlights & Features
