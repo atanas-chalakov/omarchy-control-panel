@@ -37,13 +37,13 @@ update_persist_lua() {
     snap=$("$SCRIPT_DIR/config-tracker.sh" snapshot "$PERSIST_LUA" 2>/dev/null || true)
   fi
 
-  local nat_scroll=$(hyprctl getoption input:touchpad:natural_scroll -j 2>/dev/null | jq -r 'if .bool != null then .bool else false end')
-  local clickfinger=$(hyprctl getoption input:touchpad:clickfinger_behavior -j 2>/dev/null | jq -r 'if .bool != null then .bool else true end')
-  local scroll_factor=$(hyprctl getoption input:touchpad:scroll_factor -j 2>/dev/null | jq -r '.float // 0.4')
-  local dwt=$(hyprctl getoption input:touchpad:disable_while_typing -j 2>/dev/null | jq -r 'if .bool != null then .bool else false end')
-  local swipe_touch=$(hyprctl getoption gestures:workspace_swipe_touch -j 2>/dev/null | jq -r 'if .bool != null then .bool else false end')
-  local sens=$(hyprctl getoption input:sensitivity -j 2>/dev/null | jq -r '.float // 0.0')
-  local touch_out=$(hyprctl getoption input:touchdevice:output -j 2>/dev/null | jq -r '.str // "[[Auto]]"')
+  local nat_scroll=$( (hyprctl getoption input:touchpad:natural_scroll -j 2>/dev/null || echo "{}") | jq -r 'if .bool != null then .bool else false end')
+  local clickfinger=$( (hyprctl getoption input:touchpad:clickfinger_behavior -j 2>/dev/null || echo "{}") | jq -r 'if .bool != null then .bool else true end')
+  local scroll_factor=$( (hyprctl getoption input:touchpad:scroll_factor -j 2>/dev/null || echo "{}") | jq -r '.float // 0.4')
+  local dwt=$( (hyprctl getoption input:touchpad:disable_while_typing -j 2>/dev/null || echo "{}") | jq -r 'if .bool != null then .bool else false end')
+  local swipe_touch=$( (hyprctl getoption gestures:workspace_swipe_touch -j 2>/dev/null || echo "{}") | jq -r 'if .bool != null then .bool else false end')
+  local sens=$( (hyprctl getoption input:sensitivity -j 2>/dev/null || echo "{}") | jq -r '.float // 0.0')
+  local touch_out=$( (hyprctl getoption input:touchdevice:output -j 2>/dev/null || echo "{}") | jq -r '.str // "[[Auto]]"')
 
   local out_clause=""
   if [[ "$touch_out" != "[[Auto]]" && -n "$touch_out" ]]; then
@@ -112,13 +112,13 @@ cmd_get_state() {
   fi
 
   # Options
-  local nat_scroll=$(hyprctl getoption input:touchpad:natural_scroll -j 2>/dev/null | jq -r 'if .bool != null then .bool else false end')
-  local clickfinger=$(hyprctl getoption input:touchpad:clickfinger_behavior -j 2>/dev/null | jq -r 'if .bool != null then .bool else true end')
-  local scroll_factor=$(hyprctl getoption input:touchpad:scroll_factor -j 2>/dev/null | jq -r '.float // 0.4')
-  local dwt=$(hyprctl getoption input:touchpad:disable_while_typing -j 2>/dev/null | jq -r 'if .bool != null then .bool else false end')
-  local swipe_touch=$(hyprctl getoption gestures:workspace_swipe_touch -j 2>/dev/null | jq -r 'if .bool != null then .bool else false end')
-  local sens=$(hyprctl getoption input:sensitivity -j 2>/dev/null | jq -r '.float // 0.0')
-  local touch_out=$(hyprctl getoption input:touchdevice:output -j 2>/dev/null | jq -r '.str // "[[Auto]]"')
+  local nat_scroll=$( (hyprctl getoption input:touchpad:natural_scroll -j 2>/dev/null || echo "{}") | jq -r 'if .bool != null then .bool else false end')
+  local clickfinger=$( (hyprctl getoption input:touchpad:clickfinger_behavior -j 2>/dev/null || echo "{}") | jq -r 'if .bool != null then .bool else true end')
+  local scroll_factor=$( (hyprctl getoption input:touchpad:scroll_factor -j 2>/dev/null || echo "{}") | jq -r '.float // 0.4')
+  local dwt=$( (hyprctl getoption input:touchpad:disable_while_typing -j 2>/dev/null || echo "{}") | jq -r 'if .bool != null then .bool else false end')
+  local swipe_touch=$( (hyprctl getoption gestures:workspace_swipe_touch -j 2>/dev/null || echo "{}") | jq -r 'if .bool != null then .bool else false end')
+  local sens=$( (hyprctl getoption input:sensitivity -j 2>/dev/null || echo "{}") | jq -r '.float // 0.0')
+  local touch_out=$( (hyprctl getoption input:touchdevice:output -j 2>/dev/null || echo "{}") | jq -r '.str // "[[Auto]]"')
 
   # Monitors
   local monitors=$(hyprctl monitors -j 2>/dev/null | jq -c '[.[].name]' || echo '[]')

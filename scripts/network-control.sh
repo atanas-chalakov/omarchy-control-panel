@@ -116,15 +116,15 @@ case "$cmd" in
         if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
           "$SCRIPT_DIR/config-tracker.sh" record-command "network" "Wi-Fi Connection ($ssid)" "NetworkManager" "nmcli dev wifi connect $ssid" "Connected to SSID $ssid" >/dev/null 2>&1 || true
         fi
-        echo "{\"success\":true,\"message\":\"$ssid\"}"
+        jq -n --arg ssid "$ssid" '{success: true, message: $ssid}'
         exit 0
       else
         clean_err=$(echo "$out" | sed 's/^Error: *//' | tr '\n' ' ' | sed 's/ *$//')
-        echo "{\"success\":false,\"error\":\"$clean_err\"}"
+        jq -n --arg err "$clean_err" '{success: false, error: $err}'
         exit 1
       fi
     else
-      echo "{\"success\":false,\"error\":\"No SSID specified\"}"
+      jq -n '{success: false, error: "No SSID specified"}'
       exit 1
     fi
     ;;

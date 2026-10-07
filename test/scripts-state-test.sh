@@ -9,13 +9,13 @@ require_command jq
 tests=(
   "display-control.sh|get-state|.brightness != null and .monitors != null and .nightlight != null"
   "power-control.sh|get-state|.profile != null and .battery != null"
-  "network-control.sh|get-state|.wifi_enabled != null and .networks != null"
+  "network-control.sh|get-state|.enabled != null and .networks != null"
   "bluetooth-control.sh|get-state|.powered != null and .devices != null"
-  "wm-control.sh|get-state|.animations != null and .general != null and .decoration != null"
+  "wm-control.sh|get-state|.animations != null and .gapsIn != null and .borderSize != null"
   "touch-input-control.sh|get-state|.touchpad != null"
   "notifications-control.sh|get-state|.dnd != null and .history != null"
-  "shortcuts-control.sh|get-state|.shortcuts != null"
-  "region-control.sh|get-state|.time != null and .date != null and .layouts != null"
+  "shortcuts-control.sh|get-state|.bindings != null"
+  "region-control.sh|get-state|.time != null and .date != null and .configuredLayouts != null"
   "defaults-control.sh|get-state|.browser != null and .editor != null and .terminal != null"
   "updates-storage-control.sh|get-state|.updates != null and .storage != null"
   "config-tracker.sh|get-all-configs|type == \"array\" and length >= 8"
@@ -37,8 +37,9 @@ for item in "${tests[@]}"; do
   echo "$output" | jq -e . >/dev/null 2>&1 || fail "$script $cmd output is valid JSON" "$output"
 
   # 4. Validate schema structure
-  valid=$(echo "$output" | jq -e "$jq_filter" 2>/dev/null || echo "false")
-  [[ "$valid" != "false" && "$valid" != "null" ]] || fail "$script $cmd schema matches expected format ($jq_filter)" "$output"
+  if ! echo "$output" | jq -e "$jq_filter" >/dev/null 2>&1; then
+    fail "$script $cmd schema does not match expected filter: $jq_filter" "$output"
+  fi
 
   pass "$script ($cmd) returns valid structured state"
 done

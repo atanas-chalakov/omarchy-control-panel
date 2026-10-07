@@ -108,23 +108,31 @@ Item {
   }
 
   readonly property var categories: [
-    { id: "search", label: "Search & Overview", icon: "", key: "S" },
-    { id: "displays", label: "Displays", icon: "󰍹", key: "1" },
-    { id: "power", label: "Power & Battery", icon: "󰂄", key: "2" },
-    { id: "appearance", label: "Appearance", icon: "", key: "3" },
-    { id: "sound", label: "Sound", icon: "󰕾", key: "4" },
-    { id: "network", label: "Network & Wi-Fi", icon: "󰤨", key: "5" },
-    { id: "bluetooth", label: "Bluetooth", icon: "󰂯", key: "6" },
-    { id: "input", label: "Touch & Input", icon: "󰆽", key: "7" },
-    { id: "windows", label: "Window Manager", icon: "", key: "8" },
-    { id: "defaults", label: "Default Apps", icon: "󰌢", key: "9" },
-    { id: "updates", label: "Updates & Storage", icon: "󰚰", key: "U" },
-    { id: "notifications", label: "Notifications", icon: "󰂚", key: "N" },
-    { id: "shortcuts", label: "Shortcuts & Keys", icon: "󰌌", key: "K" },
-    { id: "agents", label: "AI & Agents", icon: "󰚩", key: "A" },
-    { id: "region", label: "Time & Language", icon: "󰅐", key: "L" },
-    { id: "about", label: "About System", icon: "", key: "0" }
+    { id: "search", label: "Search & Overview", icon: "", key: "S", view: "views/SearchView.qml" },
+    { id: "displays", label: "Displays", icon: "󰍹", key: "1", view: "views/DisplaysView.qml" },
+    { id: "power", label: "Power & Battery", icon: "󰂄", key: "2", view: "views/PowerView.qml" },
+    { id: "appearance", label: "Appearance", icon: "", key: "3", view: "views/AppearanceView.qml" },
+    { id: "sound", label: "Sound", icon: "󰕾", key: "4", view: "views/SoundView.qml" },
+    { id: "network", label: "Network & Wi-Fi", icon: "󰤨", key: "5", view: "views/NetworkView.qml" },
+    { id: "bluetooth", label: "Bluetooth", icon: "󰂯", key: "6", view: "views/BluetoothView.qml" },
+    { id: "input", label: "Touch & Input", icon: "󰆽", key: "7", view: "views/TouchInputView.qml" },
+    { id: "windows", label: "Window Manager", icon: "", key: "8", view: "views/WindowManagerView.qml" },
+    { id: "defaults", label: "Default Apps", icon: "󰌢", key: "9", view: "views/DefaultsView.qml" },
+    { id: "updates", label: "Updates & Storage", icon: "󰚰", key: "U", view: "views/UpdatesStorageView.qml" },
+    { id: "notifications", label: "Notifications", icon: "󰂚", key: "N", view: "views/NotificationsView.qml" },
+    { id: "shortcuts", label: "Shortcuts & Keys", icon: "󰌌", key: "K", view: "views/ShortcutsView.qml" },
+    { id: "agents", label: "AI & Agents", icon: "󰚩", key: "A", view: "views/AgentsView.qml" },
+    { id: "region", label: "Time & Language", icon: "󰅐", key: "L", view: "views/TimeLanguageView.qml" },
+    { id: "about", label: "About System", icon: "", key: "0", view: "views/AboutView.qml" }
   ]
+
+  readonly property var categoryMap: {
+    var map = {}
+    for (var i = 0; i < categories.length; i++) {
+      map[categories[i].id] = categories[i]
+    }
+    return map
+  }
 
   function open(payloadJson) {
     closingFromHost = false
@@ -874,13 +882,7 @@ Item {
 
                 Text {
                   Layout.fillWidth: true
-                  text: {
-                    for (var i = 0; i < root.categories.length; i++) {
-                      if (root.categories[i].id === root.currentCategory)
-                        return root.categories[i].label
-                    }
-                    return "Settings"
-                  }
+                  text: root.categoryMap[root.currentCategory] ? root.categoryMap[root.currentCategory].label : "Settings"
                   font.family: Style.font.family
                   font.pixelSize: Style.font.subtitle || 16
                   font.bold: true
@@ -911,25 +913,7 @@ Item {
                 Layout.preferredWidth: 0
                 Layout.fillHeight: true
 
-                source: {
-                  if (root.currentCategory === "search") return "views/SearchView.qml"
-                  if (root.currentCategory === "displays") return "views/DisplaysView.qml"
-                  if (root.currentCategory === "power") return "views/PowerView.qml"
-                  if (root.currentCategory === "appearance") return "views/AppearanceView.qml"
-                  if (root.currentCategory === "sound") return "views/SoundView.qml"
-                  if (root.currentCategory === "network") return "views/NetworkView.qml"
-                  if (root.currentCategory === "bluetooth") return "views/BluetoothView.qml"
-                  if (root.currentCategory === "input") return "views/TouchInputView.qml"
-                  if (root.currentCategory === "windows") return "views/WindowManagerView.qml"
-                  if (root.currentCategory === "defaults") return "views/DefaultsView.qml"
-                  if (root.currentCategory === "updates") return "views/UpdatesStorageView.qml"
-                  if (root.currentCategory === "notifications") return "views/NotificationsView.qml"
-                  if (root.currentCategory === "shortcuts") return "views/ShortcutsView.qml"
-                  if (root.currentCategory === "agents") return "views/AgentsView.qml"
-                  if (root.currentCategory === "region") return "views/TimeLanguageView.qml"
-                  if (root.currentCategory === "about") return "views/AboutView.qml"
-                  return ""
-                }
+                source: root.categoryMap[root.currentCategory] ? root.categoryMap[root.currentCategory].view : "views/SearchView.qml"
 
                 onLoaded: {
                   if (item) {

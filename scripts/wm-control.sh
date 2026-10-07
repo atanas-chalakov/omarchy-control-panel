@@ -40,15 +40,15 @@ update_persist_lua() {
     snap=$("$SCRIPT_DIR/config-tracker.sh" snapshot "$PERSIST_LUA" 2>/dev/null || true)
   fi
 
-  local anim=$(hyprctl getoption animations:enabled -j 2>/dev/null | jq -r 'if .bool != null then .bool else true end')
-  local gaps_in_css=$(hyprctl getoption general:gaps_in -j 2>/dev/null | jq -r '.css // "5 5 5 5"')
+  local anim=$( (hyprctl getoption animations:enabled -j 2>/dev/null || echo "{}") | jq -r 'if .bool != null then .bool else true end')
+  local gaps_in_css=$( (hyprctl getoption general:gaps_in -j 2>/dev/null || echo "{}") | jq -r '.css // "5 5 5 5"')
   local gaps_in=$(echo "$gaps_in_css" | awk '{print $1}')
-  local gaps_out_css=$(hyprctl getoption general:gaps_out -j 2>/dev/null | jq -r '.css // "10 10 10 10"')
+  local gaps_out_css=$( (hyprctl getoption general:gaps_out -j 2>/dev/null || echo "{}") | jq -r '.css // "10 10 10 10"')
   local gaps_out=$(echo "$gaps_out_css" | awk '{print $1}')
-  local border=$(hyprctl getoption general:border_size -j 2>/dev/null | jq -r '.int // 2')
-  local rounding=$(hyprctl getoption decoration:rounding -j 2>/dev/null | jq -r '.int // 0')
-  local opacity=$(hyprctl getoption decoration:inactive_opacity -j 2>/dev/null | jq -r '.float // 1.0')
-  local blur=$(hyprctl getoption decoration:blur:enabled -j 2>/dev/null | jq -r 'if .bool != null then .bool else false end')
+  local border=$( (hyprctl getoption general:border_size -j 2>/dev/null || echo "{}") | jq -r '.int // 2')
+  local rounding=$( (hyprctl getoption decoration:rounding -j 2>/dev/null || echo "{}") | jq -r '.int // 0')
+  local opacity=$( (hyprctl getoption decoration:inactive_opacity -j 2>/dev/null || echo "{}") | jq -r '.float // 1.0')
+  local blur=$( (hyprctl getoption decoration:blur:enabled -j 2>/dev/null || echo "{}") | jq -r 'if .bool != null then .bool else false end')
 
   cat > "$PERSIST_LUA" << EOF
 -- Omarchy Window Manager Settings
@@ -77,15 +77,15 @@ EOF
 }
 
 cmd_get_state() {
-  local anim=$(hyprctl getoption animations:enabled -j 2>/dev/null | jq -r 'if .bool != null then .bool else true end')
-  local gaps_in_css=$(hyprctl getoption general:gaps_in -j 2>/dev/null | jq -r '.css // "5 5 5 5"')
+  local anim=$( (hyprctl getoption animations:enabled -j 2>/dev/null || echo "{}") | jq -r 'if .bool != null then .bool else true end')
+  local gaps_in_css=$( (hyprctl getoption general:gaps_in -j 2>/dev/null || echo "{}") | jq -r '.css // "5 5 5 5"')
   local gaps_in=$(echo "$gaps_in_css" | awk '{print $1}')
-  local gaps_out_css=$(hyprctl getoption general:gaps_out -j 2>/dev/null | jq -r '.css // "10 10 10 10"')
+  local gaps_out_css=$( (hyprctl getoption general:gaps_out -j 2>/dev/null || echo "{}") | jq -r '.css // "10 10 10 10"')
   local gaps_out=$(echo "$gaps_out_css" | awk '{print $1}')
-  local border=$(hyprctl getoption general:border_size -j 2>/dev/null | jq -r '.int // 2')
-  local rounding=$(hyprctl getoption decoration:rounding -j 2>/dev/null | jq -r '.int // 0')
-  local opacity=$(hyprctl getoption decoration:inactive_opacity -j 2>/dev/null | jq -r '.float // 1.0')
-  local blur=$(hyprctl getoption decoration:blur:enabled -j 2>/dev/null | jq -r 'if .bool != null then .bool else false end')
+  local border=$( (hyprctl getoption general:border_size -j 2>/dev/null || echo "{}") | jq -r '.int // 2')
+  local rounding=$( (hyprctl getoption decoration:rounding -j 2>/dev/null || echo "{}") | jq -r '.int // 0')
+  local opacity=$( (hyprctl getoption decoration:inactive_opacity -j 2>/dev/null || echo "{}") | jq -r '.float // 1.0')
+  local blur=$( (hyprctl getoption decoration:blur:enabled -j 2>/dev/null || echo "{}") | jq -r 'if .bool != null then .bool else false end')
 
   local bar_hidden="false"
   if [[ -f "$HOME/.local/state/omarchy/toggles/bar-off" ]]; then

@@ -6,6 +6,7 @@ import difflib
 import subprocess
 import time
 import re
+import shutil
 from pathlib import Path
 
 BASE_TMP = Path("/tmp/omarchy-control-panel")
@@ -63,6 +64,9 @@ def parse_diff_lines(diff_text: str):
     for line in diff_text.splitlines():
         if line.startswith("---") or line.startswith("+++"):
             continue
+        elif line.startswith("\\"):
+            # Ignore '\ No newline at end of file' indicator so it does not skew line numbering
+            continue
         elif line.startswith("@@"):
             m = hunk_pattern.match(line)
             if m:
@@ -83,9 +87,9 @@ def parse_diff_lines(diff_text: str):
                 "text": line[1:] if len(line) > 1 else "",
                 "rawText": line,
                 "oldLine": "",
-                "newLine": str(new_line) if in_hunk else ""
+                "newLine": str(new_line) if (in_hunk and new_line > 0) else ""
             })
-            if in_hunk:
+            if in_hunk and new_line > 0:
                 new_line += 1
         elif line.startswith("-"):
             lines_removed += 1
@@ -93,10 +97,10 @@ def parse_diff_lines(diff_text: str):
                 "type": "del",
                 "text": line[1:] if len(line) > 1 else "",
                 "rawText": line,
-                "oldLine": str(old_line) if in_hunk else "",
+                "oldLine": str(old_line) if (in_hunk and old_line > 0) else "",
                 "newLine": ""
             })
-            if in_hunk:
+            if in_hunk and old_line > 0:
                 old_line += 1
         else:
             text = line[1:] if (line.startswith(" ") and len(line) > 1) else (line if not line.startswith(" ") else "")
@@ -104,12 +108,14 @@ def parse_diff_lines(diff_text: str):
                 "type": "context",
                 "text": text,
                 "rawText": line,
-                "oldLine": str(old_line) if in_hunk else "",
-                "newLine": str(new_line) if in_hunk else ""
+                "oldLine": str(old_line) if (in_hunk and old_line > 0) else "",
+                "newLine": str(new_line) if (in_hunk and new_line > 0) else ""
             })
             if in_hunk:
-                old_line += 1
-                new_line += 1
+                if old_line > 0:
+                    old_line += 1
+                if new_line > 0:
+                    new_line += 1
                 
     return parsed, lines_added, lines_removed
 
@@ -140,9 +146,11 @@ def cmd_record(category: str, title: str, target_path_str: str, before_snap_str:
         print(json.dumps({"hasDiff": False, "message": "No file changes detected"}))
         return
 
+    b_lines = [l + "\n" for l in before_text.splitlines()]
+    a_lines = [l + "\n" for l in after_text.splitlines()]
     diff_lines = list(difflib.unified_diff(
-        before_text.splitlines(keepends=True),
-        after_text.splitlines(keepends=True),
+        b_lines,
+        a_lines,
         fromfile=to_display_path(target),
         tofile=to_display_path(target),
         n=3
@@ -151,8 +159,8 @@ def cmd_record(category: str, title: str, target_path_str: str, before_snap_str:
     parsed_lines, lines_added, lines_removed = parse_diff_lines(diff_text)
     
     # Store before and after text if size is reasonable (< 250KB) to allow instant revert
-    keep_before = before_text if len(before_text) < 250000 else ""
-    keep_after = after_text if len(after_text) < 250000 else ""
+    keep_before = before_text if len(before_text) < 250000 else None
+    keep_after = after_text if len(after_text) < 250000 else None
 
     entry = {
         "id": int(time.time() * 1000),
@@ -163,9 +171,9 @@ def cmd_record(category: str, title: str, target_path_str: str, before_snap_str:
         "displayFile": to_display_path(target),
         "hasDiff": True,
         "changeType": "file",
-        "isReversible": bool(keep_before),
-        "beforeText": keep_before,
-        "afterText": keep_after,
+        "isReversible": (keep_before is not None),
+        "beforeText": keep_before if keep_before is not None else "",
+        "afterText": keep_after if keep_after is not None else "",
         "diff": diff_text,
         "lines": parsed_lines,
         "linesAdded": lines_added,
@@ -239,15 +247,17 @@ def cmd_revert(entry_id_arg: str = ""):
                     break
         except Exception:
             pass
-            
-    if not target_entry and LATEST_FILE.exists():
-        try:
-            target_entry = json.loads(LATEST_FILE.read_text())
-        except Exception:
-            pass
-            
-    if not target_entry and history:
-        target_entry = history[0]
+        if not target_entry:
+            print(json.dumps({"success": False, "message": f"Entry ID {entry_id_arg} not found in history"}))
+            return
+    else:
+        if LATEST_FILE.exists():
+            try:
+                target_entry = json.loads(LATEST_FILE.read_text())
+            except Exception:
+                pass
+        if not target_entry and history:
+            target_entry = history[0]
 
     if not target_entry:
         print(json.dumps({"success": False, "message": "No modification found to revert"}))
@@ -291,9 +301,11 @@ def cmd_revert(entry_id_arg: str = ""):
             pass
 
     # Record revert diff
+    c_lines = [l + "\n" for l in current_text.splitlines()]
+    b_lines = [l + "\n" for l in before_text.splitlines()]
     diff_lines = list(difflib.unified_diff(
-        current_text.splitlines(keepends=True),
-        before_text.splitlines(keepends=True),
+        c_lines,
+        b_lines,
         fromfile=to_display_path(target),
         tofile=to_display_path(target),
         n=3
@@ -432,13 +444,18 @@ def cmd_get_file_content(path_str: str):
 def cmd_open_editor(path_str: str):
     p = Path(path_str).expanduser()
     target = str(p)
-    if os.path.exists("/usr/bin/code"):
+    if shutil.which("code"):
         subprocess.Popen(["code", target], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         print(json.dumps({"success": True, "editor": "code"}))
         return
-    if os.path.exists("/usr/bin/alacritty") and os.path.exists("/usr/bin/nvim"):
-        subprocess.Popen(["alacritty", "-e", "nvim", target], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        print(json.dumps({"success": True, "editor": "nvim"}))
+    term_bin = None
+    for t in ["ghostty", "kitty", "alacritty", "foot"]:
+        if shutil.which(t):
+            term_bin = t
+            break
+    if shutil.which("nvim") and term_bin:
+        subprocess.Popen([term_bin, "-e", "nvim", target], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print(json.dumps({"success": True, "editor": f"{term_bin}+nvim"}))
         return
     subprocess.Popen(["xdg-open", target], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     print(json.dumps({"success": True, "editor": "xdg-open"}))

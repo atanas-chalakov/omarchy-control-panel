@@ -15,11 +15,11 @@ cp_qml = root / "ControlPanel.qml"
 views_dir = root / "views"
 
 content = cp_qml.read_text()
-# Find categoryLoader source mappings e.g. "views/SearchView.qml"
-view_refs = re.findall(r'return "(views/[A-Za-z0-9_-]+\.qml)"', content)
+# Find category view mappings in categories array
+view_refs = re.findall(r'view:\s*"(views/[A-Za-z0-9_-]+\.qml)"', content)
 
 if not view_refs:
-    print("Failed to find any categoryLoader view mappings in ControlPanel.qml", file=sys.stderr)
+    print("Failed to find any category view mappings in ControlPanel.qml", file=sys.stderr)
     sys.exit(1)
 
 for v in view_refs:

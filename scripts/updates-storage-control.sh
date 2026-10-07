@@ -71,8 +71,8 @@ get_state() {
       label="Home Storage (/home)"
     fi
 
-    partitions+=("{\"mount\":\"$mount\",\"label\":\"$label\",\"total_str\":\"$total_str\",\"used_str\":\"$used_str\",\"avail_str\":\"$avail_str\",\"percent\":$pct_num}")
-  done < <(df -P -k / /boot 2>/dev/null | awk 'NR>1 {print $6, $2, $3, $4, $5}' || true)
+    partitions+=("{\"mount\":\"$mount\",\"label\":\"$label\",\"total_str\":\"$total_str\",\"used_str\":\"$used_str\",\"avail_str\":\"$avail_str\",\"percent\":${pct_num:-0}}")
+  done < <(df -P -k / /boot /home 2>/dev/null | awk 'NR>1 {print $6, $2, $3, $4, $5}' || true)
 
   # 3. Cache & Maintenance metrics
   local pac_cache="0B"

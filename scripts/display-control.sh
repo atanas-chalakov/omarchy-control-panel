@@ -98,6 +98,7 @@ case "$cmd" in
         BEGIN {
           g = gcd(width * 120, height * 120)
           k = int(scale * 120 + 0.5)
+          if (k <= 0) k = 120
           if (k > g) k = g
           while (g % k != 0) k++
           printf "%g\n", k / 120
