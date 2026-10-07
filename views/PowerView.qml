@@ -21,6 +21,7 @@ Item {
   property int screensaverTimeout: 150
   property int lockTimeout: 300
   property bool stayAwake: false
+  property bool gameMode: false
   property string statusMessage: ""
 
   property bool customScreensaverOpen: false
@@ -199,17 +200,17 @@ Item {
     }
     return true
   }
-  property int focusedRow: 0   // 0: Profiles, 1: Stay Awake, 2: Screen Off, 3: Lock Screen
+  property int focusedRow: 0   // 0: Profiles, 1: Stay Awake, 2: Gaming Mode, 3: Screen Off, 4: Lock Screen
   onFocusedRowChanged: {
     ensureRowVisible(focusedRow)
     if (focusedRow !== 0) profileFocusIndex = currentProfileIndex()
-    if (focusedRow !== 2 && !customScreensaverOpen) screensaverFocusIndex = currentScreensaverIndex()
-    if (focusedRow !== 3 && !customLockOpen) lockFocusIndex = currentLockIndex()
+    if (focusedRow !== 3 && !customScreensaverOpen) screensaverFocusIndex = currentScreensaverIndex()
+    if (focusedRow !== 4 && !customLockOpen) lockFocusIndex = currentLockIndex()
   }
 
   function ensureRowVisible(index) {
     if (!scrollArea || !scrollArea.contentItem) return
-    var targets = [profileCard, stayAwakeCard, screensaverCard, lockCard]
+    var targets = [profileCard, stayAwakeCard, gameModeCard, screensaverCard, lockCard]
     if (index >= 0 && index < targets.length) {
       var item = targets[index]
       if (item && item.visible) {
@@ -318,7 +319,7 @@ Item {
   function handleMove(dx, dy) {
     if (hasActiveInput) return true
     if (dy !== 0) {
-      focusedRow = Math.max(0, Math.min(3, focusedRow + dy))
+      focusedRow = Math.max(0, Math.min(4, focusedRow + dy))
       ensureRowVisible(focusedRow)
       return true
     }
@@ -329,8 +330,13 @@ Item {
         toggleStayAwake()
         return true
       }
-      else if (focusedRow === 2) return cycleScreensaver(dx)
-      else if (focusedRow === 3) return cycleLock(dx)
+      else if (focusedRow === 2) {
+        if (dx < 0) return false
+        toggleGameMode()
+        return true
+      }
+      else if (focusedRow === 3) return cycleScreensaver(dx)
+      else if (focusedRow === 4) return cycleLock(dx)
     }
     return false
   }
@@ -345,6 +351,8 @@ Item {
     } else if (focusedRow === 1) {
       toggleStayAwake()
     } else if (focusedRow === 2) {
+      toggleGameMode()
+    } else if (focusedRow === 3) {
       var curSs = (screensaverFocusIndex >= 0) ? screensaverFocusIndex : currentScreensaverIndex()
       if (curSs === screensaverOptions.length) {
         if (customScreensaverOpen) {
@@ -355,7 +363,7 @@ Item {
       } else if (curSs >= 0 && curSs < screensaverOptions.length) {
         setIdle(screensaverOptions[curSs].seconds, root.lockTimeout)
       }
-    } else if (focusedRow === 3) {
+    } else if (focusedRow === 4) {
       var curLk = (lockFocusIndex >= 0) ? lockFocusIndex : currentLockIndex()
       if (curLk === lockOptions.length) {
         if (customLockOpen) {
@@ -381,15 +389,19 @@ Item {
       focusedRow = 1
       toggleStayAwake()
       return true
-    } else if (key === "s" || key === "S") {
+    } else if (key === "g" || key === "G") {
       focusedRow = 2
+      toggleGameMode()
+      return true
+    } else if (key === "s" || key === "S") {
+      focusedRow = 3
       return true
     } else if (key === "c" || key === "C") {
-      if (focusedRow === 2) {
+      if (focusedRow === 3) {
         screensaverFocusIndex = screensaverOptions.length
         openCustomScreensaver()
         return true
-      } else if (focusedRow === 3) {
+      } else if (focusedRow === 4) {
         lockFocusIndex = lockOptions.length
         openCustomLock()
         return true
@@ -403,12 +415,12 @@ Item {
       if (focusedRow === 0 && n < powerProfiles.length) {
         setProfile(powerProfiles[n].id)
         return true
-      } else if (focusedRow === 2 && n < screensaverOptions.length) {
+      } else if (focusedRow === 3 && n < screensaverOptions.length) {
         screensaverFocusIndex = n
         customScreensaverOpen = false
         setIdle(screensaverOptions[n].seconds, root.lockTimeout)
         return true
-      } else if (focusedRow === 3 && n < lockOptions.length) {
+      } else if (focusedRow === 4 && n < lockOptions.length) {
         lockFocusIndex = n
         customLockOpen = false
         setIdle(root.screensaverTimeout, lockOptions[n].seconds)
@@ -430,6 +442,13 @@ Item {
     setStayAwakeProcess.command = [pluginPath + "/scripts/power-control.sh", "set-stay-awake", "toggle"]
     setStayAwakeProcess.running = true
     notifyStatus(root.stayAwake ? "Stay Awake Enabled (Idle Inhibited)" : "Stay Awake Disabled")
+  }
+
+  function toggleGameMode() {
+    root.gameMode = !root.gameMode
+    setGameModeProcess.command = [pluginPath + "/scripts/power-control.sh", "set-game-mode", "toggle"]
+    setGameModeProcess.running = true
+    notifyStatus(root.gameMode ? "Gaming Mode Enabled: max performance, animations/blur disabled, DND on" : "Gaming Mode Disabled: restored normal desktop")
   }
 
   function setProfile(profileId) {
@@ -498,6 +517,7 @@ Item {
           var data = JSON.parse(text)
           if (data.profile) root.currentProfile = data.profile
           if (data.stayAwake !== undefined) root.stayAwake = (data.stayAwake === true)
+          if (data.gameMode !== undefined) root.gameMode = (data.gameMode === true)
           if (data.battery) {
             root.batteryPresent = data.battery.present === true
             root.batteryCapacity = (data.battery.capacity !== undefined && data.battery.capacity !== null) ? Number(data.battery.capacity) : 100
@@ -539,6 +559,19 @@ Item {
   // Set Stay Awake Process
   Process {
     id: setStayAwakeProcess
+    onRunningChanged: {
+      if (!running) {
+        root.refresh()
+        if (panelRoot && typeof panelRoot.notifySettingChanged === "function") {
+          panelRoot.notifySettingChanged()
+        }
+      }
+    }
+  }
+
+  // Set Game Mode Process
+  Process {
+    id: setGameModeProcess
     onRunningChanged: {
       if (!running) {
         root.refresh()
@@ -1028,14 +1061,127 @@ Item {
         }
       }
 
-      // Setting Row 2: Screen Off Timeout
+      // Setting Row 2: Gaming & High Performance Mode
+      Rectangle {
+        id: gameModeCard
+        Layout.fillWidth: true
+        implicitHeight: Math.max(68, gameModeRowLayout.implicitHeight + 28)
+        Layout.preferredHeight: implicitHeight
+        radius: Style.cornerRadius || 8
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 2
+        readonly property bool isHovered: gameModeCardMouseArea.containsMouse
+        color: gameModeCard.isFocused
+          ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+          : (gameModeCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05) : (root.gameMode ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.06) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)))
+        border.color: gameModeCard.isFocused
+          ? Color.accent
+          : (root.gameMode ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.50) : (gameModeCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.20) : "transparent"))
+        border.width: gameModeCard.isFocused ? 2 : 1
+
+        MouseArea {
+          id: gameModeCardMouseArea
+          anchors.fill: parent
+          hoverEnabled: true
+          cursorShape: Qt.PointingHandCursor
+          onClicked: {
+            root.focusedRow = 2
+            if (root.panelRoot) root.panelRoot.focusSection = "content"
+            root.toggleGameMode()
+          }
+        }
+
+        RowLayout {
+          id: gameModeRowLayout
+          anchors.fill: parent
+          anchors.margins: 14
+          spacing: 14
+
+          Rectangle {
+            width: 44
+            height: 44
+            radius: 8
+            color: root.gameMode ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.25) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+
+            Text {
+              anchors.centerIn: parent
+              text: "󰓅"
+              font.family: Style.font.family
+              font.pixelSize: 22
+              color: root.gameMode ? Color.accent : Color.foreground
+            }
+          }
+
+          ColumnLayout {
+            Layout.fillWidth: true
+            Layout.minimumWidth: 0
+            spacing: 2
+
+            Flow {
+              Layout.fillWidth: true
+              width: parent.width
+              spacing: 6
+
+              Text {
+                text: "Gaming & Performance Mode"
+                font.family: Style.font.family
+                font.pixelSize: Style.font.subtitle || 14
+                font.bold: true
+                color: Color.foreground
+              }
+
+              Text {
+                visible: gameModeCard.isFocused
+                text: "• Press [Enter/Space or g] to toggle"
+                font.family: Style.font.family
+                font.pixelSize: 11
+                color: Color.accent
+                topPadding: 2
+                width: Math.min(implicitWidth, parent.width)
+                wrapMode: Text.WordWrap
+              }
+            }
+
+            Text {
+              Layout.fillWidth: true
+              Layout.minimumWidth: 0
+              text: root.gameMode ? "Maximum performance: CPU governor max, compositor animations/blur disabled, VFR off, DND notifications on." : "Optimizes system for latency-critical tasks: switches CPU to performance, disables window blur/animations, and silences popups."
+              font.family: Style.font.family
+              font.pixelSize: Style.font.subtext || 11
+              color: Color.muted
+              wrapMode: Text.WordWrap
+            }
+          }
+
+          Rectangle {
+            Layout.preferredWidth: 90
+            Layout.minimumWidth: 90
+            Layout.preferredHeight: 32
+            Layout.alignment: Qt.AlignVCenter
+            radius: 16
+            color: root.gameMode ? Color.accent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10)
+            border.color: (gameModeCard.isFocused || gameModeCard.isHovered) ? Color.accent : "transparent"
+            border.width: gameModeCard.isFocused ? 2 : (gameModeCard.isHovered ? 1 : 0)
+
+            Text {
+              anchors.centerIn: parent
+              text: root.gameMode ? "GAMING" : "OFF"
+              font.family: Style.font.family
+              font.pixelSize: 11
+              font.bold: true
+              color: root.gameMode ? "#000000" : (gameModeCard.isFocused || gameModeCard.isHovered ? Color.foreground : Color.muted)
+            }
+          }
+        }
+      }
+
+      // Setting Row 3: Screen Off Timeout
       Rectangle {
         id: screensaverCard
         Layout.fillWidth: true
         implicitHeight: Math.max(116, screensaverColLayout.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 2
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 3
         readonly property bool isHovered: screensaverCardMouseArea.containsMouse
         color: screensaverCard.isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.07) : (screensaverCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
         border.color: screensaverCard.isFocused ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35) : (screensaverCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.2) : "transparent")
@@ -1047,7 +1193,7 @@ Item {
           hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
           onClicked: {
-            root.focusedRow = 2
+            root.focusedRow = 3
             if (root.panelRoot) root.panelRoot.focusSection = "content"
           }
         }
@@ -1141,7 +1287,7 @@ Item {
                 implicitHeight: 32
                 bordered: true
                 onClicked: {
-                  root.focusedRow = 2
+                  root.focusedRow = 3
                   if (root.panelRoot) root.panelRoot.focusSection = "content"
                   var cur = (root.screensaverFocusIndex >= 0) ? root.screensaverFocusIndex : root.currentScreensaverIndex()
                   var next = Math.max(0, cur - 1)
@@ -1158,7 +1304,7 @@ Item {
                 implicitHeight: 32
                 bordered: true
                 onClicked: {
-                  root.focusedRow = 2
+                  root.focusedRow = 3
                   if (root.panelRoot) root.panelRoot.focusSection = "content"
                   var cur = (root.screensaverFocusIndex >= 0) ? root.screensaverFocusIndex : root.currentScreensaverIndex()
                   var next = Math.min(root.screensaverOptions.length - 1, cur + 1)
@@ -1191,7 +1337,7 @@ Item {
                 radius: 6
 
                 readonly property bool isActive: (root.screensaverTimeout === modelData.seconds)
-                readonly property bool isFocused: root.isContentFocused && (root.focusedRow === 2) && ((root.screensaverFocusIndex >= 0 ? root.screensaverFocusIndex : root.currentScreensaverIndex()) === index)
+                readonly property bool isFocused: root.isContentFocused && (root.focusedRow === 3) && ((root.screensaverFocusIndex >= 0 ? root.screensaverFocusIndex : root.currentScreensaverIndex()) === index)
                 readonly property bool isHovered: ssMouseArea.containsMouse
 
                 color: {
@@ -1229,7 +1375,7 @@ Item {
                   hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
-                    root.focusedRow = 2
+                    root.focusedRow = 3
                     root.screensaverFocusIndex = index
                     root.customScreensaverOpen = false
                     if (root.panelRoot) root.panelRoot.focusSection = "content"
@@ -1271,7 +1417,7 @@ Item {
               radius: 6
 
               readonly property bool isActive: root.isCustomScreensaverActive
-              readonly property bool isFocused: root.isContentFocused && (root.focusedRow === 2) && ((root.screensaverFocusIndex >= 0 ? root.screensaverFocusIndex : root.currentScreensaverIndex()) === root.screensaverOptions.length)
+              readonly property bool isFocused: root.isContentFocused && (root.focusedRow === 3) && ((root.screensaverFocusIndex >= 0 ? root.screensaverFocusIndex : root.currentScreensaverIndex()) === root.screensaverOptions.length)
               readonly property bool isHovered: customSsMouseArea.containsMouse
               readonly property bool isOpen: root.customScreensaverOpen
 
@@ -1313,7 +1459,7 @@ Item {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                  root.focusedRow = 2
+                  root.focusedRow = 3
                   if (root.panelRoot) root.panelRoot.focusSection = "content"
                   if (root.customScreensaverOpen) {
                     root.customScreensaverOpen = false
@@ -1481,14 +1627,14 @@ Item {
         }
       }
 
-      // Setting Row 3: Lock Screen Timeout
+      // Setting Row 4: Lock Screen Timeout
       Rectangle {
         id: lockCard
         Layout.fillWidth: true
         implicitHeight: Math.max(116, lockColLayout.implicitHeight + 28)
         Layout.preferredHeight: implicitHeight
         radius: Style.cornerRadius || 8
-        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 3
+        readonly property bool isFocused: root.isContentFocused && root.focusedRow === 4
         readonly property bool isHovered: lockCardMouseArea.containsMouse
         color: lockCard.isFocused ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.07) : (lockCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.05) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02))
         border.color: lockCard.isFocused ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35) : (lockCard.isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.2) : "transparent")
@@ -1500,7 +1646,7 @@ Item {
           hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
           onClicked: {
-            root.focusedRow = 3
+            root.focusedRow = 4
             if (root.panelRoot) root.panelRoot.focusSection = "content"
           }
         }
@@ -1594,7 +1740,7 @@ Item {
                 implicitHeight: 32
                 bordered: true
                 onClicked: {
-                  root.focusedRow = 3
+                  root.focusedRow = 4
                   if (root.panelRoot) root.panelRoot.focusSection = "content"
                   var cur = (root.lockFocusIndex >= 0) ? root.lockFocusIndex : root.currentLockIndex()
                   var next = Math.max(0, cur - 1)
@@ -1611,7 +1757,7 @@ Item {
                 implicitHeight: 32
                 bordered: true
                 onClicked: {
-                  root.focusedRow = 3
+                  root.focusedRow = 4
                   if (root.panelRoot) root.panelRoot.focusSection = "content"
                   var cur = (root.lockFocusIndex >= 0) ? root.lockFocusIndex : root.currentLockIndex()
                   var next = Math.min(root.lockOptions.length - 1, cur + 1)
@@ -1644,7 +1790,7 @@ Item {
                 radius: 6
 
                 readonly property bool isActive: (root.lockTimeout === modelData.seconds)
-                readonly property bool isFocused: root.isContentFocused && (root.focusedRow === 3) && ((root.lockFocusIndex >= 0 ? root.lockFocusIndex : root.currentLockIndex()) === index)
+                readonly property bool isFocused: root.isContentFocused && (root.focusedRow === 4) && ((root.lockFocusIndex >= 0 ? root.lockFocusIndex : root.currentLockIndex()) === index)
                 readonly property bool isHovered: lockMouseArea.containsMouse
 
                 color: {
@@ -1682,7 +1828,7 @@ Item {
                   hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
                   onClicked: {
-                    root.focusedRow = 3
+                    root.focusedRow = 4
                     root.lockFocusIndex = index
                     root.customLockOpen = false
                     if (root.panelRoot) root.panelRoot.focusSection = "content"
@@ -1724,7 +1870,7 @@ Item {
               radius: 6
 
               readonly property bool isActive: root.isCustomLockActive
-              readonly property bool isFocused: root.isContentFocused && (root.focusedRow === 3) && ((root.lockFocusIndex >= 0 ? root.lockFocusIndex : root.currentLockIndex()) === root.lockOptions.length)
+              readonly property bool isFocused: root.isContentFocused && (root.focusedRow === 4) && ((root.lockFocusIndex >= 0 ? root.lockFocusIndex : root.currentLockIndex()) === root.lockOptions.length)
               readonly property bool isHovered: customLockMouseArea.containsMouse
               readonly property bool isOpen: root.customLockOpen
 
@@ -1766,7 +1912,7 @@ Item {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                  root.focusedRow = 3
+                  root.focusedRow = 4
                   if (root.panelRoot) root.panelRoot.focusSection = "content"
                   if (root.customLockOpen) {
                     root.customLockOpen = false

@@ -25,8 +25,24 @@ A comprehensive graphical settings and control panel plugin for **Omarchy Linux*
 12. **Notifications** — Do Not Disturb (DND) mode, notification history inspection, and alert sounds.
 13. **Storage & Updates** — Disk partition usage breakdown, Pacman update checks, and pacman cache cleanup.
 14. **Coding Agents** — Omarchy agent manager (Antigravity, Claude Code, Copilot, Codex, OpenCode) with default selector and token telemetry.
-15. **System & Backups** — Hardware specifications, kernel info, uptime, timezone selector, and full Omarchy config backup/restore.
-16. **Global Search** — Fast fuzzy search across all 67+ system settings with quick jump chips and direct navigation.
+15. **System & Backups** — Hardware specifications, kernel info, uptime, timezone selector, local config backup/restore, and GitHub Gist cloud synchronization.
+16. **Global Search** — Fast fuzzy search across all 71+ system settings with quick jump chips and direct navigation.
+
+---
+
+### 🎮 Gaming & High-Performance Mode Preset
+Accessible directly in the **Power & Battery** view or via shortcut `[G]`:
+- **Governor Switch**: Activates `powerprofilesctl set performance` for maximum clock scaling.
+- **Compositor Optimization**: Disables Hyprland animations, background blur, drop shadows, and Variable Frame Rate (VFR) via batch IPC for minimum input latency.
+- **Sleep & Popups**: Inhibits system idle sleep and silences intrusive alerts by activating Do Not Disturb (DND).
+- **Clean Reversion**: Turning off Gaming Mode restores the previous CPU governor, reloads default Hyprland compositor effects, and re-enables notifications.
+
+---
+
+### 🎨 Theme Palette Inspector & Swatches
+Located in **Appearance & Theming**:
+- **Live Swatches**: Displays live hex color tokens (`Color.accent`, `Color.foreground`, `Color.background`, `Color.muted`) generated dynamically by Omarchy's active theme.
+- **One-Click Copy**: Clicking any swatch copies the hex string to clipboard via `wl-copy` with visual confirmation.
 
 ---
 
@@ -39,10 +55,11 @@ Every time a setting or theme changes, the Control Panel's background tracker re
 
 ---
 
-### 📦 Configuration Backup & Restore
+### 📦 Configuration Backup & Cloud Sync (GitHub Gists)
 Located in the **About & System** view:
 - **One-Click Backup `[B]`**: Creates a compressed `.tar.gz` snapshot of your complete Hyprland setup (`~/.config/hypr/*.lua`, `*.conf`), Shell layout (`shell.json`), active defaults, and custom toggle states in `~/.local/state/omarchy/backups/control-panel/`.
 - **Safe Selective Restore**: Validated archive extraction with automated path traversal protection, `hyprctl reload`, and shell restart.
+- **Cloud Gist Synchronization `[S]`**: Upload local archives directly to private GitHub Gists with `gh`, browse remote backups, and import/download archives across workstations.
 - **Backup Management**: Inspect backup timestamp, archive size, and included file counts, with single-click restore and deletion.
 
 ---
@@ -77,7 +94,9 @@ The Control Panel is designed for seamless keyboard-driven navigation:
 | View | Key | Action |
 | :--- | :--- | :--- |
 | **Search** | `c` | Clear search query |
+| **Power** | `g` | Toggle Gaming & Performance Mode preset |
 | **About** | `b` | Create new configuration backup snapshot |
+| **About** | `s` | Toggle GitHub Gist Cloud Sync drawer & remote backups |
 | **About** | `r` | Refresh hardware and system telemetry |
 | **About** | `t` | Open interactive timezone picker |
 | **Displays** | `n` | Toggle Night Light mode |

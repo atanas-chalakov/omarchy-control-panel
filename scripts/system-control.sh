@@ -475,6 +475,229 @@ else:
 ' "$target"
     ;;
 
+  backup-gist-export)
+    target="${2:-}"
+    if [[ -z "$target" ]]; then
+      echo '{"success":false,"error":"Missing backup filename"}' >&2
+      exit 1
+    fi
+    python3 -c '
+import os, sys, json, base64, subprocess
+
+target = sys.argv[1]
+base = os.path.basename(target)
+backup_dir = os.path.expanduser("~/.local/state/omarchy/backups/control-panel")
+archive_path = os.path.join(backup_dir, base)
+
+if not os.path.isfile(archive_path):
+    print(json.dumps({"success": False, "error": f"Backup file {base} not found"}))
+    sys.exit(1)
+
+gh_check = subprocess.run(["gh", "auth", "status"], capture_output=True, text=True)
+if gh_check.returncode != 0:
+    print(json.dumps({"success": False, "error": "GitHub CLI (gh) not authenticated. Run \"gh auth login\"."}))
+    sys.exit(1)
+
+with open(archive_path, "rb") as f:
+    raw_bytes = f.read()
+    b64_str = base64.b64encode(raw_bytes).decode("ascii")
+
+payload = {
+    "description": f"Omarchy Configuration Backup: {base}",
+    "public": False,
+    "files": {
+        f"{base}.b64": {
+            "content": b64_str
+        }
+    }
+}
+
+p = subprocess.run(["gh", "api", "/gists", "--input", "-"], input=json.dumps(payload), text=True, capture_output=True)
+if p.returncode != 0:
+    print(json.dumps({"success": False, "error": p.stderr.strip() or "Failed to upload to GitHub Gist"}))
+    sys.exit(1)
+
+try:
+    res = json.loads(p.stdout)
+    gist_id = res.get("id", "")
+    gist_url = res.get("html_url", "")
+    
+    tracker = os.path.expanduser("~/.config/omarchy/plugins/ac.control-panel/scripts/config-tracker.sh")
+    if os.path.isfile(tracker):
+        subprocess.run([tracker, "record-command", "about", "Uploaded Cloud Gist Backup", "gist", f"scripts/system-control.sh backup-gist-export {base}", f"Uploaded {base} to GitHub Gist {gist_id}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+    print(json.dumps({
+        "success": True,
+        "id": gist_id,
+        "url": gist_url,
+        "filename": base,
+        "message": f"Uploaded {base} to GitHub Gist"
+    }))
+except Exception as e:
+    print(json.dumps({"success": False, "error": str(e)}))
+    sys.exit(1)
+' "$target"
+    ;;
+
+  backup-gist-list)
+    python3 -c '
+import os, sys, json, subprocess
+
+gh_check = subprocess.run(["gh", "auth", "status"], capture_output=True, text=True)
+if gh_check.returncode != 0:
+    print(json.dumps({"success": True, "authenticated": False, "gists": [], "message": "GitHub CLI not logged in"}))
+    sys.exit(0)
+
+p = subprocess.run(["gh", "api", "/gists"], capture_output=True, text=True)
+if p.returncode != 0:
+    print(json.dumps({"success": False, "authenticated": True, "error": p.stderr.strip(), "gists": []}))
+    sys.exit(0)
+
+try:
+    data = json.loads(p.stdout)
+    gists = []
+    for g in data:
+        desc = g.get("description") or ""
+        if "Omarchy Configuration Backup" in desc:
+            files_dict = g.get("files", {})
+            orig_fname = ""
+            size_bytes = 0
+            for fname, finfo in files_dict.items():
+                if fname.endswith(".b64"):
+                    orig_fname = fname[:-4]
+                    size_bytes = finfo.get("size", 0)
+                    break
+                elif fname.startswith("backup-"):
+                    orig_fname = fname
+                    size_bytes = finfo.get("size", 0)
+                    break
+            
+            if not orig_fname:
+                orig_fname = desc.replace("Omarchy Configuration Backup:", "").strip()
+                if not orig_fname:
+                    gid = g.get("id", "")[:8]
+                    orig_fname = f"backup-{gid}.tar.gz"
+
+            size_str = f"{size_bytes / 1024:.1f} KB" if size_bytes < 1048576 else f"{size_bytes / 1048576:.2f} MB"
+            
+            gists.append({
+                "id": g.get("id"),
+                "description": desc,
+                "filename": orig_fname,
+                "url": g.get("html_url", ""),
+                "created": g.get("created_at", "")[:19].replace("T", " "),
+                "updated": g.get("updated_at", "")[:19].replace("T", " "),
+                "size": size_str
+            })
+            
+    print(json.dumps({"success": True, "authenticated": True, "gists": gists}))
+except Exception as e:
+    print(json.dumps({"success": False, "authenticated": True, "error": str(e), "gists": []}))
+'
+    ;;
+
+  backup-gist-import)
+    target_id="${2:-}"
+    if [[ -z "$target_id" ]]; then
+      echo '{"success":false,"error":"Missing Gist ID"}' >&2
+      exit 1
+    fi
+    python3 -c '
+import os, sys, json, base64, subprocess, urllib.request
+
+gist_id = sys.argv[1].strip()
+if not gist_id:
+    print(json.dumps({"success": False, "error": "Missing Gist ID"}))
+    sys.exit(1)
+
+p = subprocess.run(["gh", "api", f"/gists/{gist_id}"], capture_output=True, text=True)
+if p.returncode != 0:
+    print(json.dumps({"success": False, "error": p.stderr.strip() or "Failed to fetch Gist"}))
+    sys.exit(1)
+
+try:
+    data = json.loads(p.stdout)
+    files_dict = data.get("files", {})
+    target_fname = None
+    target_content = None
+    raw_url = None
+
+    for fname, finfo in files_dict.items():
+        if fname.endswith(".b64") or fname.startswith("backup-"):
+            target_fname = fname[:-4] if fname.endswith(".b64") else fname
+            target_content = finfo.get("content")
+            raw_url = finfo.get("raw_url")
+            break
+
+    if not target_fname:
+        for fname, finfo in files_dict.items():
+            target_fname = fname.replace(".b64", "")
+            target_content = finfo.get("content")
+            raw_url = finfo.get("raw_url")
+            break
+
+    if not target_fname:
+        print(json.dumps({"success": False, "error": "No backup archive found in Gist"}))
+        sys.exit(1)
+
+    if not target_fname.endswith(".tar.gz"):
+        target_fname += ".tar.gz"
+
+    if not target_content and raw_url:
+        req = urllib.request.urlopen(raw_url)
+        target_content = req.read().decode("utf-8")
+
+    if not target_content:
+        print(json.dumps({"success": False, "error": "Empty content in Gist archive"}))
+        sys.exit(1)
+
+    archive_bytes = base64.b64decode(target_content.strip())
+    backup_dir = os.path.expanduser("~/.local/state/omarchy/backups/control-panel")
+    os.makedirs(backup_dir, exist_ok=True)
+    out_path = os.path.join(backup_dir, target_fname)
+    
+    with open(out_path, "wb") as f:
+        f.write(archive_bytes)
+
+    tracker = os.path.expanduser("~/.config/omarchy/plugins/ac.control-panel/scripts/config-tracker.sh")
+    if os.path.isfile(tracker):
+        subprocess.run([tracker, "record-command", "about", "Imported Cloud Gist Backup", "gist", f"scripts/system-control.sh backup-gist-import {gist_id}", f"Imported {target_fname} from Gist {gist_id}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    print(json.dumps({
+        "success": True,
+        "filename": target_fname,
+        "path": out_path,
+        "message": f"Successfully imported {target_fname} from GitHub Gist"
+    }))
+except Exception as e:
+    print(json.dumps({"success": False, "error": str(e)}))
+    sys.exit(1)
+' "$target_id"
+    ;;
+
+  backup-gist-delete)
+    target_id="${2:-}"
+    if [[ -z "$target_id" ]]; then
+      echo '{"success":false,"error":"Missing Gist ID"}' >&2
+      exit 1
+    fi
+    python3 -c '
+import os, sys, json, subprocess
+
+gist_id = sys.argv[1].strip()
+if not gist_id:
+    print(json.dumps({"success": False, "error": "Missing Gist ID"}))
+    sys.exit(1)
+
+p = subprocess.run(["gh", "api", f"/gists/{gist_id}", "-X", "DELETE"], capture_output=True, text=True)
+if p.returncode != 0:
+    print(json.dumps({"success": False, "error": p.stderr.strip() or "Failed to delete Gist"}))
+    sys.exit(1)
+
+print(json.dumps({"success": True, "id": gist_id, "message": "Deleted Cloud Gist"}))
+' "$target_id"
+    ;;
+
   *)
     echo "Unknown command: $cmd" >&2
     exit 1

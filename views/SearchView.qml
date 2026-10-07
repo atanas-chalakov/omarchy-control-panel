@@ -64,11 +64,13 @@ Item {
     // Power & Battery
     { title: "Power Profile & Performance", categoryId: "power", categoryName: "Power & Battery", categoryIcon: "󰂄", cardIndex: 0, desc: "Switch CPU governor between Performance, Balanced, and Power Saver", keywords: "power profile performance balanced power-saver battery cpu speed governor energy" },
     { title: "Battery Charge Threshold & Health", categoryId: "power", categoryName: "Power & Battery", categoryIcon: "󰂄", cardIndex: 1, desc: "Limit charge maximum (e.g. 80%) to prolong battery lifespan", keywords: "battery health charge limit threshold 80% battery longevity battery care" },
-    { title: "Screen Timeout & Sleep", categoryId: "power", categoryName: "Power & Battery", categoryIcon: "󰂄", cardIndex: 2, desc: "Set idle timeout before display turns off or system suspends", keywords: "sleep screen timeout idle turn off screen display timeout suspend" },
-    { title: "Stay Awake / Caffeine Mode", categoryId: "power", categoryName: "Power & Battery", categoryIcon: "󰂄", cardIndex: 3, desc: "Temporarily prevent screen sleep and system idling", keywords: "stay awake caffeine keep awake prevent sleep lock prevention" },
+    { title: "Screen Timeout & Sleep", categoryId: "power", categoryName: "Power & Battery", categoryIcon: "󰂄", cardIndex: 3, desc: "Set idle timeout before display turns off or system suspends", keywords: "sleep screen timeout idle turn off screen display timeout suspend" },
+    { title: "Stay Awake / Caffeine Mode", categoryId: "power", categoryName: "Power & Battery", categoryIcon: "󰂄", cardIndex: 1, desc: "Temporarily prevent screen sleep and system idling", keywords: "stay awake caffeine keep awake prevent sleep lock prevention" },
+    { title: "Gaming & Performance Mode", categoryId: "power", categoryName: "Power & Battery", categoryIcon: "󰂄", cardIndex: 2, desc: "Max performance governor, disables compositor animations/blur, enables DND", keywords: "gaming game mode performance max fps governor latency speed dnd" },
 
     // Appearance
     { title: "Desktop Theme & Wallpaper", categoryId: "appearance", categoryName: "Appearance", categoryIcon: "", cardIndex: 0, desc: "Apply system-wide color scheme (Tokyo Night, Catppuccin, Gruvbox, etc.)", keywords: "theme appearance dark mode light mode tokyo night catppuccin gruvbox colors wallpaper style" },
+    { title: "Theme Color Palette & Swatches", categoryId: "appearance", categoryName: "Appearance", categoryIcon: "", cardIndex: 0, desc: "Inspect active theme hex tokens (Accent, Foreground, Background, Muted) and copy values", keywords: "palette color hex swatches accent rgb colors tokens tokyo night gruvbox" },
     { title: "Window Background Blur", categoryId: "appearance", categoryName: "Appearance", categoryIcon: "", cardIndex: 0, desc: "Kawase blur intensity behind translucent shell and windows", keywords: "blur transparent opacity glass frosted background blur" },
 
     // Sound
@@ -149,7 +151,9 @@ Item {
 
     // About System
     { title: "System Specifications & Hardware", categoryId: "about", categoryName: "About System", categoryIcon: "", cardIndex: 0, desc: "CPU model, total RAM, GPU drivers, and kernel version", keywords: "specs hardware cpu ram memory gpu processor specifications kernel arch" },
-    { title: "Operating System & Hostname", categoryId: "about", categoryName: "About System", categoryIcon: "", cardIndex: 1, desc: "Omarchy desktop version, Arch Linux base, and system hostname", keywords: "os omarchy arch linux hostname pc name device system info uptime" }
+    { title: "Operating System & Hostname", categoryId: "about", categoryName: "About System", categoryIcon: "", cardIndex: 1, desc: "Omarchy desktop version, Arch Linux base, and system hostname", keywords: "os omarchy arch linux hostname pc name device system info uptime" },
+    { title: "Configuration Backup & Restore", categoryId: "about", categoryName: "About System", categoryIcon: "󰁯", cardIndex: 3, desc: "Snapshot, restore, and manage full Omarchy desktop configuration backups", keywords: "backup restore snapshot export config hyprland save archive rollback" },
+    { title: "Cloud Sync & GitHub Gist Backups", categoryId: "about", categoryName: "About System", categoryIcon: "󰇮", cardIndex: 3, desc: "Export, import, and sync configuration archives via private GitHub Gists", keywords: "cloud sync gist github backup import export remote archive gist" }
   ]
 
   // Filtered results based on search query

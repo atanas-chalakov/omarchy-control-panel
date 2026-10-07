@@ -56,6 +56,10 @@ case "$cmd" in
     stay_awake=$(omarchy-toggle-idle status 2>/dev/null | jq -r '.enabled // false' 2>/dev/null || echo "false")
     [[ "$stay_awake" == "true" ]] && stay_awake=true || stay_awake=false
 
+    # 5. Gaming & High Performance Mode
+    game_mode=false
+    [[ -f "$HOME/.local/state/omarchy/toggles/game-mode" ]] && game_mode=true
+
     jq -n \
       --arg profile "$profile" \
       --argjson bat_present "$bat_present" \
@@ -65,9 +69,11 @@ case "$cmd" in
       --argjson screensaver "$screensaver" \
       --argjson lock "$lock" \
       --argjson stay_awake "$stay_awake" \
+      --argjson gameMode "$game_mode" \
       '{
         profile: $profile,
         stayAwake: $stay_awake,
+        gameMode: $gameMode,
         battery: {
           present: $bat_present,
           capacity: $bat_cap,
@@ -88,6 +94,66 @@ case "$cmd" in
       cur_state="disabled"
       [[ -f "$HOME/.local/state/omarchy/indicators/stay-awake" ]] && cur_state="enabled (idle inhibited)"
       "$SCRIPT_DIR/config-tracker.sh" record-command "power" "Stay Awake (Idle Inhibition)" "omarchy-toggle-idle" "omarchy-toggle-idle $action" "Stay Awake set to $cur_state" >/dev/null 2>&1 || true
+    fi
+    ;;
+
+  set-game-mode)
+    action="${2:-toggle}"
+    mkdir -p "$HOME/.local/state/omarchy/toggles"
+    game_file="$HOME/.local/state/omarchy/toggles/game-mode"
+    
+    current=false
+    [[ -f "$game_file" ]] && current=true
+    
+    target=false
+    if [[ "$action" == "enable" || "$action" == "on" ]]; then
+      target=true
+    elif [[ "$action" == "disable" || "$action" == "off" ]]; then
+      target=false
+    elif [[ "$action" == "toggle" ]]; then
+      [[ "$current" == "true" ]] && target=false || target=true
+    fi
+
+    if [[ "$target" == "true" ]]; then
+      prev_profile=$(powerprofilesctl get 2>/dev/null || echo "balanced")
+      printf '%s\n' "$prev_profile" > "$HOME/.local/state/omarchy/toggles/game-mode-prev-profile"
+      touch "$game_file"
+      
+      powerprofilesctl set performance >/dev/null 2>&1 || true
+      omarchy-toggle-idle enable >/dev/null 2>&1 || true
+      hyprctl --batch "keyword animations:enabled 0; keyword decoration:blur:enabled 0; keyword decoration:drop_shadow 0; keyword misc:vfr 0" >/dev/null 2>&1 || true
+      
+      touch "$HOME/.local/state/omarchy/toggles/notifications-dnd-gamemode"
+      if command -v makoctl >/dev/null 2>&1; then
+        makoctl mode -a dnd >/dev/null 2>&1 || true
+      fi
+
+      if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+        "$SCRIPT_DIR/config-tracker.sh" record-command "power" "Gaming Mode Enabled" "game-mode" "scripts/power-control.sh set-game-mode enable" "Switched to performance governor, disabled animations & blur, inhibited idle, and activated DND" >/dev/null 2>&1 || true
+      fi
+      echo '{"success":true,"gameMode":true}'
+    else
+      rm -f "$game_file"
+      prev_profile="balanced"
+      if [[ -f "$HOME/.local/state/omarchy/toggles/game-mode-prev-profile" ]]; then
+        prev_profile=$(cat "$HOME/.local/state/omarchy/toggles/game-mode-prev-profile" 2>/dev/null || echo "balanced")
+        rm -f "$HOME/.local/state/omarchy/toggles/game-mode-prev-profile"
+      fi
+      powerprofilesctl set "$prev_profile" >/dev/null 2>&1 || true
+      omarchy-toggle-idle disable >/dev/null 2>&1 || true
+      hyprctl reload >/dev/null 2>&1 || true
+      
+      if [[ -f "$HOME/.local/state/omarchy/toggles/notifications-dnd-gamemode" ]]; then
+        rm -f "$HOME/.local/state/omarchy/toggles/notifications-dnd-gamemode"
+        if command -v makoctl >/dev/null 2>&1; then
+          makoctl mode -r dnd >/dev/null 2>&1 || true
+        fi
+      fi
+
+      if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
+        "$SCRIPT_DIR/config-tracker.sh" record-command "power" "Gaming Mode Disabled" "game-mode" "scripts/power-control.sh set-game-mode disable" "Restored $prev_profile governor, re-enabled animations and notification alerts" >/dev/null 2>&1 || true
+      fi
+      echo '{"success":true,"gameMode":false}'
     fi
     ;;
 

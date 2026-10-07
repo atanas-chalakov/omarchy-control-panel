@@ -128,6 +128,34 @@ Item {
     }
   }
 
+  property string copiedToken: ""
+
+  Timer {
+    id: copyToastTimer
+    interval: 2000
+    repeat: false
+    onTriggered: root.copiedToken = ""
+  }
+
+  function colorToHex(c) {
+    if (!c) return "#000000"
+    var r = Math.round(c.r * 255).toString(16).padStart(2, "0")
+    var g = Math.round(c.g * 255).toString(16).padStart(2, "0")
+    var b = Math.round(c.b * 255).toString(16).padStart(2, "0")
+    return ("#" + r + g + b).toUpperCase()
+  }
+
+  function copyHex(tokenName, hexVal) {
+    copyProcess.command = ["wl-copy", hexVal]
+    copyProcess.running = true
+    root.copiedToken = tokenName
+    copyToastTimer.restart()
+  }
+
+  Process {
+    id: copyProcess
+  }
+
   function setTheme(name) {
     root.currentTheme = name
     setThemeProcess.command = [pluginPath + "/scripts/system-control.sh", "theme-set", name]
@@ -275,6 +303,110 @@ Item {
           text: "Refresh"
           iconText: ""
           onClicked: root.refresh()
+        }
+      }
+    }
+
+    // Live Palette Swatches Inspector Card
+    Rectangle {
+      Layout.fillWidth: true
+      implicitHeight: Math.max(58, paletteRowLayout.implicitHeight + 16)
+      Layout.preferredHeight: implicitHeight
+      color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.02)
+      border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+      border.width: 1
+      radius: Style.cornerRadius || 8
+
+      RowLayout {
+        id: paletteRowLayout
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.margins: 10
+        anchors.leftMargin: 14
+        anchors.rightMargin: 14
+        spacing: 12
+
+        ColumnLayout {
+          spacing: 2
+          Text {
+            text: "THEME PALETTE"
+            font.family: Style.font.family
+            font.pixelSize: 10
+            font.bold: true
+            color: Color.accent
+          }
+          Text {
+            text: "Click swatch to copy hex"
+            font.family: Style.font.family
+            font.pixelSize: 10
+            color: Color.muted
+          }
+        }
+
+        Item { Layout.fillWidth: true }
+
+        // Palette Swatches
+        Flow {
+          Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+          spacing: 8
+
+          Repeater {
+            model: [
+              { name: "Accent", color: Color.accent },
+              { name: "Foreground", color: Color.foreground },
+              { name: "Background", color: Color.background },
+              { name: "Muted", color: Color.muted }
+            ]
+
+            Rectangle {
+              implicitWidth: swatchInnerRow.implicitWidth + 14
+              implicitHeight: 28
+              radius: 6
+              readonly property string hexValue: root.colorToHex(modelData.color)
+              readonly property bool isCopied: root.copiedToken === modelData.name
+              readonly property bool isHovered: swatchMouse.containsMouse
+
+              color: isCopied
+                ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.25)
+                : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04))
+              border.color: isCopied
+                ? Color.accent
+                : (isHovered ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.25) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.10))
+              border.width: 1
+
+              RowLayout {
+                id: swatchInnerRow
+                anchors.centerIn: parent
+                spacing: 6
+
+                Rectangle {
+                  width: 14
+                  height: 14
+                  radius: 3
+                  color: modelData.color
+                  border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.30)
+                  border.width: 1
+                }
+
+                Text {
+                  text: isCopied ? "Copied!" : (modelData.name + " " + hexValue)
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  font.bold: isCopied || modelData.name === "Accent"
+                  color: isCopied ? Color.accent : (isHovered ? Color.foreground : Color.muted)
+                }
+              }
+
+              MouseArea {
+                id: swatchMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.copyHex(modelData.name, hexValue)
+              }
+            }
+          }
         }
       }
     }

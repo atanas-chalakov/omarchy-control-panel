@@ -8,7 +8,7 @@ require_command jq
 # Test table: script name | subcommand | expected jq validation filter
 tests=(
   "display-control.sh|get-state|.brightness != null and .monitors != null and .nightlight != null"
-  "power-control.sh|get-state|.profile != null and .battery != null"
+  "power-control.sh|get-state|.profile != null and .battery != null and .gameMode != null"
   "network-control.sh|get-state|.enabled != null and .networks != null"
   "bluetooth-control.sh|get-state|.powered != null and .devices != null"
   "wm-control.sh|get-state|.animations != null and .gapsIn != null and .borderSize != null"
@@ -21,6 +21,7 @@ tests=(
   "system-control.sh|about-get|.os != null and .cpu != null and .ram != null"
   "system-control.sh|audio-get|.volume != null and .sinks != null"
   "system-control.sh|backup-list|type == \"array\""
+  "system-control.sh|backup-gist-list|.authenticated != null and .gists != null"
   "config-tracker.sh|get-all-configs|type == \"array\" and length >= 8"
 )
 

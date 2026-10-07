@@ -26,6 +26,11 @@ Item {
   property var backupsList: []
   property bool isBackingUp: false
   property bool isRestoring: false
+  property var cloudGists: []
+  property bool isSyncingGists: false
+  property bool showCloudSection: false
+  property bool isExportingGist: false
+  property bool isImportingGist: false
 
   property bool activeFocusSection: false
   readonly property bool isContentFocused: panelRoot ? panelRoot.focusSection === "content" : activeFocusSection
@@ -98,6 +103,9 @@ Item {
     } else if (k === "b") {
       createBackup()
       return true
+    } else if (k === "s" || k === "g") {
+      toggleCloudSync()
+      return true
     }
     return false
   }
@@ -137,12 +145,50 @@ Item {
     }
   }
 
+  function loadCloudGists() {
+    if (pluginPath.length > 0) {
+      isSyncingGists = true
+      gistListProcess.command = [pluginPath + "/scripts/system-control.sh", "backup-gist-list"]
+      gistListProcess.running = true
+    }
+  }
+
+  function toggleCloudSync() {
+    showCloudSection = !showCloudSection
+    if (showCloudSection) {
+      loadCloudGists()
+    }
+  }
+
+  function exportToGist(fname) {
+    if (isExportingGist) return
+    isExportingGist = true
+    notifyStatus("Uploading " + fname + " to GitHub Gist...")
+    gistExportProcess.command = [pluginPath + "/scripts/system-control.sh", "backup-gist-export", fname]
+    gistExportProcess.running = true
+  }
+
+  function importFromGist(gistId) {
+    if (isImportingGist) return
+    isImportingGist = true
+    notifyStatus("Importing backup from GitHub Gist...")
+    gistImportProcess.command = [pluginPath + "/scripts/system-control.sh", "backup-gist-import", gistId]
+    gistImportProcess.running = true
+  }
+
+  function deleteCloudGist(gistId) {
+    notifyStatus("Deleting Cloud Gist...")
+    gistDeleteProcess.command = [pluginPath + "/scripts/system-control.sh", "backup-gist-delete", gistId]
+    gistDeleteProcess.running = true
+  }
+
   function refresh() {
     if (!stateProcess.running && pluginPath.length > 0) {
       notifyStatus("Refreshed system information")
       stateProcess.command = [pluginPath + "/scripts/system-control.sh", "about-get"]
       stateProcess.running = true
       loadBackups()
+      if (showCloudSection) loadCloudGists()
     }
   }
 
@@ -247,6 +293,92 @@ Item {
       onStreamFinished: {
         root.notifyStatus("Backup removed")
         root.loadBackups()
+      }
+    }
+  }
+
+  // Cloud Gist List Process
+  Process {
+    id: gistListProcess
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        root.isSyncingGists = false
+        try {
+          var res = JSON.parse(text)
+          if (res.authenticated === false) {
+            root.notifyStatus("GitHub CLI not logged in (run 'gh auth login')")
+            root.cloudGists = []
+          } else {
+            root.cloudGists = Array.isArray(res.gists) ? res.gists : []
+            if (root.cloudGists.length > 0) {
+              root.notifyStatus("Loaded " + root.cloudGists.length + " cloud backup" + (root.cloudGists.length > 1 ? "s" : ""))
+            } else {
+              root.notifyStatus("No cloud backups found on GitHub Gist")
+            }
+          }
+        } catch (e) {
+          root.cloudGists = []
+        }
+      }
+    }
+  }
+
+  // Cloud Gist Export Process
+  Process {
+    id: gistExportProcess
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        root.isExportingGist = false
+        try {
+          var res = JSON.parse(text)
+          if (res.success) {
+            root.notifyStatus("Uploaded to Gist: " + (res.filename || "backup"))
+            root.showCloudSection = true
+            root.loadCloudGists()
+          } else {
+            root.notifyStatus("Upload failed: " + (res.error || "unknown error"))
+          }
+        } catch (e) {
+          root.notifyStatus("Upload finished")
+          root.loadCloudGists()
+        }
+      }
+    }
+  }
+
+  // Cloud Gist Import Process
+  Process {
+    id: gistImportProcess
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        root.isImportingGist = false
+        try {
+          var res = JSON.parse(text)
+          if (res.success) {
+            root.notifyStatus("Imported from Gist: " + (res.filename || "archive"))
+            root.loadBackups()
+          } else {
+            root.notifyStatus("Import failed: " + (res.error || "unknown error"))
+          }
+        } catch (e) {
+          root.notifyStatus("Import finished")
+          root.loadBackups()
+        }
+      }
+    }
+  }
+
+  // Cloud Gist Delete Process
+  Process {
+    id: gistDeleteProcess
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        root.notifyStatus("Cloud backup deleted from Gist")
+        root.loadCloudGists()
       }
     }
   }
@@ -885,49 +1017,100 @@ Item {
               }
             }
 
-            Rectangle {
-              id: backupCreateBtn
-              implicitWidth: backupCreateLayout.implicitWidth + 24
-              implicitHeight: 30
-              radius: 6
-              readonly property bool btnHover: backupCreateMouse.containsMouse
-              readonly property bool isBtnFocused: backupsCard.isFocused
-              color: isBtnFocused
-                ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, btnHover ? 0.18 : 0.14)
-                : (btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04))
-              border.color: isBtnFocused
-                ? Color.accent
-                : (btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12))
-              border.width: isBtnFocused ? 2 : 1
+            RowLayout {
+              spacing: 8
 
-              RowLayout {
-                id: backupCreateLayout
-                anchors.centerIn: parent
-                spacing: 6
-                Text {
-                  text: root.isBackingUp ? "󰑮" : "󰆓"
-                  font.family: Style.font.family
-                  font.pixelSize: 13
-                  color: backupCreateBtn.isBtnFocused ? Color.accent : (backupCreateBtn.btnHover ? Color.foreground : Color.muted)
+              // Cloud Sync Button
+              Rectangle {
+                id: cloudSyncBtn
+                implicitWidth: cloudSyncLayout.implicitWidth + 20
+                implicitHeight: 30
+                radius: 6
+                readonly property bool btnHover: cloudSyncMouse.containsMouse
+                color: root.showCloudSection
+                  ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                  : (btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04))
+                border.color: root.showCloudSection
+                  ? Color.accent
+                  : (btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12))
+                border.width: 1
+
+                RowLayout {
+                  id: cloudSyncLayout
+                  anchors.centerIn: parent
+                  spacing: 6
+                  Text {
+                    text: root.isSyncingGists ? "󰑮" : "󰇮"
+                    font.family: Style.font.family
+                    font.pixelSize: 13
+                    color: root.showCloudSection ? Color.accent : (cloudSyncBtn.btnHover ? Color.foreground : Color.muted)
+                  }
+                  Text {
+                    text: root.showCloudSection ? "Cloud Active [S]" : "Cloud Gists [S]"
+                    font.family: Style.font.family
+                    font.pixelSize: 11
+                    color: root.showCloudSection ? Color.accent : (cloudSyncBtn.btnHover ? Color.foreground : Color.muted)
+                  }
                 }
-                Text {
-                  text: root.isBackingUp ? "Saving..." : "Create Backup [B]"
-                  font.family: Style.font.family
-                  font.pixelSize: 11
-                  font.bold: backupCreateBtn.isBtnFocused
-                  color: backupCreateBtn.isBtnFocused ? Color.accent : (backupCreateBtn.btnHover ? Color.foreground : Color.muted)
+
+                MouseArea {
+                  id: cloudSyncMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
+                    root.focusedRow = 3
+                    root.toggleCloudSync()
+                  }
                 }
               }
 
-              MouseArea {
-                id: backupCreateMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                  if (root.panelRoot) root.panelRoot.focusSection = "content"
-                  root.focusedRow = 3
-                  root.createBackup()
+              // Create Backup Button
+              Rectangle {
+                id: backupCreateBtn
+                implicitWidth: backupCreateLayout.implicitWidth + 24
+                implicitHeight: 30
+                radius: 6
+                readonly property bool btnHover: backupCreateMouse.containsMouse
+                readonly property bool isBtnFocused: backupsCard.isFocused
+                color: isBtnFocused
+                  ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, btnHover ? 0.18 : 0.14)
+                  : (btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04))
+                border.color: isBtnFocused
+                  ? Color.accent
+                  : (btnHover ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.28) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12))
+                border.width: isBtnFocused ? 2 : 1
+
+                RowLayout {
+                  id: backupCreateLayout
+                  anchors.centerIn: parent
+                  spacing: 6
+                  Text {
+                    text: root.isBackingUp ? "󰑮" : "󰆓"
+                    font.family: Style.font.family
+                    font.pixelSize: 13
+                    color: backupCreateBtn.isBtnFocused ? Color.accent : (backupCreateBtn.btnHover ? Color.foreground : Color.muted)
+                  }
+                  Text {
+                    text: root.isBackingUp ? "Saving..." : "Create Backup [B]"
+                    font.family: Style.font.family
+                    font.pixelSize: 11
+                    font.bold: backupCreateBtn.isBtnFocused
+                    color: backupCreateBtn.isBtnFocused ? Color.accent : (backupCreateBtn.btnHover ? Color.foreground : Color.muted)
+                  }
+                }
+
+                MouseArea {
+                  id: backupCreateMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    if (root.panelRoot) root.panelRoot.focusSection = "content"
+                    root.focusedRow = 3
+                    root.createBackup()
+                  }
                 }
               }
             }
@@ -997,6 +1180,32 @@ Item {
                     }
                   }
 
+                  // Upload to Gist button
+                  Rectangle {
+                    implicitWidth: 26
+                    implicitHeight: 26
+                    radius: 4
+                    color: gistUpHover.containsMouse ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.transparent
+                    border.color: gistUpHover.containsMouse ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.50) : Qt.transparent
+                    border.width: 1
+
+                    Text {
+                      anchors.centerIn: parent
+                      text: "󰇮"
+                      font.family: Style.font.family
+                      font.pixelSize: 12
+                      color: gistUpHover.containsMouse ? Color.accent : Color.muted
+                    }
+
+                    MouseArea {
+                      id: gistUpHover
+                      anchors.fill: parent
+                      hoverEnabled: true
+                      cursorShape: Qt.PointingHandCursor
+                      onClicked: root.exportToGist(modelData.filename)
+                    }
+                  }
+
                   // Restore button
                   Rectangle {
                     implicitWidth: restText.implicitWidth + 16
@@ -1048,6 +1257,204 @@ Item {
                       hoverEnabled: true
                       cursorShape: Qt.PointingHandCursor
                       onClicked: root.deleteBackup(modelData.filename)
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          // Cloud Backups (GitHub Gist) Section
+          ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            visible: root.showCloudSection
+
+            Rectangle {
+              Layout.fillWidth: true
+              height: 1
+              color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+            }
+
+            RowLayout {
+              Layout.fillWidth: true
+              spacing: 8
+
+              Text {
+                text: "GitHub Gist Cloud Backups"
+                font.family: Style.font.family
+                font.pixelSize: 12
+                font.bold: true
+                color: Color.accent
+              }
+
+              Rectangle {
+                visible: root.cloudGists.length > 0
+                width: cloudCountText.implicitWidth + 12
+                height: 16
+                radius: 4
+                color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20)
+                border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.60)
+                border.width: 1
+
+                Text {
+                  id: cloudCountText
+                  anchors.centerIn: parent
+                  text: root.cloudGists.length + " Cloud"
+                  font.family: Style.font.family
+                  font.pixelSize: 9
+                  font.bold: true
+                  color: Color.accent
+                }
+              }
+
+              Item { Layout.fillWidth: true }
+
+              // Refresh Cloud Gists Button
+              Rectangle {
+                implicitWidth: 24
+                implicitHeight: 24
+                radius: 4
+                color: cloudRefreshHover.containsMouse ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : Qt.transparent
+                border.color: cloudRefreshHover.containsMouse ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.20) : Qt.transparent
+                border.width: 1
+
+                Text {
+                  anchors.centerIn: parent
+                  text: "󰑐"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: cloudRefreshHover.containsMouse ? Color.foreground : Color.muted
+                }
+
+                MouseArea {
+                  id: cloudRefreshHover
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.loadCloudGists()
+                }
+              }
+            }
+
+            Text {
+              visible: root.isSyncingGists
+              text: "Loading cloud backups from GitHub..."
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: Color.muted
+            }
+
+            Text {
+              visible: !root.isSyncingGists && root.cloudGists.length === 0
+              text: "No cloud backups found on GitHub Gist. Upload a local backup with 󰇮 above."
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: Color.muted
+            }
+
+            Repeater {
+              model: root.cloudGists
+
+              Rectangle {
+                Layout.fillWidth: true
+                implicitHeight: cloudItemRow.implicitHeight + 14
+                radius: 6
+                color: cloudItemHover.containsMouse ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04) : Qt.transparent
+                border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
+                border.width: 1
+
+                MouseArea {
+                  id: cloudItemHover
+                  anchors.fill: parent
+                  hoverEnabled: true
+                }
+
+                RowLayout {
+                  id: cloudItemRow
+                  anchors.fill: parent
+                  anchors.leftMargin: 10
+                  anchors.rightMargin: 10
+                  spacing: 10
+
+                  Text {
+                    text: "󰇮"
+                    font.family: Style.font.family
+                    font.pixelSize: 14
+                    color: Color.accent
+                  }
+
+                  ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 2
+
+                    Text {
+                      text: modelData.filename || modelData.description
+                      font.family: Style.font.family
+                      font.pixelSize: 12
+                      font.bold: true
+                      color: Color.foreground
+                    }
+
+                    Text {
+                      text: "Updated: " + (modelData.updated || modelData.created || "") + " • " + (modelData.size || "")
+                      font.family: Style.font.family
+                      font.pixelSize: 11
+                      color: Color.muted
+                    }
+                  }
+
+                  // Import button
+                  Rectangle {
+                    implicitWidth: importText.implicitWidth + 16
+                    implicitHeight: 26
+                    radius: 4
+                    color: importHover.containsMouse ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.25) : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.12)
+                    border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.50)
+                    border.width: 1
+
+                    Text {
+                      id: importText
+                      anchors.centerIn: parent
+                      text: "Import"
+                      font.family: Style.font.family
+                      font.pixelSize: 11
+                      font.bold: true
+                      color: Color.accent
+                    }
+
+                    MouseArea {
+                      id: importHover
+                      anchors.fill: parent
+                      hoverEnabled: true
+                      cursorShape: Qt.PointingHandCursor
+                      onClicked: root.importFromGist(modelData.id)
+                    }
+                  }
+
+                  // Delete Cloud Gist button
+                  Rectangle {
+                    implicitWidth: 26
+                    implicitHeight: 26
+                    radius: 4
+                    color: cloudDelHover.containsMouse ? Qt.rgba(240/255, 80/255, 80/255, 0.20) : Qt.transparent
+                    border.color: cloudDelHover.containsMouse ? Qt.rgba(240/255, 80/255, 80/255, 0.50) : Qt.transparent
+                    border.width: 1
+
+                    Text {
+                      anchors.centerIn: parent
+                      text: ""
+                      font.family: Style.font.family
+                      font.pixelSize: 12
+                      color: cloudDelHover.containsMouse ? Qt.rgba(255/255, 100/255, 100/255, 1.0) : Color.muted
+                    }
+
+                    MouseArea {
+                      id: cloudDelHover
+                      anchors.fill: parent
+                      hoverEnabled: true
+                      cursorShape: Qt.PointingHandCursor
+                      onClicked: root.deleteCloudGist(modelData.id)
                     }
                   }
                 }
