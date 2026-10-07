@@ -21,6 +21,7 @@ Item {
   property var sources: []
   property var apps: []
   property string statusMessage: ""
+  property string testingChannel: ""
 
   property bool activeFocusSection: false
   readonly property bool isContentFocused: {
@@ -286,11 +287,30 @@ Item {
     statusClearTimer.restart()
   }
 
+  function testSpeaker(ch) {
+    testingChannel = ch
+    testChannelTimer.restart()
+    audioTestProcess.command = [pluginPath + "/scripts/system-control.sh", "audio-test-speaker", ch]
+    audioTestProcess.running = true
+    notifyStatus("Playing " + ch + " audio test chime...")
+  }
+
+  Timer {
+    id: testChannelTimer
+    interval: 1800
+    repeat: false
+    onTriggered: root.testingChannel = ""
+  }
+
   Timer {
     id: statusClearTimer
     interval: 3000
     repeat: false
     onTriggered: root.statusMessage = ""
+  }
+
+  Process {
+    id: audioTestProcess
   }
 
   Component.onCompleted: refresh()
@@ -910,6 +930,126 @@ Item {
                     color: Color.accent
                   }
                 }
+              }
+            }
+          }
+
+          // Audio Output Test Controls
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Text {
+              text: "Speaker Test:"
+              font.family: Style.font.family
+              font.pixelSize: 11
+              font.bold: true
+              color: Color.muted
+            }
+
+            Rectangle {
+              implicitWidth: stereoTestRow.implicitWidth + 14
+              implicitHeight: 26
+              radius: 4
+              color: stereoHover.containsMouse ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)
+              border.color: stereoHover.containsMouse ? Color.accent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12)
+              border.width: 1
+
+              RowLayout {
+                id: stereoTestRow
+                anchors.centerIn: parent
+                spacing: 4
+                Text {
+                  text: root.testingChannel === "stereo" ? "󰑮" : "󰕾"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: Color.accent
+                }
+                Text {
+                  text: root.testingChannel === "stereo" ? "Playing..." : "Stereo Chime"
+                  font.family: Style.font.family
+                  font.pixelSize: 10
+                  font.bold: true
+                  color: Color.accent
+                }
+              }
+
+              MouseArea {
+                id: stereoHover
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.testSpeaker("stereo")
+              }
+            }
+
+            Rectangle {
+              implicitWidth: leftTestRow.implicitWidth + 14
+              implicitHeight: 26
+              radius: 4
+              color: leftHover.containsMouse ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)
+              border.color: leftHover.containsMouse ? Color.accent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12)
+              border.width: 1
+
+              RowLayout {
+                id: leftTestRow
+                anchors.centerIn: parent
+                spacing: 4
+                Text {
+                  text: root.testingChannel === "left" ? "󰑮" : "󰕾"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: Color.foreground
+                }
+                Text {
+                  text: "Left Channel"
+                  font.family: Style.font.family
+                  font.pixelSize: 10
+                  color: Color.foreground
+                }
+              }
+
+              MouseArea {
+                id: leftHover
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.testSpeaker("left")
+              }
+            }
+
+            Rectangle {
+              implicitWidth: rightTestRow.implicitWidth + 14
+              implicitHeight: 26
+              radius: 4
+              color: rightHover.containsMouse ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)
+              border.color: rightHover.containsMouse ? Color.accent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12)
+              border.width: 1
+
+              RowLayout {
+                id: rightTestRow
+                anchors.centerIn: parent
+                spacing: 4
+                Text {
+                  text: root.testingChannel === "right" ? "󰑮" : "󰕾"
+                  font.family: Style.font.family
+                  font.pixelSize: 11
+                  color: Color.foreground
+                }
+                Text {
+                  text: "Right Channel"
+                  font.family: Style.font.family
+                  font.pixelSize: 10
+                  color: Color.foreground
+                }
+              }
+
+              MouseArea {
+                id: rightHover
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.testSpeaker("right")
               }
             }
           }

@@ -165,6 +165,26 @@ case "$cmd" in
     fi
     ;;
 
+  audio-test-speaker)
+    channel="${2:-stereo}"
+    sound_file="/usr/share/sounds/freedesktop/stereo/audio-volume-change.oga"
+    if [[ "$channel" == "left" ]]; then
+      sound_file="/usr/share/sounds/freedesktop/stereo/audio-channel-front-left.oga"
+    elif [[ "$channel" == "right" ]]; then
+      sound_file="/usr/share/sounds/freedesktop/stereo/audio-channel-front-right.oga"
+    fi
+    [[ ! -f "$sound_file" ]] && sound_file="/usr/share/sounds/freedesktop/stereo/bell.oga"
+
+    if command -v pw-play >/dev/null 2>&1; then
+      pw-play "$sound_file" >/dev/null 2>&1 || true
+    elif command -v paplay >/dev/null 2>&1; then
+      paplay "$sound_file" >/dev/null 2>&1 || true
+    elif command -v canberra-gtk-play >/dev/null 2>&1; then
+      canberra-gtk-play -f "$sound_file" >/dev/null 2>&1 || true
+    fi
+    echo "{\"success\":true,\"channel\":\"$channel\"}"
+    ;;
+
   audio-set-input-volume)
     val="${2:-}"
     if [[ -n "$val" ]]; then

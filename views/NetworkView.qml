@@ -32,7 +32,13 @@ Item {
   property Item activeConnectBtn: null
   property Item activeCancelBtn: null
   property int promptFocusIndex: 0 // 0: Password Input, 1: Show/Hide, 2: Connect, 3: Cancel
-  readonly property bool hasActiveInput: passwordSsid !== ""
+
+  property var wifiQrData: null
+  property bool showWifiQrModal: false
+  property bool isLoadingQr: false
+  property int qrRefreshCounter: 0
+
+  readonly property bool hasActiveInput: (passwordSsid !== "") || showWifiQrModal
 
   onActiveFocusSectionChanged: {
     if (!activeFocusSection) {
@@ -115,6 +121,34 @@ Item {
     connectToNetwork(passwordSsid, passwordText)
   }
 
+  function openWifiQrModal(ssid) {
+    var target = ssid || (root.activeConnection ? root.activeConnection.ssid : "")
+    if (!target) {
+      notifyStatus("No Wi-Fi network selected")
+      return
+    }
+    isLoadingQr = true
+    showWifiQrModal = true
+    wifiQrProcess.command = [pluginPath + "/scripts/network-control.sh", "wifi-get-qr", target]
+    wifiQrProcess.running = true
+  }
+
+  function closeWifiQrModal() {
+    showWifiQrModal = false
+    wifiQrData = null
+  }
+
+  function copyToClipboard(str, label) {
+    if (!str) return
+    if (pluginPath.length > 0) {
+      clipboardProcess.command = [pluginPath + "/scripts/config-tracker.sh", "copy", str]
+    } else {
+      clipboardProcess.command = ["wl-copy", str]
+    }
+    clipboardProcess.running = true
+    notifyStatus(label || "Copied to clipboard!")
+  }
+
   property bool activeFocusSection: false
   readonly property bool isContentFocused: {
     if (root.panelRoot && root.panelRoot.focusSection !== undefined) {
@@ -176,6 +210,13 @@ Item {
   }
 
   function handleTextKey(key) {
+    if (showWifiQrModal) {
+      if (key === "q" || key === "Q" || key === "Escape") {
+        closeWifiQrModal()
+        return true
+      }
+      return true
+    }
     if (hasActiveInput) return false
     if (key === "h" || key === "H") {
       return handleMove(-1, 0)
@@ -385,6 +426,35 @@ Item {
     }
   }
 
+  // Wi-Fi QR Process
+  Process {
+    id: wifiQrProcess
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        root.isLoadingQr = false
+        try {
+          var res = JSON.parse(text)
+          if (res && res.success) {
+            root.wifiQrData = res
+            root.qrRefreshCounter++
+          } else {
+            root.notifyStatus((res && res.error) ? res.error : "Could not retrieve Wi-Fi credentials")
+            root.closeWifiQrModal()
+          }
+        } catch (e) {
+          root.notifyStatus("Failed to parse Wi-Fi QR data")
+          root.closeWifiQrModal()
+        }
+      }
+    }
+  }
+
+  // Clipboard Process
+  Process {
+    id: clipboardProcess
+  }
+
   ScrollView {
     id: scrollArea
     anchors.fill: parent
@@ -508,11 +578,22 @@ Item {
             }
           }
 
-          Button {
-            text: root.isScanning ? "Scanning..." : "Scan"
-            iconText: ""
-            enabled: root.wifiEnabled && !root.isScanning
-            onClicked: root.rescan(true)
+          RowLayout {
+            spacing: 8
+
+            Button {
+              visible: root.activeConnection !== null && (root.activeConnection.ssid || "").length > 0
+              text: "Share QR"
+              iconText: "󰐲"
+              onClicked: root.openWifiQrModal()
+            }
+
+            Button {
+              text: root.isScanning ? "Scanning..." : "Scan"
+              iconText: ""
+              enabled: root.wifiEnabled && !root.isScanning
+              onClicked: root.rescan(true)
+            }
           }
         }
       }
@@ -871,6 +952,37 @@ Item {
                       } else {
                         root.openPasswordPrompt(modelData.ssid)
                       }
+                    }
+                  }
+                }
+
+                // QR Share button for active or saved network
+                Rectangle {
+                  visible: modelData.inUse || modelData.isKnown
+                  width: 28
+                  height: 28
+                  Layout.preferredWidth: 28
+                  Layout.preferredHeight: 28
+                  radius: 14
+                  color: qrBtnMouse.containsMouse ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)
+                  border.color: qrBtnMouse.containsMouse ? Color.accent : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+                  border.width: 1
+
+                  Text {
+                    anchors.centerIn: parent
+                    text: "󰐲"
+                    font.family: Style.font.family
+                    font.pixelSize: 13
+                    color: qrBtnMouse.containsMouse ? Color.accent : Color.foreground
+                  }
+
+                  MouseArea {
+                    id: qrBtnMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                      root.openWifiQrModal(modelData.ssid)
                     }
                   }
                 }
@@ -1323,6 +1435,280 @@ Item {
       }
 
       Item { Layout.preferredHeight: 12 }
+    }
+  }
+
+  // Wi-Fi QR Code Sharing Modal Overlay
+  Rectangle {
+    id: wifiQrModalOverlay
+    anchors.fill: parent
+    visible: root.showWifiQrModal
+    z: 200
+    color: Qt.rgba(0, 0, 0, 0.65)
+
+    MouseArea {
+      anchors.fill: parent
+      onClicked: root.closeWifiQrModal()
+    }
+
+    Rectangle {
+      id: qrModalCard
+      anchors.centerIn: parent
+      width: Math.min(380, root.width - 32)
+      implicitHeight: qrModalContent.implicitHeight + 36
+      radius: Style.cornerRadius || 10
+      color: Qt.rgba(Color.background.r, Color.background.g, Color.background.b, 0.98)
+      border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.15)
+      border.width: 1
+
+      MouseArea {
+        anchors.fill: parent
+      }
+
+      ColumnLayout {
+        id: qrModalContent
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.margins: 18
+        spacing: 14
+
+        // Header
+        RowLayout {
+          Layout.fillWidth: true
+          spacing: 10
+
+          Rectangle {
+            width: 32
+            height: 32
+            radius: 6
+            color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15)
+            border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.3)
+            border.width: 1
+
+            Text {
+              anchors.centerIn: parent
+              text: "󰐲"
+              font.family: Style.font.family
+              font.pixelSize: 16
+              color: Color.accent
+            }
+          }
+
+          ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 1
+
+            Text {
+              text: "Share Wi-Fi Network"
+              font.family: Style.font.family
+              font.pixelSize: 14
+              font.bold: true
+              color: Color.foreground
+            }
+
+            Text {
+              text: "Scan with a mobile phone or tablet to connect"
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: Color.muted
+            }
+          }
+
+          Rectangle {
+            width: 26
+            height: 26
+            radius: 4
+            color: closeQrMouse.containsMouse ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12) : "transparent"
+
+            Text {
+              anchors.centerIn: parent
+              text: "✕"
+              font.family: Style.font.family
+              font.pixelSize: 12
+              color: Color.muted
+            }
+
+            MouseArea {
+              id: closeQrMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.closeWifiQrModal()
+            }
+          }
+        }
+
+        // QR Code Display Container
+        Rectangle {
+          Layout.alignment: Qt.AlignHCenter
+          width: 184
+          height: 184
+          radius: 8
+          color: "#FFFFFF"
+          border.color: Qt.rgba(0, 0, 0, 0.12)
+          border.width: 1
+
+          Image {
+            id: qrImg
+            anchors.centerIn: parent
+            width: 164
+            height: 164
+            fillMode: Image.PreserveAspectFit
+            smooth: false
+            source: (root.wifiQrData && root.wifiQrData.hasQr && root.wifiQrData.qrPath)
+              ? ("file://" + root.wifiQrData.qrPath + "?t=" + root.qrRefreshCounter)
+              : ""
+            visible: !root.isLoadingQr && root.wifiQrData && root.wifiQrData.hasQr
+          }
+
+          ColumnLayout {
+            anchors.centerIn: parent
+            visible: root.isLoadingQr || !root.wifiQrData || !root.wifiQrData.hasQr
+            spacing: 6
+
+            Text {
+              Layout.alignment: Qt.AlignHCenter
+              text: root.isLoadingQr ? "󰑮" : "󰌾"
+              font.family: Style.font.family
+              font.pixelSize: 24
+              color: "#333333"
+            }
+
+            Text {
+              Layout.alignment: Qt.AlignHCenter
+              text: root.isLoadingQr ? "Generating QR..." : "QR Unavailable"
+              font.family: Style.font.family
+              font.pixelSize: 11
+              color: "#555555"
+            }
+          }
+        }
+
+        // Credentials details container
+        Rectangle {
+          Layout.fillWidth: true
+          implicitHeight: detailsCol.implicitHeight + 16
+          radius: 6
+          color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.04)
+          border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08)
+          border.width: 1
+
+          ColumnLayout {
+            id: detailsCol
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 8
+
+            // SSID Row
+            RowLayout {
+              Layout.fillWidth: true
+              spacing: 8
+
+              Text {
+                text: "SSID:"
+                font.family: Style.font.family
+                font.pixelSize: 11
+                font.bold: true
+                color: Color.muted
+                Layout.preferredWidth: 60
+              }
+
+              Text {
+                Layout.fillWidth: true
+                text: root.wifiQrData ? root.wifiQrData.ssid : ""
+                font.family: Style.font.family
+                font.pixelSize: 12
+                font.bold: true
+                color: Color.foreground
+                elide: Text.ElideRight
+              }
+
+              Rectangle {
+                width: 58
+                height: 22
+                radius: 4
+                color: copySsidMouse.containsMouse ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
+                border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12)
+                border.width: 1
+
+                RowLayout {
+                  anchors.centerIn: parent
+                  spacing: 3
+                  Text { text: "󰆏"; font.family: Style.font.family; font.pixelSize: 10; color: Color.foreground }
+                  Text { text: "Copy"; font.family: Style.font.family; font.pixelSize: 10; color: Color.foreground }
+                }
+
+                MouseArea {
+                  id: copySsidMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.copyToClipboard(root.wifiQrData ? root.wifiQrData.ssid : "", "SSID copied!")
+                }
+              }
+            }
+
+            // Password Row
+            RowLayout {
+              Layout.fillWidth: true
+              spacing: 8
+
+              Text {
+                text: "Password:"
+                font.family: Style.font.family
+                font.pixelSize: 11
+                font.bold: true
+                color: Color.muted
+                Layout.preferredWidth: 60
+              }
+
+              Text {
+                Layout.fillWidth: true
+                text: (root.wifiQrData && root.wifiQrData.password) ? root.wifiQrData.password : "(Open / No password)"
+                font.family: Style.font.family
+                font.pixelSize: 12
+                font.bold: true
+                color: (root.wifiQrData && root.wifiQrData.password) ? Color.accent : Color.muted
+                elide: Text.ElideRight
+              }
+
+              Rectangle {
+                visible: root.wifiQrData && (root.wifiQrData.password || "").length > 0
+                width: 58
+                height: 22
+                radius: 4
+                color: copyPassMouse.containsMouse ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.20) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.06)
+                border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.12)
+                border.width: 1
+
+                RowLayout {
+                  anchors.centerIn: parent
+                  spacing: 3
+                  Text { text: "󰆏"; font.family: Style.font.family; font.pixelSize: 10; color: Color.foreground }
+                  Text { text: "Copy"; font.family: Style.font.family; font.pixelSize: 10; color: Color.foreground }
+                }
+
+                MouseArea {
+                  id: copyPassMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.copyToClipboard(root.wifiQrData ? root.wifiQrData.password : "", "Password copied!")
+                }
+              }
+            }
+          }
+        }
+
+        // Close button
+        Button {
+          Layout.alignment: Qt.AlignHCenter
+          text: "Done"
+          iconText: "✓"
+          onClicked: root.closeWifiQrModal()
+        }
+      }
     }
   }
 }

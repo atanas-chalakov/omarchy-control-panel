@@ -139,6 +139,60 @@ case "$cmd" in
     fi
     ;;
 
+  wifi-get-qr)
+    target_ssid="${2:-}"
+    if [[ -z "$target_ssid" ]]; then
+      target_ssid=$(nmcli -t -f in-use,ssid dev wifi list --rescan no 2>/dev/null | awk -F: '$1 ~ /\*/{print $2; exit}' || echo "")
+    fi
+
+    if [[ -z "$target_ssid" ]]; then
+      echo '{"success":false,"error":"Not connected to Wi-Fi"}'
+      exit 0
+    fi
+
+    passw=$(nmcli -s -g 802-11-wireless-security.psk connection show "$target_ssid" 2>/dev/null || echo "")
+    if [[ -z "$passw" ]]; then
+      for alt in "$target_ssid 1" "$target_ssid 2"; do
+        passw=$(nmcli -s -g 802-11-wireless-security.psk connection show "$alt" 2>/dev/null || echo "")
+        [[ -n "$passw" ]] && break
+      done
+    fi
+
+    sec_type="WPA"
+    if [[ -z "$passw" ]]; then
+      sec_type="nopass"
+    fi
+
+    qr_dir="$HOME/.local/state/omarchy"
+    mkdir -p "$qr_dir"
+    qr_file="$qr_dir/wifi-qr.png"
+
+    qr_payload="WIFI:T:${sec_type};S:${target_ssid};P:${passw};;"
+    has_qr=false
+    if command -v qrencode >/dev/null 2>&1; then
+      if qrencode -o "$qr_file" -s 6 -m 2 "$qr_payload" 2>/dev/null; then
+        has_qr=true
+      fi
+    elif [[ -f "$qr_file" ]]; then
+      has_qr=true
+    fi
+
+    jq -n \
+      --arg ssid "$target_ssid" \
+      --arg pass "$passw" \
+      --arg sec "$sec_type" \
+      --arg path "$qr_file" \
+      --argjson hasQr "$has_qr" \
+      '{
+        success: true,
+        ssid: $ssid,
+        password: $pass,
+        security: $sec,
+        qrPath: $path,
+        hasQr: $hasQr
+      }'
+    ;;
+
   *)
     echo "Unknown command: $cmd" >&2
     exit 1

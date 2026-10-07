@@ -20,6 +20,8 @@ tests=(
   "updates-storage-control.sh|get-state|.updates != null and .storage != null"
   "system-control.sh|about-get|.os != null and .cpu != null and .ram != null"
   "system-control.sh|audio-get|.volume != null and .sinks != null"
+  "system-control.sh|audio-test-speaker stereo|.success == true and .channel == \"stereo\""
+  "network-control.sh|wifi-get-qr|.success != null"
   "system-control.sh|backup-list|type == \"array\""
   "system-control.sh|backup-gist-list|.authenticated != null and .gists != null"
   "config-tracker.sh|get-all-configs|type == \"array\" and length >= 8"
