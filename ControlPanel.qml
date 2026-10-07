@@ -16,7 +16,8 @@ Item {
   property string focusSection: "content" // "sidebar" or "content"
   property bool showDiffInspector: false
   property bool diffInspectorExpanded: false
-  readonly property string pluginPath: manifest && manifest.__sourceDir ? manifest.__sourceDir : "/home/ac/.config/omarchy/plugins/ac.control-panel"
+  readonly property string homeDir: Quickshell.env("HOME") || "/home/ac"
+  readonly property string pluginPath: manifest && manifest.__sourceDir ? manifest.__sourceDir : (homeDir + "/.config/omarchy/plugins/ac.control-panel")
 
   onDiffInspectorExpandedChanged: {
     fitWindowToScreen(false)

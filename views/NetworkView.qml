@@ -10,7 +10,7 @@ Item {
   id: root
   anchors.fill: parent
 
-  property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
+  property string pluginPath: (Quickshell.env("HOME") || "/home/ac") + "/.config/omarchy/plugins/ac.control-panel"
   onPluginPathChanged: refresh()
   property var panelRoot: null
   property bool wifiEnabled: true

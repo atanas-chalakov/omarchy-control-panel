@@ -19,7 +19,7 @@ Rectangle {
   radius: 8
   clip: true
 
-  property string pluginPath: "/home/ac/.config/omarchy/plugins/ac.control-panel"
+  property string pluginPath: (Quickshell.env("HOME") || "/home/ac") + "/.config/omarchy/plugins/ac.control-panel"
   property var panelRoot: null
   property string activeCategory: "windows"
   property string currentTab: "diff" // "diff", "file", "history"
