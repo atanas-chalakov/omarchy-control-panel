@@ -1,0 +1,50 @@
+# Maintainer: Atanas Chalakov <atanas@chalakov.com>
+pkgname=omarchy-control-panel-git
+pkgver=1.1.0.r0.g61bb2ae
+pkgrel=1
+pkgdesc="Comprehensive graphical settings and control panel for Omarchy desktop and Hyprland (development git version)"
+arch=('any')
+url="https://github.com/atanas-chalakov/omarchy-control-panel"
+license=('MIT')
+provides=('omarchy-control-panel')
+conflicts=('omarchy-control-panel')
+depends=(
+    'bash'
+    'jq'
+    'python'
+    'quickshell'
+    'omarchy-shell'
+)
+optdepends=(
+    'qrencode: Wi-Fi QR code sharing'
+    'wl-clipboard: System clipboard copy support'
+    'pipewire: Audio sink/source volume control and speaker channel testing'
+    'networkmanager: Wi-Fi scanning and connection management'
+    'bluez-utils: Bluetooth device discovery and pairing'
+    'brightnessctl: Hardware display brightness adjustment'
+    'power-profiles-daemon: Dynamic power governor switching'
+    'github-cli: GitHub Gist cloud backup sync'
+)
+makedepends=('git')
+install="omarchy-control-panel.install"
+source=("git+$url.git")
+sha256sums=('SKIP')
+
+pkgver() {
+    cd "$srcdir/omarchy-control-panel"
+    git describe --long --tags 2>/dev/null | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' || \
+    printf "1.1.0.r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+package() {
+    cd "$srcdir/omarchy-control-panel"
+
+    local plugindir="$pkgdir/usr/share/omarchy/plugins/ac.control-panel"
+    install -dm755 "$plugindir"
+    cp -r BarWidget.qml ControlPanel.qml manifest.json views scripts "$plugindir/"
+
+    install -Dm755 bin/omarchy-control-panel "$pkgdir/usr/bin/omarchy-control-panel"
+    install -Dm644 omarchy-control-panel.desktop "$pkgdir/usr/share/applications/omarchy-control-panel.desktop"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+}

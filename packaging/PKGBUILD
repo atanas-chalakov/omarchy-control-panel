@@ -1,0 +1,49 @@
+# Maintainer: Atanas Chalakov <atanas@chalakov.com>
+pkgname=omarchy-control-panel
+pkgver=1.1.0
+pkgrel=1
+pkgdesc="Comprehensive graphical settings and control panel for Omarchy desktop and Hyprland"
+arch=('any')
+url="https://github.com/atanas-chalakov/omarchy-control-panel"
+license=('MIT')
+depends=(
+    'bash'
+    'jq'
+    'python'
+    'quickshell'
+    'omarchy-shell'
+)
+optdepends=(
+    'qrencode: Wi-Fi QR code sharing'
+    'wl-clipboard: System clipboard copy support'
+    'pipewire: Audio sink/source volume control and speaker channel testing'
+    'networkmanager: Wi-Fi scanning and connection management'
+    'bluez-utils: Bluetooth device discovery and pairing'
+    'brightnessctl: Hardware display brightness adjustment'
+    'power-profiles-daemon: Dynamic power governor switching'
+    'github-cli: GitHub Gist cloud backup sync'
+)
+install="$pkgname.install"
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+    cd "$pkgname-$pkgver"
+
+    # Install plugin files
+    local plugindir="$pkgdir/usr/share/omarchy/plugins/ac.control-panel"
+    install -dm755 "$plugindir"
+    cp -r BarWidget.qml ControlPanel.qml manifest.json views scripts "$plugindir/"
+
+    # Install CLI launcher
+    install -Dm755 bin/omarchy-control-panel "$pkgdir/usr/bin/omarchy-control-panel"
+
+    # Install Freedesktop desktop entry
+    install -Dm644 omarchy-control-panel.desktop "$pkgdir/usr/share/applications/omarchy-control-panel.desktop"
+
+    # Install license
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+    # Install documentation
+    install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+}

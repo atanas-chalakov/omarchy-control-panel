@@ -46,6 +46,18 @@ EOF
 
 cmd="${1:-toggle}"
 
+# Auto-link system installation into user plugins directory if needed
+USER_PLUGIN_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/$PLUGIN_ID"
+SYSTEM_PLUGIN_DIR="/usr/share/omarchy/plugins/$PLUGIN_ID"
+
+if [[ ! -e "$USER_PLUGIN_DIR" && -d "$SYSTEM_PLUGIN_DIR" ]]; then
+  mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins"
+  ln -s "$SYSTEM_PLUGIN_DIR" "$USER_PLUGIN_DIR" 2>/dev/null || true
+  if command -v omarchy-shell >/dev/null 2>&1; then
+    omarchy-shell -q shell rescanPlugins 2>/dev/null || true
+  fi
+fi
+
 case "$cmd" in
   -h|--help|help)
     usage

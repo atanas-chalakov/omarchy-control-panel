@@ -77,3 +77,11 @@ pass "installer scripts (install.sh & uninstall.sh) are executable"
 grep -q "Type=Application" "$ROOT/omarchy-control-panel.desktop" || fail "desktop file has Type=Application"
 grep -q "Exec=" "$ROOT/omarchy-control-panel.desktop" || fail "desktop file has Exec line"
 pass "omarchy-control-panel.desktop is a valid desktop entry"
+
+# 11. Packaging metadata (PKGBUILD and .SRCINFO)
+[[ -f "$ROOT/packaging/PKGBUILD" ]] || fail "packaging/PKGBUILD exists"
+grep -q "pkgname=omarchy-control-panel" "$ROOT/packaging/PKGBUILD" || fail "PKGBUILD has correct pkgname"
+[[ -f "$ROOT/packaging/.SRCINFO" ]] || fail "packaging/.SRCINFO exists"
+grep -q "pkgbase = omarchy-control-panel" "$ROOT/packaging/.SRCINFO" || fail ".SRCINFO defines pkgbase"
+pass "Arch Linux packaging files (PKGBUILD & .SRCINFO) are valid and structured"
+

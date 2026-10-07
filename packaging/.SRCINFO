@@ -1,0 +1,25 @@
+pkgbase = omarchy-control-panel
+	pkgdesc = Comprehensive graphical settings and control panel for Omarchy desktop and Hyprland
+	pkgver = 1.1.0
+	pkgrel = 1
+	url = https://github.com/atanas-chalakov/omarchy-control-panel
+	install = omarchy-control-panel.install
+	arch = any
+	license = MIT
+	depends = bash
+	depends = jq
+	depends = python
+	depends = quickshell
+	depends = omarchy-shell
+	optdepends = qrencode: Wi-Fi QR code sharing
+	optdepends = wl-clipboard: System clipboard copy support
+	optdepends = pipewire: Audio sink/source volume control and speaker channel testing
+	optdepends = networkmanager: Wi-Fi scanning and connection management
+	optdepends = bluez-utils: Bluetooth device discovery and pairing
+	optdepends = brightnessctl: Hardware display brightness adjustment
+	optdepends = power-profiles-daemon: Dynamic power governor switching
+	optdepends = github-cli: GitHub Gist cloud backup sync
+	source = omarchy-control-panel-1.1.0.tar.gz::https://github.com/atanas-chalakov/omarchy-control-panel/archive/refs/tags/v1.1.0.tar.gz
+	sha256sums = SKIP
+
+pkgname = omarchy-control-panel

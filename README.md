@@ -136,6 +136,21 @@ The script automatically:
 3. Registers the desktop entry into `~/.local/share/applications/omarchy-control-panel.desktop` for Rofi, Walker, and Omarchy application menu.
 4. Validates the manifest and enables the plugin in your Omarchy status bar.
 
+### Arch Linux / AUR (`PKGBUILD`)
+Build and install via Arch Linux package manager:
+
+```bash
+# Build from source using makepkg
+git clone https://github.com/atanas-chalakov/omarchy-control-panel.git
+cd omarchy-control-panel/packaging
+makepkg -si
+```
+
+### Via Omarchy Plugin Manager
+```bash
+omarchy plugin add https://github.com/atanas-chalakov/omarchy-control-panel.git --enable
+```
+
 ### Manual Setup
 ```bash
 # 1. Link plugin into Omarchy
