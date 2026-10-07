@@ -2,7 +2,7 @@
 
 [![Test Suite](https://github.com/atanas-chalakov/omarchy-control-panel/actions/workflows/test.yml/badge.svg)](https://github.com/atanas-chalakov/omarchy-control-panel/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Omarchy Plugin](https://img.shields.io/badge/Omarchy-Plugin%20v1.0.0-purple.svg)](https://omarchy.org)
+[![Omarchy Plugin](https://img.shields.io/badge/Omarchy-Plugin%20v1.1.0-purple.svg)](https://omarchy.org)
 
 A comprehensive graphical settings and control panel plugin for **Omarchy Linux** and **Hyprland**, built with **Quickshell** and **QML**. It provides a macOS/GNOME-grade unified preferences hub designed with full keyboard-first ergonomics, live configuration tracking with two-column split diff inspection, one-click rollbacks, and full system backup/restore capabilities.
 
@@ -12,9 +12,9 @@ A comprehensive graphical settings and control panel plugin for **Omarchy Linux*
 
 ### 🎛️ 16 Integrated Preference Categories
 1. **Displays & Brightness** — Resolution, refresh rate, scaling (with zero-division GCD protection), screen arrangement, and night light.
-2. **Sound & Audio** — Master volume/mute, application-specific playback streams, and PipeWire/WirePlumber sink/source selection.
+2. **Sound & Audio** — Master volume/mute, application-specific playback streams, PipeWire/WirePlumber sink/source selection, and speaker channel testing.
 3. **Power & Battery** — Active power profiles (`performance`, `balanced`, `power-saver`), battery telemetry, and idle sleep timeouts.
-4. **Network & Wi-Fi** — Interface status, Wi-Fi network scanning, and secure credential handling.
+4. **Network & Wi-Fi** — Interface status, Wi-Fi network scanning, secure credential handling, and instant mobile QR code sharing.
 5. **Bluetooth** — Adapter toggle, paired device list, connection management, and signal status.
 6. **Appearance & Theming** — Instant system-wide theme switching across Omarchy color schemes and wallpaper synchronisation.
 7. **Window Manager** — Hyprland animations, active window border thickness, and inner/outer gaps.
@@ -27,6 +27,21 @@ A comprehensive graphical settings and control panel plugin for **Omarchy Linux*
 14. **Coding Agents** — Omarchy agent manager (Antigravity, Claude Code, Copilot, Codex, OpenCode) with default selector and token telemetry.
 15. **System & Backups** — Hardware specifications, kernel info, uptime, timezone selector, local config backup/restore, and GitHub Gist cloud synchronization.
 16. **Global Search** — Fast fuzzy search across all 71+ system settings with quick jump chips and direct navigation.
+
+---
+
+### 📱 Interactive Wi-Fi QR Code Sharing
+Located in the **Network & Wi-Fi** view:
+- **Instant Sharing**: Click **Share QR** on the active connection card or any saved network profile to generate a mobile-ready QR code.
+- **High-Contrast Display**: Renders a crisp 1:1 QR container (`qrencode`) formatted with the `WIFI:T:WPA;S:...;P:...;;` standard for instant camera scanning on Android and iOS devices.
+- **One-Click Credential Copying**: View connection details and copy SSID or WPA passphrase directly to system clipboard via `wl-copy`.
+
+---
+
+### 🔊 Speaker & Channel Audio Test Suite
+Located in the **Sound & Audio** view:
+- **Directional Sound Testing**: Dedicated buttons for **Stereo Chime** (`󰕾`), **Left Channel**, and **Right Channel** audio verification.
+- **Universal Engine Support**: Backed by PipeWire (`pw-play`), PulseAudio (`paplay`), or libcanberra (`canberra-gtk-play`) with fallback system sound cues.
 
 ---
 
@@ -195,7 +210,7 @@ The repository includes a comprehensive, automated test runner (`test/run.sh`) a
 .
 ├── BarWidget.qml              # Status bar companion widget
 ├── ControlPanel.qml           # Main control panel window and layout
-├── manifest.json              # Omarchy plugin manifest (v1.0.0)
+├── manifest.json              # Omarchy plugin manifest (v1.1.0)
 ├── LICENSE                    # MIT License
 ├── README.md                  # Project documentation
 ├── .github/workflows/test.yml # Continuous Integration workflow
