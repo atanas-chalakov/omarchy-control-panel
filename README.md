@@ -1,22 +1,214 @@
-# Omarchy Control Panel Plugin
+# Omarchy Control Panel (`ac.control-panel`)
 
-A unified graphical settings and control panel for [Omarchy Linux](https://omarchy.org/).
+[![Test Suite](https://github.com/atanas-chalakov/omarchy-control-panel/actions/workflows/test.yml/badge.svg)](https://github.com/atanas-chalakov/omarchy-control-panel/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Omarchy Plugin](https://img.shields.io/badge/Omarchy-Plugin%20v1.0.0-purple.svg)](https://omarchy.org)
 
-## Features
-- **Displays**: Resolution, refresh rate, scaling, and brightness controls.
-- **Power & Battery**: Performance, balanced, and power-saver profiles, idle and sleep timeouts.
-- **Appearance**: System theme switcher and wallpaper controls.
-- **Sound**: Volume slider and output/input selection.
-- **About**: Hardware specs and system status.
+A comprehensive graphical settings and control panel plugin for **Omarchy Linux** and **Hyprland**, built with **Quickshell** and **QML**. It provides a macOS/GNOME-grade unified preferences hub designed with full keyboard-first ergonomics, live configuration tracking with two-column split diff inspection, one-click rollbacks, and full system backup/restore capabilities.
 
-## Architecture
-- Native **Omarchy Shell Plugin** (`kind: ["panel"]`).
-- Written in **QML / Quickshell** matching the active Omarchy theme.
-- Entry point: `ControlPanel.qml`.
+---
 
-## Testing
-Run the automated test suite covering manifest validation, backend scripts, diff tracker, QML views, and IPC integration:
+## 🌟 Highlights & Features
+
+### 🎛️ 16 Integrated Preference Categories
+1. **Displays & Brightness** — Resolution, refresh rate, scaling (with zero-division GCD protection), screen arrangement, and night light.
+2. **Sound & Audio** — Master volume/mute, application-specific playback streams, and PipeWire/WirePlumber sink/source selection.
+3. **Power & Battery** — Active power profiles (`performance`, `balanced`, `power-saver`), battery telemetry, and idle sleep timeouts.
+4. **Network & Wi-Fi** — Interface status, Wi-Fi network scanning, and secure credential handling.
+5. **Bluetooth** — Adapter toggle, paired device list, connection management, and signal status.
+6. **Appearance & Theming** — Instant system-wide theme switching across Omarchy color schemes and wallpaper synchronisation.
+7. **Window Manager** — Hyprland animations, active window border thickness, and inner/outer gaps.
+8. **Touch & Gestures** — Touchpad tap-to-click, natural scroll direction, and gesture controls.
+9. **Keyboard & Region** — Layout selection, input switching, and date/time formatting.
+10. **Shortcuts & Keybindings** — Searchable keybinding registry with quick edit integration.
+11. **Default Applications** — Browser, text editor, terminal emulator, and MIME-type defaults.
+12. **Notifications** — Do Not Disturb (DND) mode, notification history inspection, and alert sounds.
+13. **Storage & Updates** — Disk partition usage breakdown, Pacman update checks, and pacman cache cleanup.
+14. **Coding Agents** — Omarchy agent manager (Antigravity, Claude Code, Copilot, Codex, OpenCode) with default selector and token telemetry.
+15. **System & Backups** — Hardware specifications, kernel info, uptime, timezone selector, and full Omarchy config backup/restore.
+16. **Global Search** — Fast fuzzy search across all 67+ system settings with quick jump chips and direct navigation.
+
+---
+
+### 🛡️ Live Config Diff Inspector & Rollback Engine
+Every time a setting or theme changes, the Control Panel's background tracker records a state snapshot:
+- **Two-Column Gutter Diffs**: Line-by-line visual inspection (`oldLine` vs `newLine`) of modified `.conf`, `.lua`, and `.json` files.
+- **One-Click Revert**: Click **Revert Change** or press `[U]` to roll back any modified configuration file instantly to its exact previous state.
+- **Audit History**: Persistent session log of all runtime CLI mutations and file modifications.
+- **Expandable Drawer**: Expand the inspector into a full-height comparison split view (`[E]`).
+
+---
+
+### 📦 Configuration Backup & Restore
+Located in the **About & System** view:
+- **One-Click Backup `[B]`**: Creates a compressed `.tar.gz` snapshot of your complete Hyprland setup (`~/.config/hypr/*.lua`, `*.conf`), Shell layout (`shell.json`), active defaults, and custom toggle states in `~/.local/state/omarchy/backups/control-panel/`.
+- **Safe Selective Restore**: Validated archive extraction with automated path traversal protection, `hyprctl reload`, and shell restart.
+- **Backup Management**: Inspect backup timestamp, archive size, and included file counts, with single-click restore and deletion.
+
+---
+
+### 📍 Status Bar Companion Widget (`BarWidget.qml`)
+The plugin ships with both `"panel"` and `"bar-widget"` kinds:
+- **Left-Click**: Toggles the Control Panel floating overlay.
+- **Right-Click**: Directly summons the Control Panel with the **Live Diff Inspector** opened.
+- Automatically docks into your Omarchy status bar (defaulting to the right section).
+
+---
+
+## ⌨️ Keyboard Navigation & Shortcuts
+
+The Control Panel is designed for seamless keyboard-driven navigation:
+
+### Global Shortcuts
+| Key | Action |
+| :--- | :--- |
+| `j` / `↓` | Move selection down (categories list or active view rows) |
+| `k` / `↑` | Move selection up (categories list or active view rows) |
+| `h` / `←` | Jump focus to Category sidebar |
+| `l` / `→` | Jump focus to Content view |
+| `Enter` / `Space` | Activate selected item, toggle switch, or trigger action |
+| `/` | Focus global setting search input |
+| `d` | Toggle Live Diff Inspector drawer |
+| `e` | Expand / collapse Diff Inspector split view |
+| `u` | Revert selected diff change to previous snapshot |
+| `Esc` | Clear search / Close Control Panel |
+
+### View-Specific Quick Shortcuts
+| View | Key | Action |
+| :--- | :--- | :--- |
+| **Search** | `c` | Clear search query |
+| **About** | `b` | Create new configuration backup snapshot |
+| **About** | `r` | Refresh hardware and system telemetry |
+| **About** | `t` | Open interactive timezone picker |
+| **Displays** | `n` | Toggle Night Light mode |
+| **Audio** | `m` | Toggle master mute |
+
+---
+
+## 🚀 Installation & Setup
+
+### 1. Link Plugin into Omarchy
+Clone or symlink the repository into your Omarchy plugins directory:
+
+```bash
+mkdir -p ~/.config/omarchy/plugins
+ln -s "$(pwd)" ~/.config/omarchy/plugins/ac.control-panel
+```
+
+### 2. Enable Plugin
+Enable the plugin in your Omarchy shell:
+
+```bash
+omarchy plugin enable ac.control-panel --section right
+```
+
+### 3. Keybinding Setup (Hyprland)
+Add a shortcut in `~/.config/hypr/bindings.lua` or `bindings.conf`:
+
+```lua
+-- Toggle Omarchy Control Panel with Super + I
+{"SUPER", "i", "omarchy-shell shell toggle ac.control-panel"}
+```
+
+---
+
+## 📡 IPC Integration & CLI Control
+
+The control panel can be controlled programmatically via the `omarchy-shell` IPC interface:
+
+```bash
+# Toggle control panel
+omarchy-shell shell toggle ac.control-panel
+
+# Summon directly to a specific category
+omarchy-shell shell summon ac.control-panel '{"category":"displays"}'
+omarchy-shell shell summon ac.control-panel '{"category":"appearance"}'
+omarchy-shell shell summon ac.control-panel '{"category":"search"}'
+
+# Summon with Diff Inspector drawer open
+omarchy-shell shell summon ac.control-panel '{"diff":true,"category":"windows"}'
+
+# Hide control panel
+omarchy-shell shell hide ac.control-panel
+```
+
+---
+
+## 🧪 Automated Testing & Quality Assurance
+
+The repository includes a comprehensive, automated test runner (`test/run.sh`) adhering to the Test Anything Protocol (TAP):
 
 ```bash
 ./test/run.sh
 ```
+
+### Test Suites Included (7 Suites / 59 Assertions)
+- **`manifest-test.sh`**: Validates manifest schema v1, required kinds (`panel`, `bar-widget`), entry points, and runs official `omarchy plugin validate`.
+- **`diff-tracker-test.sh`**: Tests snapshotting, diff generation, two-column gutter line numbers, reversible state, and audit log persistence.
+- **`edge-cases-test.sh`**: Tests edge cases including files without trailing newlines, unicode/emoji contents, invalid revert IDs, corrupted history caches, input boundary clamping, and backup path traversal protection.
+- **`scripts-state-test.sh`**: Tests all 15 backend control script state queries for valid JSON schema and required telemetry fields.
+- **`search-index-test.sh`**: Verifies 67+ searchable settings across 15 categories, 9 quick tiles, and 8 quick chips.
+- **`views-tokens-test.sh`**: Validates all 19 QML views for syntax balance, Omarchy design token compliance, and absence of prohibited calls.
+- **`ipc-integration-test.sh`**: Verifies live shell IPC ping, plugin registration, search payload summon, diff drawer summon, and hide.
+
+---
+
+## 📁 Repository Structure
+
+```
+.
+├── BarWidget.qml              # Status bar companion widget
+├── ControlPanel.qml           # Main control panel window and layout
+├── manifest.json              # Omarchy plugin manifest (v1.0.0)
+├── LICENSE                    # MIT License
+├── README.md                  # Project documentation
+├── .github/workflows/test.yml # Continuous Integration workflow
+├── views/                     # QML view components
+│   ├── AboutView.qml          # Hardware specs, timezone & backups
+│   ├── AgentsView.qml         # AI coding agents manager
+│   ├── AppearanceView.qml     # Themes & wallpaper selector
+│   ├── BluetoothView.qml      # Bluetooth devices & adapter
+│   ├── DefaultsView.qml       # Default applications & MIME
+│   ├── DiffInspector.qml      # Live diff viewer with line gutters
+│   ├── DisplaysView.qml       # Screen resolutions, scaling & brightness
+│   ├── NetworkView.qml        # Wi-Fi & ethernet network controls
+│   ├── NotificationsView.qml  # Do Not Disturb & notification history
+│   ├── PowerView.qml          # Power profiles & battery status
+│   ├── RegionView.qml         # Keyboard layouts & date format
+│   ├── SearchView.qml         # Global search & quick tiles
+│   ├── ShortcutsView.qml      # Hyprland keybindings registry
+│   ├── SoundView.qml          # Volume, audio sinks & app streams
+│   ├── TouchInputView.qml     # Touchpad & gesture settings
+│   ├── UpdatesStorageView.qml # Disk usage & package updates
+│   └── WindowManagerView.qml  # Hyprland borders, gaps & animations
+├── scripts/                   # Backend helper scripts
+│   ├── bluetooth-control.sh
+│   ├── config-tracker.sh      # Snapshotting, diffing & revert engine
+│   ├── defaults-control.sh
+│   ├── display-control.sh
+│   ├── network-control.sh
+│   ├── notifications-control.sh
+│   ├── power-control.sh
+│   ├── region-control.sh
+│   ├── shortcuts-control.sh
+│   ├── system-control.sh      # System info, audio & backup engine
+│   ├── touch-input-control.sh
+│   ├── updates-storage-control.sh
+│   └── wm-control.sh
+└── test/                      # Automated TAP test suites
+    ├── base-test.sh
+    ├── diff-tracker-test.sh
+    ├── edge-cases-test.sh
+    ├── ipc-integration-test.sh
+    ├── manifest-test.sh
+    ├── run.sh
+    ├── scripts-state-test.sh
+    ├── search-index-test.sh
+    └── views-tokens-test.sh
+```
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE) - see the LICENSE file for details.

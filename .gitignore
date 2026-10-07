@@ -1,0 +1,19 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary and swap files
+*~
+*.swp
+*.swo
+*.bak*
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test temporary artifacts
+/tmp/
+.pytest_cache/

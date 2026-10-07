@@ -18,6 +18,9 @@ tests=(
   "region-control.sh|get-state|.time != null and .date != null and .configuredLayouts != null"
   "defaults-control.sh|get-state|.browser != null and .editor != null and .terminal != null"
   "updates-storage-control.sh|get-state|.updates != null and .storage != null"
+  "system-control.sh|about-get|.os != null and .cpu != null and .ram != null"
+  "system-control.sh|audio-get|.volume != null and .sinks != null"
+  "system-control.sh|backup-list|type == \"array\""
   "config-tracker.sh|get-all-configs|type == \"array\" and length >= 8"
 )
 

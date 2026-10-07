@@ -114,3 +114,33 @@ pass "network-control wifi-connect handles special characters and quotes without
 "$DISP_CONTROL" set-brightness 0 >/dev/null 2>&1 || fail "set-brightness 0 executes without crashing"
 "$DISP_CONTROL" set-brightness 150 >/dev/null 2>&1 || fail "set-brightness 150 executes without crashing"
 pass "display-control set-brightness safely handles boundary inputs (0% and 150%)"
+
+# ==============================================================================
+# 7. System Control: Backup & Restore Security and Path Traversal Protection
+# ==============================================================================
+SYS_CONTROL="$SCRIPTS_DIR/system-control.sh"
+
+# Path traversal rejection
+trav_res=$("$SYS_CONTROL" backup-restore "../../../etc/passwd" 2>/dev/null || true)
+[[ "$(echo "$trav_res" | jq -r '.success')" == "false" ]] || fail "backup-restore rejects path traversal" "$trav_res"
+pass "system-control backup-restore cleanly rejects path traversal attacks"
+
+# Non-existent backup rejection
+bad_backup_res=$("$SYS_CONTROL" backup-restore "backup-99999999-999999.tar.gz" 2>/dev/null || true)
+[[ "$(echo "$bad_backup_res" | jq -r '.success')" == "false" ]] || fail "backup-restore rejects non-existent files" "$bad_backup_res"
+pass "system-control backup-restore cleanly rejects non-existent archives"
+
+# Export, list, and delete lifecycle
+export_res=$("$SYS_CONTROL" backup-export)
+[[ "$(echo "$export_res" | jq -r '.success')" == "true" ]] || fail "backup-export succeeds" "$export_res"
+export_file=$(echo "$export_res" | jq -r '.filename')
+[[ -n "$export_file" ]] || fail "backup-export returns filename"
+
+list_res=$("$SYS_CONTROL" backup-list)
+has_file=$(echo "$list_res" | jq -r --arg f "$export_file" 'any(.[]; .filename == $f)')
+[[ "$has_file" == "true" ]] || fail "backup-list includes newly created backup"
+
+del_res=$("$SYS_CONTROL" backup-delete "$export_file")
+[[ "$(echo "$del_res" | jq -r '.success')" == "true" ]] || fail "backup-delete removes test backup"
+pass "system-control backup export, listing, and deletion lifecycle functions flawlessly"
+

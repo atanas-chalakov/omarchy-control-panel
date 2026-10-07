@@ -295,6 +295,186 @@ print(json.dumps({
     omarchy-agent-usage-update >/dev/null 2>&1 || true
     ;;
 
+  backup-export)
+    python3 -c '
+import os, sys, tarfile, datetime, subprocess, json
+
+home = os.path.expanduser("~")
+backup_dir = os.path.join(home, ".local/state/omarchy/backups/control-panel")
+os.makedirs(backup_dir, exist_ok=True)
+
+targets = [
+    ".config/hypr",
+    ".config/omarchy/shell.json",
+    ".config/omarchy/defaults",
+    ".local/state/omarchy/toggles",
+    ".local/state/omarchy/current/theme.name",
+    ".config/mimeapps.list"
+]
+
+files_to_add = []
+for rel in targets:
+    full = os.path.join(home, rel)
+    if os.path.isfile(full):
+        files_to_add.append(rel)
+    elif os.path.isdir(full):
+        for root, dirs, files in os.walk(full):
+            for f in files:
+                if ".bak" in f or f.endswith("~") or f.startswith(".git"):
+                    continue
+                files_to_add.append(os.path.relpath(os.path.join(root, f), home))
+
+ts_raw = datetime.datetime.now()
+stamp = ts_raw.strftime("%Y%m%d-%H%M%S")
+ts_display = ts_raw.strftime("%Y-%m-%d %H:%M:%S")
+filename = "backup-" + stamp + ".tar.gz"
+archive_path = os.path.join(backup_dir, filename)
+
+with tarfile.open(archive_path, "w:gz") as tar:
+    for rel in files_to_add:
+        full = os.path.join(home, rel)
+        tar.add(full, arcname=rel)
+
+size_bytes = os.path.getsize(archive_path)
+size_str = f"{size_bytes / 1024:.1f} KB" if size_bytes < 1048576 else f"{size_bytes / 1048576:.2f} MB"
+
+tracker = os.path.join(os.path.dirname(os.path.abspath(__file__ if "__file__" in dir() else sys.argv[0])), "config-tracker.sh")
+if not os.path.isfile(tracker):
+    tracker = os.path.expanduser("~/.config/omarchy/plugins/ac.control-panel/scripts/config-tracker.sh")
+if os.path.isfile(tracker):
+    subprocess.run([tracker, "record-command", "about", "System Configuration Backup", "backup", "scripts/system-control.sh backup-export", f"Exported configuration archive: {filename}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+print(json.dumps({
+    "success": True,
+    "filename": filename,
+    "path": archive_path,
+    "timestamp": ts_display,
+    "filesCount": len(files_to_add),
+    "size": size_str
+}))
+'
+    ;;
+
+  backup-list)
+    python3 -c '
+import os, json, tarfile, datetime, glob
+
+home = os.path.expanduser("~")
+backup_dir = os.path.join(home, ".local/state/omarchy/backups/control-panel")
+if not os.path.isdir(backup_dir):
+    print("[]")
+    exit(0)
+
+archives = sorted(glob.glob(os.path.join(backup_dir, "backup-*.tar.gz")), key=os.path.getmtime, reverse=True)
+results = []
+for fpath in archives:
+    try:
+        fname = os.path.basename(fpath)
+        mtime = os.path.getmtime(fpath)
+        dt = datetime.datetime.fromtimestamp(mtime)
+        ts_display = dt.strftime("%Y-%m-%d %H:%M:%S")
+        size_bytes = os.path.getsize(fpath)
+        size_str = f"{size_bytes / 1024:.1f} KB" if size_bytes < 1048576 else f"{size_bytes / 1048576:.2f} MB"
+        
+        count = 0
+        with tarfile.open(fpath, "r:gz") as tar:
+            count = len(tar.getmembers())
+
+        results.append({
+            "filename": fname,
+            "timestamp": ts_display,
+            "size": size_str,
+            "filesCount": count
+        })
+    except Exception:
+        pass
+
+print(json.dumps(results))
+'
+    ;;
+
+  backup-restore)
+    target="${2:-}"
+    if [[ -z "$target" ]]; then
+      echo '{"success":false,"error":"Missing backup filename"}' >&2
+      exit 1
+    fi
+    python3 -c '
+import os, sys, tarfile, subprocess, json
+
+home = os.path.expanduser("~")
+backup_dir = os.path.join(home, ".local/state/omarchy/backups/control-panel")
+fname = sys.argv[1]
+
+base = os.path.basename(fname)
+if base != fname or not fname.endswith(".tar.gz") or not fname.startswith("backup-"):
+    print(json.dumps({"success": False, "error": "Invalid backup filename"}))
+    sys.exit(1)
+
+archive_path = os.path.join(backup_dir, base)
+if not os.path.isfile(archive_path):
+    print(json.dumps({"success": False, "error": "Backup file not found"}))
+    sys.exit(1)
+
+try:
+    with tarfile.open(archive_path, "r:gz") as tar:
+        tar.extractall(path=home, filter="data")
+
+    theme_name_file = os.path.join(home, ".local/state/omarchy/current/theme.name")
+    if os.path.isfile(theme_name_file):
+        try:
+            with open(theme_name_file) as f:
+                tname = f.read().strip()
+                if tname:
+                    subprocess.run(["omarchy", "theme", "set", tname], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+
+    subprocess.run(["hyprctl", "reload"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["omarchy", "restart", "shell"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    tracker = os.path.join(os.path.dirname(os.path.abspath(__file__ if "__file__" in dir() else sys.argv[0])), "config-tracker.sh")
+    if not os.path.isfile(tracker):
+        tracker = os.path.expanduser("~/.config/omarchy/plugins/ac.control-panel/scripts/config-tracker.sh")
+    if os.path.isfile(tracker):
+        subprocess.run([tracker, "record-command", "about", "Restored System Configuration", "restore", f"scripts/system-control.sh backup-restore {base}", f"Restored configuration archive: {base}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    print(json.dumps({
+        "success": True,
+        "message": f"Restored {base} successfully"
+    }))
+except Exception as e:
+    print(json.dumps({"success": False, "error": str(e)}))
+    sys.exit(1)
+' "$target"
+    ;;
+
+  backup-delete)
+    target="${2:-}"
+    if [[ -z "$target" ]]; then
+      echo '{"success":false,"error":"Missing backup filename"}' >&2
+      exit 1
+    fi
+    python3 -c '
+import os, sys, json
+
+home = os.path.expanduser("~")
+backup_dir = os.path.join(home, ".local/state/omarchy/backups/control-panel")
+fname = sys.argv[1]
+base = os.path.basename(fname)
+if base != fname or not fname.endswith(".tar.gz") or not fname.startswith("backup-"):
+    print(json.dumps({"success": False, "error": "Invalid backup filename"}))
+    sys.exit(1)
+
+archive_path = os.path.join(backup_dir, base)
+if os.path.isfile(archive_path):
+    os.remove(archive_path)
+    print(json.dumps({"success": True, "message": f"Deleted {base}"}))
+else:
+    print(json.dumps({"success": False, "error": "Backup file not found"}))
+' "$target"
+    ;;
+
   *)
     echo "Unknown command: $cmd" >&2
     exit 1

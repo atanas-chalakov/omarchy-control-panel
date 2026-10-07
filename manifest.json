@@ -2,13 +2,22 @@
   "schemaVersion": 1,
   "id": "ac.control-panel",
   "name": "Control Panel",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "author": "Atanas Chalakov",
   "description": "Graphical settings and control panel for Omarchy desktop",
   "kinds": [
-    "panel"
+    "panel",
+    "bar-widget"
   ],
   "entryPoints": {
-    "panel": "ControlPanel.qml"
+    "panel": "ControlPanel.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Control Panel",
+    "description": "Quick launcher for Omarchy Control Panel",
+    "category": "Settings",
+    "defaultSection": "right",
+    "allowMultiple": false
   }
 }

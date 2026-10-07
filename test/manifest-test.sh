@@ -22,16 +22,25 @@ plugin_id=$(jq -r '.id // ""' "$MANIFEST")
 [[ "$plugin_id" == "ac.control-panel" ]] || fail "manifest id is ac.control-panel"
 pass "manifest id matches ac.control-panel"
 
-# 5. Kinds array contains panel
+# 5. Kinds array contains panel and bar-widget
 has_panel_kind=$(jq -r 'if (.kinds | type == "array") and (.kinds | index("panel") != null) then "true" else "false" end' "$MANIFEST")
 [[ "$has_panel_kind" == "true" ]] || fail "kinds includes 'panel'"
 pass "manifest kinds includes 'panel'"
 
-# 6. entryPoints.panel exists and points to valid file
+has_bar_widget_kind=$(jq -r 'if (.kinds | type == "array") and (.kinds | index("bar-widget") != null) then "true" else "false" end' "$MANIFEST")
+[[ "$has_bar_widget_kind" == "true" ]] || fail "kinds includes 'bar-widget'"
+pass "manifest kinds includes 'bar-widget'"
+
+# 6. entryPoints.panel and entryPoints.barWidget exist and point to valid files
 entry_panel=$(jq -r '.entryPoints.panel // ""' "$MANIFEST")
 [[ -n "$entry_panel" ]] || fail "entryPoints.panel is specified"
 [[ -f "$ROOT/$entry_panel" ]] || fail "entryPoints.panel file ($entry_panel) exists on disk"
 pass "entryPoints.panel points to existing file ($entry_panel)"
+
+entry_bar_widget=$(jq -r '.entryPoints.barWidget // ""' "$MANIFEST")
+[[ -n "$entry_bar_widget" ]] || fail "entryPoints.barWidget is specified"
+[[ -f "$ROOT/$entry_bar_widget" ]] || fail "entryPoints.barWidget file ($entry_bar_widget) exists on disk"
+pass "entryPoints.barWidget points to existing file ($entry_bar_widget)"
 
 # 7. Disallowed symlinks within project (excluding .git)
 bad_links=$(find "$ROOT" -name .git -prune -o -type l -print 2>/dev/null || true)
