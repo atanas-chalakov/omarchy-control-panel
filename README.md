@@ -139,6 +139,25 @@ The Control Panel is designed for seamless keyboard-driven navigation:
 
 ---
 
+## 📦 Dependencies
+
+### Core Runtime Dependencies
+- **`quickshell`** — Desktop shell framework
+- **`omarchy-shell`** — Omarchy shell IPC and plugin manager
+- **`bash`**, **`jq`**, **`python`** — Script execution and state parsing
+
+### Optional Feature Dependencies
+- **`qrencode`** — Wi-Fi QR code image generation
+- **`wl-clipboard`** (`wl-copy`) — Color swatch and Wi-Fi credential clipboard copying
+- **`pipewire`** / **`wireplumber`** — Audio sink/source streams and speaker channel testing
+- **`networkmanager`** (`nmcli`) — Wi-Fi scanning and connection profile management
+- **`bluez-utils`** (`bluetoothctl`) — Bluetooth adapter toggle and device pairing
+- **`brightnessctl`** — Display backlight and brightness adjustment
+- **`power-profiles-daemon`** — Hardware power governor switching
+- **`github-cli`** (`gh`) — Private GitHub Gist cloud backup synchronization
+
+---
+
 ## 🚀 Installation & Setup
 
 ### Quick Install (Automated)
@@ -190,6 +209,21 @@ Add a shortcut in `~/.config/hypr/bindings.lua` (or `bindings.conf`):
 ```lua
 -- Toggle Omarchy Control Panel with Super + I
 o.bind("SUPER + I", "Control Panel", "omarchy-control-panel")
+```
+
+### Uninstallation & Removal
+To remove the plugin completely:
+
+```bash
+# Automated uninstaller
+cd omarchy-control-panel
+./uninstall.sh
+
+# Or manual removal
+omarchy plugin disable ac.control-panel
+rm -rf ~/.config/omarchy/plugins/ac.control-panel
+rm -f ~/.local/bin/omarchy-control-panel
+rm -f ~/.local/share/applications/omarchy-control-panel.desktop
 ```
 
 ---
