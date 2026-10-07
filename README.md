@@ -13,3 +13,10 @@ A unified graphical settings and control panel for [Omarchy Linux](https://omarc
 - Native **Omarchy Shell Plugin** (`kind: ["panel"]`).
 - Written in **QML / Quickshell** matching the active Omarchy theme.
 - Entry point: `ControlPanel.qml`.
+
+## Testing
+Run the automated test suite covering manifest validation, backend scripts, diff tracker, QML views, and IPC integration:
+
+```bash
+./test/run.sh
+```
