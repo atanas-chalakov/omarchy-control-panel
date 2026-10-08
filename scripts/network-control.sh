@@ -101,12 +101,39 @@ case "$cmd" in
 
   wifi-connect)
     ssid="${2:-}"
-    pass="${3:-}"
+    pass=""
+    if [[ ! -t 0 ]]; then
+      IFS= read -r pass || true
+    fi
+    if [[ -z "$pass" && -n "${3:-}" ]]; then
+      pass="${3:-}"
+    fi
+
     if [[ -n "$ssid" ]]; then
       set +e
       if [[ -n "$pass" ]]; then
-        out=$(nmcli dev wifi connect "$ssid" password "$pass" 2>&1)
-        res=$?
+        target_uuid=$(nmcli -g connection.uuid connection show "$ssid" 2>/dev/null | head -n 1 || true)
+        created_new=false
+        if [[ -z "$target_uuid" ]]; then
+          target_uuid=$(uuidgen)
+          if nmcli connection add type wifi con-name "$ssid" ssid "$ssid" connection.uuid "$target_uuid" wifi-sec.key-mgmt wpa-psk >/dev/null 2>&1; then
+            created_new=true
+          else
+            target_uuid=""
+          fi
+        fi
+
+        if [[ -n "$target_uuid" ]]; then
+          printf 'set wifi-sec.psk %s\nsave\nquit\n' "$pass" | nmcli connection edit uuid "$target_uuid" >/dev/null 2>&1
+          out=$(nmcli connection up uuid "$target_uuid" 2>&1)
+          res=$?
+          if [[ $res -ne 0 && "$created_new" == "true" ]]; then
+            nmcli connection delete uuid "$target_uuid" >/dev/null 2>&1 || true
+          fi
+        else
+          out="Failed to configure connection profile for $ssid"
+          res=1
+        fi
       else
         out=$(nmcli dev wifi connect "$ssid" 2>&1)
         res=$?
@@ -167,30 +194,35 @@ case "$cmd" in
     mkdir -p "$qr_dir"
     qr_file="$qr_dir/wifi-qr.png"
 
-    qr_payload="WIFI:T:${sec_type};S:${target_ssid};P:${passw};;"
+    escape_wifi_qr() {
+      local value=$1
+      value=${value//\\/\\\\}
+      value=${value//;/\\;}
+      value=${value//,/\\,}
+      value=${value//:/\\:}
+      printf '%s' "$value"
+    }
+
+    qr_payload="WIFI:T:${sec_type};S:$(escape_wifi_qr "$target_ssid");P:$(escape_wifi_qr "$passw");;"
     has_qr=false
     if command -v qrencode >/dev/null 2>&1; then
-      if qrencode -o "$qr_file" -s 6 -m 2 "$qr_payload" 2>/dev/null; then
+      if printf '%s' "$qr_payload" | qrencode -o "$qr_file" -s 6 -m 2 2>/dev/null; then
         has_qr=true
       fi
     elif [[ -f "$qr_file" ]]; then
       has_qr=true
     fi
 
-    jq -n \
-      --arg ssid "$target_ssid" \
-      --arg pass "$passw" \
-      --arg sec "$sec_type" \
-      --arg path "$qr_file" \
-      --argjson hasQr "$has_qr" \
-      '{
+    printf '%s\n%s\n%s\n%s\n' "$target_ssid" "$passw" "$sec_type" "$qr_file" | jq -R -s --argjson hasQr "$has_qr" '
+      split("\n") as $lines | {
         success: true,
-        ssid: $ssid,
-        password: $pass,
-        security: $sec,
-        qrPath: $path,
+        ssid: $lines[0],
+        password: $lines[1],
+        security: $lines[2],
+        qrPath: $lines[3],
         hasQr: $hasQr
-      }'
+      }
+    '
     ;;
 
   *)

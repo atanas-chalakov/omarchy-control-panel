@@ -138,7 +138,8 @@ Rectangle {
   function copyToClipboard(text, label) {
     if (copyProcess.running || pluginPath.length === 0) return
     if (!text || text.length === 0) return
-    copyProcess.command = [pluginPath + "/scripts/config-tracker.sh", "copy", text]
+    copyProcess.textToCopy = text
+    copyProcess.command = [pluginPath + "/scripts/config-tracker.sh", "copy"]
     copyProcess.running = true
     showNotification(label || "Copied to clipboard!")
   }
@@ -295,7 +296,17 @@ Rectangle {
     }
   }
 
-  Process { id: copyProcess }
+  Process {
+    id: copyProcess
+    property string textToCopy: ""
+    stdinEnabled: true
+    onStarted: {
+      if (textToCopy.length > 0) {
+        write(textToCopy)
+      }
+      textToCopy = ""
+    }
+  }
   Process {
     id: reRunProcess
     stdout: StdioCollector {

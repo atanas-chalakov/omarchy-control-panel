@@ -1,6 +1,6 @@
 # Maintainer: Atanas Chalakov <atanas@chalakov.com>
 pkgname=omarchy-control-panel
-pkgver=1.1.0
+pkgver=1.1.1
 pkgrel=1
 pkgdesc="Comprehensive graphical settings and control panel for Omarchy desktop and Hyprland"
 arch=('any')

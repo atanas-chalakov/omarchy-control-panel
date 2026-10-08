@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "ac.control-panel",
   "name": "Control Panel",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": "Atanas Chalakov",
   "description": "Graphical settings and control panel for Omarchy desktop",
   "kinds": [

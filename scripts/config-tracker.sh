@@ -497,10 +497,14 @@ def main():
         entry_id = sys.argv[2] if len(sys.argv) > 2 else "latest"
         cmd_revert(entry_id)
     elif cmd == "copy":
-        if len(sys.argv) < 3:
+        if len(sys.argv) >= 3:
+            text = sys.argv[2]
+        elif not sys.stdin.isatty():
+            text = sys.stdin.read()
+        else:
             print("Missing text to copy")
             sys.exit(1)
-        cmd_copy(sys.argv[2])
+        cmd_copy(text)
     elif cmd == "re-run":
         if len(sys.argv) < 3:
             print("Missing command to re-run")

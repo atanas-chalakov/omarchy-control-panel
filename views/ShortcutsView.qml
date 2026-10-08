@@ -120,8 +120,9 @@ Item {
 
   function copyToClipboard(keys) {
     if (!keys) return
-    actionProcess.command = ["sh", "-c", "printf '%s' \"" + keys.replace(/"/g, '\\"') + "\" | wl-copy"]
-    actionProcess.running = true
+    clipboardProcess.textToCopy = keys
+    clipboardProcess.command = ["wl-copy"]
+    clipboardProcess.running = true
     notifyStatus("Copied to clipboard: " + keys)
   }
 
@@ -252,6 +253,19 @@ Item {
   // Action Process
   Process {
     id: actionProcess
+  }
+
+  // Clipboard Process
+  Process {
+    id: clipboardProcess
+    property string textToCopy: ""
+    stdinEnabled: true
+    onStarted: {
+      if (textToCopy.length > 0) {
+        write(textToCopy)
+      }
+      textToCopy = ""
+    }
   }
 
   ColumnLayout {

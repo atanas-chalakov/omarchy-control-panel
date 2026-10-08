@@ -160,3 +160,66 @@ qr_custom=$("$NET_CONTROL" wifi-get-qr "Test Office Wi-Fi 5G & Guest")
 [[ "$(echo "$qr_custom" | jq -r '.ssid')" == "Test Office Wi-Fi 5G & Guest" ]] || fail "wifi-get-qr preserves special SSID characters"
 pass "network-control wifi-get-qr safely generates payloads for SSIDs with spaces and symbols"
 
+# ==============================================================================
+# 9. Process Security & Argv Isolation (Wi-Fi Passwords & Payloads)
+# ==============================================================================
+# Clipboard helper accepts text via stdin without argv exposure
+copy_res=$(printf 'secret_clipboard_payload' | "$SCRIPTS_DIR/config-tracker.sh" copy)
+[[ "$(echo "$copy_res" | jq -r '.success')" == "true" ]] || fail "config-tracker copy via stdin succeeds" "$copy_res"
+pass "config-tracker copy accepts clipboard content via stdin without argv exposure"
+
+# Audit wrapper asserting nmcli, qrencode, and jq never receive secrets in argv
+audit_bin=$(mktemp -d)
+cat >"$audit_bin/qrencode" <<'EOF'
+#!/bin/bash
+for arg in "$@"; do
+  if [[ "$arg" == *"WIFI:"* || "$arg" == *"AuditSecret"* ]]; then
+    echo "SECURITY LEAK: qrencode received secret/payload in argv: $arg" >&2
+    exit 99
+  fi
+done
+cat >/dev/null
+exit 0
+EOF
+
+cat >"$audit_bin/jq" <<'EOF'
+#!/bin/bash
+for arg in "$@"; do
+  if [[ "$arg" == *"AuditSecret"* ]]; then
+    echo "SECURITY LEAK: jq received secret in argv: $arg" >&2
+    exit 98
+  fi
+done
+exec /usr/bin/jq "$@"
+EOF
+
+cat >"$audit_bin/nmcli" <<'EOF'
+#!/bin/bash
+for arg in "$@"; do
+  if [[ "$arg" == *"AuditSecret"* ]]; then
+    echo "SECURITY LEAK: nmcli received secret in argv: $arg" >&2
+    exit 97
+  fi
+done
+exec /usr/bin/nmcli "$@"
+EOF
+chmod +x "$audit_bin/qrencode" "$audit_bin/jq" "$audit_bin/nmcli"
+
+# Verify wifi-connect keeps secret out of nmcli argv
+conn_audit=$(printf 'AuditSecretPassword123\n' | timeout 3 PATH="$audit_bin:$PATH" "$NET_CONTROL" wifi-connect "AuditMockSSID" 2>&1 || true)
+if echo "$conn_audit" | grep -q "SECURITY LEAK"; then
+  rm -rf "$audit_bin"
+  fail "wifi-connect leaked password into process arguments" "$conn_audit"
+fi
+pass "network-control wifi-connect preserves password confidentiality across process argv"
+
+# Verify wifi-get-qr keeps payload out of qrencode argv and jq argv
+qr_audit=$(PATH="$audit_bin:$PATH" "$NET_CONTROL" wifi-get-qr "Zodd" 2>&1 || true)
+if echo "$qr_audit" | grep -q "SECURITY LEAK"; then
+  rm -rf "$audit_bin"
+  fail "wifi-get-qr leaked credentials/payload into process arguments" "$qr_audit"
+fi
+rm -rf "$audit_bin"
+pass "network-control wifi-get-qr keeps credentials and QR payload out of process argv"
+
+

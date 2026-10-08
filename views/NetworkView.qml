@@ -139,10 +139,11 @@ Item {
 
   function copyToClipboard(str, label) {
     if (!str) return
+    clipboardProcess.textToCopy = str
     if (pluginPath.length > 0) {
-      clipboardProcess.command = [pluginPath + "/scripts/config-tracker.sh", "copy", str]
+      clipboardProcess.command = [pluginPath + "/scripts/config-tracker.sh", "copy"]
     } else {
-      clipboardProcess.command = ["wl-copy", str]
+      clipboardProcess.command = ["wl-copy"]
     }
     clipboardProcess.running = true
     notifyStatus(label || "Copied to clipboard!")
@@ -294,11 +295,8 @@ Item {
     connectingSsid = ssid
     passwordError = ""
     notifyStatus("Connecting to " + ssid + "...")
-    if (pass && pass.length > 0) {
-      connectProcess.command = [pluginPath + "/scripts/network-control.sh", "wifi-connect", ssid, pass]
-    } else {
-      connectProcess.command = [pluginPath + "/scripts/network-control.sh", "wifi-connect", ssid]
-    }
+    connectProcess.secret = pass || ""
+    connectProcess.command = [pluginPath + "/scripts/network-control.sh", "wifi-connect", ssid]
     connectProcess.running = true
   }
 
@@ -376,6 +374,14 @@ Item {
   // Connect Process
   Process {
     id: connectProcess
+    property string secret: ""
+    stdinEnabled: true
+    onStarted: {
+      if (secret.length > 0) {
+        write(secret + "\n")
+      }
+      secret = ""
+    }
     stdout: StdioCollector {
       id: connectStdout
       waitForEnd: true
@@ -452,6 +458,14 @@ Item {
   // Clipboard Process
   Process {
     id: clipboardProcess
+    property string textToCopy: ""
+    stdinEnabled: true
+    onStarted: {
+      if (textToCopy.length > 0) {
+        write(textToCopy)
+      }
+      textToCopy = ""
+    }
   }
 
   ScrollView {

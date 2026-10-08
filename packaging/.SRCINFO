@@ -1,6 +1,6 @@
 pkgbase = omarchy-control-panel
 	pkgdesc = Comprehensive graphical settings and control panel for Omarchy desktop and Hyprland
-	pkgver = 1.1.0
+	pkgver = 1.1.1
 	pkgrel = 1
 	url = https://github.com/atanas-chalakov/omarchy-control-panel
 	install = omarchy-control-panel.install
@@ -19,7 +19,7 @@ pkgbase = omarchy-control-panel
 	optdepends = brightnessctl: Hardware display brightness adjustment
 	optdepends = power-profiles-daemon: Dynamic power governor switching
 	optdepends = github-cli: GitHub Gist cloud backup sync
-	source = omarchy-control-panel-1.1.0.tar.gz::https://github.com/atanas-chalakov/omarchy-control-panel/archive/refs/tags/v1.1.0.tar.gz
+	source = omarchy-control-panel-1.1.1.tar.gz::https://github.com/atanas-chalakov/omarchy-control-panel/archive/refs/tags/v1.1.1.tar.gz
 	sha256sums = SKIP
 
 pkgname = omarchy-control-panel
