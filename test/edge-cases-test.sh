@@ -276,5 +276,56 @@ pass "snapshots and history enforce strict 600 permissions even when caller has 
 )
 pass "power-control set-idle executes with complete file confidentiality and private permissions"
 
+# ==============================================================================
+# 10. Command Injection Prevention: AP SSID Kept as Data in Structured Argument Arrays
+# ==============================================================================
+evil_flag_1="$TEST_TMP_DIR/ocp_injected_evil_flag"
+evil_flag_2="$TEST_TMP_DIR/ocp_injected_subshell_flag"
+rm -f "$evil_flag_1" "$evil_flag_2"
 
+evil_ssid="AttackerAP; touch $evil_flag_1; \$(touch $evil_flag_2); && echo pwned"
 
+# Record command using record-command-args with the untrusted SSID passed strictly as data
+rec_json=$("$TRACKER" record-command-args "network" "Wi-Fi Connection ($evil_ssid)" "NetworkManager" "Connected to SSID $evil_ssid" nmcli dev wifi connect "$evil_ssid")
+
+rec_args_len=$(echo "$rec_json" | jq '.commandArgs | length')
+rec_arg_ssid=$(echo "$rec_json" | jq -r '.commandArgs[4]')
+rec_entry_id=$(echo "$rec_json" | jq -r '.id')
+rec_cmd_str=$(echo "$rec_json" | jq -r '.command')
+
+[[ "$rec_args_len" == "5" ]] || fail "evil SSID commandArgs has exactly 5 elements"
+[[ "$rec_arg_ssid" == "$evil_ssid" ]] || fail "evil SSID argument preserved verbatim as data in commandArgs"
+# Verify display command is safely quoted
+[[ "$rec_cmd_str" == *"'$evil_ssid'"* || "$rec_cmd_str" == *"$evil_ssid"* ]] || fail "evil SSID safely formatted in display command"
+
+# Create a mock nmcli binary that logs received argv into a file without executing a shell
+mock_nmcli_dir=$(mktemp -d)
+mock_nmcli_log="$TEST_TMP_DIR/mock_nmcli_argv.log"
+cat >"$mock_nmcli_dir/nmcli" <<EOF
+#!/bin/bash
+printf '%s\n' "\$@" > "$mock_nmcli_log"
+exit 0
+EOF
+chmod +x "$mock_nmcli_dir/nmcli"
+
+# 1. Re-run via entry ID (--id <id>)
+rerun_id_out=$(PATH="$mock_nmcli_dir:$PATH" "$TRACKER" re-run --id "$rec_entry_id")
+[[ "$(echo "$rerun_id_out" | jq -r '.success')" == "true" ]] || fail "re-run by entry ID succeeded with mock nmcli"
+[[ ! -f "$evil_flag_1" ]] || fail "SECURITY VULNERABILITY: shell injection executed semicolon command during re-run by ID"
+[[ ! -f "$evil_flag_2" ]] || fail "SECURITY VULNERABILITY: shell injection executed subshell command during re-run by ID"
+
+# Verify mock nmcli received SSID as a single argument
+mapfile -t nmcli_args < "$mock_nmcli_log"
+[[ "${nmcli_args[0]}" == "dev" ]] || fail "mock nmcli arg 0 is dev"
+[[ "${nmcli_args[1]}" == "wifi" ]] || fail "mock nmcli arg 1 is wifi"
+[[ "${nmcli_args[2]}" == "connect" ]] || fail "mock nmcli arg 2 is connect"
+[[ "${nmcli_args[3]}" == "$evil_ssid" ]] || fail "mock nmcli received evil SSID as single verbatim data argument"
+
+# 2. Re-run via "latest"
+rerun_latest_out=$(PATH="$mock_nmcli_dir:$PATH" "$TRACKER" re-run latest)
+[[ "$(echo "$rerun_latest_out" | jq -r '.success')" == "true" ]] || fail "re-run latest succeeded"
+[[ ! -f "$evil_flag_1" ]] || fail "SECURITY VULNERABILITY: shell injection executed during re-run latest"
+[[ ! -f "$evil_flag_2" ]] || fail "SECURITY VULNERABILITY: subshell executed during re-run latest"
+
+rm -rf "$mock_nmcli_dir" "$mock_nmcli_log"
+pass "config-tracker re-run replays structured commandArgs without shell execution, preventing SSID injection"

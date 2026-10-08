@@ -83,16 +83,33 @@ pass "config-tracker revert successfully restored original file content"
 cmd_record=$("$TRACKER" record-command "power" "Toggle DND" "Shell IPC" "omarchy-shell toggle dnd" "User initiated")
 cmd_type=$(echo "$cmd_record" | jq -r '.changeType')
 cmd_reversible=$(echo "$cmd_record" | jq -r '.isReversible')
+cmd_args_len=$(echo "$cmd_record" | jq '.commandArgs | length')
 [[ "$cmd_type" == "command" ]] || fail "command changeType is 'command'"
 [[ "$cmd_reversible" == "false" ]] || fail "command changeType is not reversible"
+[[ "$cmd_args_len" == "3" ]] || fail "commandArgs parsed correctly from string"
 pass "config-tracker record-command creates non-reversible command action entry"
 
-# 8. Test re-run
+# 8. Test record-command-args
+cmd_record_args=$("$TRACKER" record-command-args "network" "Connect Wi-Fi" "NetworkManager" "User connected" echo "Network with spaces and 'quotes'")
+args_len=$(echo "$cmd_record_args" | jq '.commandArgs | length')
+arg_val=$(echo "$cmd_record_args" | jq -r '.commandArgs[1]')
+entry_id=$(echo "$cmd_record_args" | jq -r '.id')
+[[ "$args_len" == "2" ]] || fail "record-command-args length is 2"
+[[ "$arg_val" == "Network with spaces and 'quotes'" ]] || fail "record-command-args preserved literal argument data"
+pass "config-tracker record-command-args stores structured argument array"
+
+# 9. Test re-run (both direct string and structured by ID)
 rerun_res=$("$TRACKER" re-run "echo test_execution_123")
 rerun_ok=$(echo "$rerun_res" | jq -r '.success')
 rerun_stdout=$(echo "$rerun_res" | jq -r '.stdout')
 [[ "$rerun_ok" == "true" ]] || fail "re-run execution succeeded"
 [[ "$rerun_stdout" == *"test_execution_123"* ]] || fail "re-run stdout captured output"
+
+rerun_id_res=$("$TRACKER" re-run --id "$entry_id")
+rerun_id_ok=$(echo "$rerun_id_res" | jq -r '.success')
+rerun_id_stdout=$(echo "$rerun_id_res" | jq -r '.stdout')
+[[ "$rerun_id_ok" == "true" ]] || fail "re-run by ID succeeded"
+[[ "$rerun_id_stdout" == *"Network with spaces and 'quotes'"* ]] || fail "re-run by ID preserved literal argument data"
 pass "config-tracker re-run successfully executes and returns command output"
 
 # 9. Test clear-history

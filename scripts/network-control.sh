@@ -87,7 +87,7 @@ case "$cmd" in
       action="on"
     fi
     if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
-      "$SCRIPT_DIR/config-tracker.sh" record-command "network" "Wi-Fi Power ($action)" "NetworkManager" "nmcli radio wifi $action" "Turned Wi-Fi $action" >/dev/null 2>&1 || true
+      "$SCRIPT_DIR/config-tracker.sh" record-command-args "network" "Wi-Fi Power ($action)" "NetworkManager" "Turned Wi-Fi $action" nmcli radio wifi "$action" >/dev/null 2>&1 || true
     fi
     ;;
 
@@ -141,7 +141,7 @@ case "$cmd" in
       set -e
       if [[ $res -eq 0 ]]; then
         if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
-          "$SCRIPT_DIR/config-tracker.sh" record-command "network" "Wi-Fi Connection ($ssid)" "NetworkManager" "nmcli dev wifi connect $ssid" "Connected to SSID $ssid" >/dev/null 2>&1 || true
+          "$SCRIPT_DIR/config-tracker.sh" record-command-args "network" "Wi-Fi Connection ($ssid)" "NetworkManager" "Connected to SSID $ssid" nmcli dev wifi connect "$ssid" >/dev/null 2>&1 || true
         fi
         jq -n --arg ssid "$ssid" '{success: true, message: $ssid}'
         exit 0
@@ -161,7 +161,7 @@ case "$cmd" in
     if [[ -n "$active_dev" ]]; then
       nmcli dev disconnect "$active_dev" >/dev/null 2>&1 || true
       if [[ -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
-        "$SCRIPT_DIR/config-tracker.sh" record-command "network" "Wi-Fi Disconnect ($active_dev)" "NetworkManager" "nmcli dev disconnect $active_dev" "Disconnected from Wi-Fi" >/dev/null 2>&1 || true
+        "$SCRIPT_DIR/config-tracker.sh" record-command-args "network" "Wi-Fi Disconnect ($active_dev)" "NetworkManager" "Disconnected from Wi-Fi" nmcli dev disconnect "$active_dev" >/dev/null 2>&1 || true
       fi
     fi
     ;;

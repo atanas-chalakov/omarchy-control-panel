@@ -7,6 +7,7 @@ import subprocess
 import time
 import re
 import shutil
+import shlex
 from pathlib import Path
 
 # Set strict process umask to 077 so all files and directories created
@@ -248,7 +249,32 @@ def cmd_record(category: str, title: str, target_path_str: str, before_snap_str:
     
     print(json.dumps(entry))
 
-def cmd_record_command(category: str, title: str, display_target: str, cmd_str: str, note_str: str = ""):
+def cmd_record_command(category: str, title: str, display_target: str, cmd_input, note_str: str = ""):
+    if isinstance(cmd_input, list):
+        command_args = [str(x) for x in cmd_input]
+        cmd_str = shlex.join(command_args)
+    elif isinstance(cmd_input, str) and cmd_input.startswith("[") and cmd_input.endswith("]"):
+        try:
+            parsed = json.loads(cmd_input)
+            if isinstance(parsed, list):
+                command_args = [str(x) for x in parsed]
+                cmd_str = shlex.join(command_args)
+            else:
+                cmd_str = cmd_input
+                command_args = shlex.split(cmd_str)
+        except Exception:
+            cmd_str = cmd_input
+            try:
+                command_args = shlex.split(cmd_str)
+            except Exception:
+                command_args = [cmd_str]
+    else:
+        cmd_str = str(cmd_input)
+        try:
+            command_args = shlex.split(cmd_str)
+        except Exception:
+            command_args = [cmd_str]
+
     entry = {
         "id": int(time.time() * 1000),
         "timestamp": time.strftime("%H:%M:%S"),
@@ -260,6 +286,7 @@ def cmd_record_command(category: str, title: str, display_target: str, cmd_str: 
         "changeType": "command",
         "isReversible": False,
         "command": cmd_str,
+        "commandArgs": command_args,
         "note": note_str,
         "diff": f"Action: {title}\nCommand: {cmd_str}" + (f"\nNote: {note_str}" if note_str else ""),
         "lines": [
@@ -406,9 +433,125 @@ def cmd_copy(text: str):
     except Exception as e:
         print(json.dumps({"success": False, "error": str(e)}))
 
-def cmd_re_run(cmd_str: str):
+def resolve_entry_command_args(entry_id_arg: str):
+    target_entry = None
+    entry_id_str = str(entry_id_arg).strip()
+    if entry_id_str and entry_id_str != "latest":
+        if LATEST_FILE.exists():
+            try:
+                lat = json.loads(LATEST_FILE.read_text())
+                if str(lat.get("id")) == entry_id_str:
+                    target_entry = lat
+            except Exception:
+                pass
+        if not target_entry and HISTORY_FILE.exists():
+            try:
+                hist = json.loads(HISTORY_FILE.read_text())
+                for h in hist:
+                    if str(h.get("id")) == entry_id_str:
+                        target_entry = h
+                        break
+            except Exception:
+                pass
+    else:
+        if LATEST_FILE.exists():
+            try:
+                target_entry = json.loads(LATEST_FILE.read_text())
+            except Exception:
+                pass
+        if not target_entry and HISTORY_FILE.exists():
+            try:
+                hist = json.loads(HISTORY_FILE.read_text())
+                if hist:
+                    target_entry = hist[0]
+            except Exception:
+                pass
+
+    if not target_entry:
+        return None
+
+    if "commandArgs" in target_entry and isinstance(target_entry["commandArgs"], list):
+        return [str(x) for x in target_entry["commandArgs"]]
+
+    if "command" in target_entry and target_entry["command"]:
+        try:
+            return shlex.split(target_entry["command"])
+        except Exception:
+            return [target_entry["command"]]
+
+    return None
+
+def cmd_re_run(raw_args: list):
+    if not raw_args:
+        print(json.dumps({"success": False, "error": "Missing command or entry ID to re-run"}))
+        return
+
+    command_args = None
+
+    # Case 1: Flag --id <id>
+    if raw_args[0] == "--id":
+        if len(raw_args) < 2:
+            print(json.dumps({"success": False, "error": "Missing entry ID after --id"}))
+            return
+        entry_id = raw_args[1]
+        command_args = resolve_entry_command_args(entry_id)
+        if command_args is None:
+            print(json.dumps({"success": False, "error": f"Entry ID {entry_id} not found in history"}))
+            return
+
+    # Case 2: Flag --json <json_array>
+    elif raw_args[0] == "--json":
+        if len(raw_args) < 2:
+            print(json.dumps({"success": False, "error": "Missing JSON array after --json"}))
+            return
+        try:
+            parsed = json.loads(raw_args[1])
+            if isinstance(parsed, list):
+                command_args = [str(x) for x in parsed]
+            else:
+                print(json.dumps({"success": False, "error": "Expected JSON array of strings"}))
+                return
+        except Exception as e:
+            print(json.dumps({"success": False, "error": f"Invalid JSON array: {e}"}))
+            return
+
+    # Case 3: Flag -- <arg1> <arg2> ...
+    elif raw_args[0] == "--":
+        command_args = raw_args[1:]
+
+    # Case 4: Single argument that is "latest" or all digits (an entry ID)
+    elif len(raw_args) == 1 and (raw_args[0] == "latest" or raw_args[0].isdigit()):
+        entry_id = raw_args[0]
+        command_args = resolve_entry_command_args(entry_id)
+        if command_args is None:
+            print(json.dumps({"success": False, "error": f"Entry ID {entry_id} not found in history"}))
+            return
+
+    # Case 5: Single string that might be a command line or JSON array
+    elif len(raw_args) == 1:
+        if raw_args[0].startswith("[") and raw_args[0].endswith("]"):
+            try:
+                parsed = json.loads(raw_args[0])
+                if isinstance(parsed, list):
+                    command_args = [str(x) for x in parsed]
+            except Exception:
+                pass
+        if command_args is None:
+            try:
+                command_args = shlex.split(raw_args[0])
+            except Exception:
+                command_args = [raw_args[0]]
+
+    # Case 6: Multiple positional arguments passed directly
+    else:
+        command_args = raw_args
+
+    if not command_args:
+        print(json.dumps({"success": False, "error": "No command arguments to execute"}))
+        return
+
     try:
-        res = subprocess.run(["bash", "-c", cmd_str], capture_output=True, text=True, timeout=10)
+        res = subprocess.run(command_args, capture_output=True, text=True, timeout=10, shell=False)
         print(json.dumps({"success": res.returncode == 0, "stdout": res.stdout, "stderr": res.stderr}))
     except Exception as e:
         print(json.dumps({"success": False, "error": str(e)}))
@@ -534,7 +677,7 @@ def cmd_clear_history():
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: config-tracker.sh <snapshot|record|record-command|revert|copy|re-run|get-all-configs|get-latest|get-history|get-base-dir|get-category-file|get-file-content|open-editor|clear-history> [args...]")
+        print("Usage: config-tracker.sh <snapshot|record|record-command|record-command-args|revert|copy|re-run|get-all-configs|get-latest|get-history|get-base-dir|get-category-file|get-file-content|open-editor|clear-history> [args...]")
         sys.exit(1)
         
     cmd = sys.argv[1]
@@ -558,6 +701,18 @@ def main():
         command = sys.argv[5]
         note = sys.argv[6] if len(sys.argv) > 6 else ""
         cmd_record_command(category, title, target, command, note)
+    elif cmd == "record-command-args":
+        if len(sys.argv) < 7:
+            print("Missing arguments for record-command-args: category title target note command [args...]")
+            sys.exit(1)
+        category = sys.argv[2]
+        title = sys.argv[3]
+        target = sys.argv[4]
+        note = sys.argv[5]
+        cmd_args = sys.argv[6:]
+        if cmd_args and cmd_args[0] == "--":
+            cmd_args = cmd_args[1:]
+        cmd_record_command(category, title, target, cmd_args, note)
     elif cmd == "revert":
         entry_id = sys.argv[2] if len(sys.argv) > 2 else "latest"
         cmd_revert(entry_id)
@@ -574,7 +729,7 @@ def main():
         if len(sys.argv) < 3:
             print("Missing command to re-run")
             sys.exit(1)
-        cmd_re_run(sys.argv[2])
+        cmd_re_run(sys.argv[2:])
     elif cmd == "get-all-configs":
         cmd_get_all_configs()
     elif cmd == "get-latest":

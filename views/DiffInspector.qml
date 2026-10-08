@@ -152,9 +152,24 @@ Rectangle {
     showNotification(label || "Copied to clipboard!")
   }
 
-  function reRunCommand(cmd) {
-    if (reRunProcess.running || pluginPath.length === 0 || !cmd) return
-    reRunProcess.command = [pluginPath + "/scripts/config-tracker.sh", "re-run", cmd]
+  function reRunCommand(target) {
+    if (reRunProcess.running || pluginPath.length === 0 || !target) return
+    var tracker = pluginPath + "/scripts/config-tracker.sh"
+    if (typeof target === "object" && target !== null) {
+      if (target.id) {
+        reRunProcess.command = [tracker, "re-run", "--id", String(target.id)]
+      } else if (target.commandArgs && Array.isArray(target.commandArgs) && target.commandArgs.length > 0) {
+        reRunProcess.command = [tracker, "re-run", "--json", JSON.stringify(target.commandArgs)]
+      } else if (target.command) {
+        reRunProcess.command = [tracker, "re-run", String(target.command)]
+      } else {
+        return
+      }
+    } else if (typeof target === "number" || (/^\d+$/.test(String(target)))) {
+      reRunProcess.command = [tracker, "re-run", "--id", String(target)]
+    } else {
+      reRunProcess.command = [tracker, "re-run", String(target)]
+    }
     reRunProcess.running = true
     showNotification("Executing command...")
   }
@@ -1011,7 +1026,7 @@ Rectangle {
                     MouseArea {
                       anchors.fill: parent
                       cursorShape: Qt.PointingHandCursor
-                      onClicked: root.reRunCommand(root.latestDiff ? root.latestDiff.command : "")
+                      onClicked: root.reRunCommand(root.latestDiff)
                     }
 
                     Text {
