@@ -20,6 +20,14 @@ Rectangle {
   clip: true
 
   property string pluginPath: (Quickshell.env("HOME") || "/home/ac") + "/.config/omarchy/plugins/ac.control-panel"
+  readonly property string runtimeDir: {
+    var xdgRuntime = Quickshell.env("XDG_RUNTIME_DIR")
+    if (xdgRuntime && xdgRuntime.length > 0) {
+      return xdgRuntime + "/omarchy-control-panel"
+    }
+    var stateHome = Quickshell.env("XDG_STATE_HOME") || ((Quickshell.env("HOME") || "/home/ac") + "/.local/state")
+    return stateHome + "/omarchy/control-panel"
+  }
   property var panelRoot: null
   property string activeCategory: "windows"
   property string currentTab: "diff" // "diff", "file", "history"
@@ -62,7 +70,7 @@ Rectangle {
   // Reactive watcher for real-time diff file writes
   FileView {
     id: latestDiffWatcher
-    path: "/tmp/omarchy-control-panel/latest.json"
+    path: root.runtimeDir + "/latest.json"
     watchChanges: true
     printErrors: false
     onFileChanged: root.refresh()

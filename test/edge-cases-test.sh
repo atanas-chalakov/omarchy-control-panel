@@ -74,7 +74,8 @@ pass "config-tracker cleanly prevents reverting runtime CLI commands"
 # ==============================================================================
 # 4. Config Tracker: Recovery from Corrupted History Cache
 # ==============================================================================
-hist_cache="/tmp/omarchy-control-panel/history.json"
+base_dir=$("$TRACKER" get-base-dir)
+hist_cache="$base_dir/history.json"
 hist_backup=""
 if [[ -f "$hist_cache" ]]; then
   hist_backup=$(cat "$hist_cache")
@@ -221,5 +222,59 @@ if echo "$qr_audit" | grep -q "SECURITY LEAK"; then
 fi
 rm -rf "$audit_bin"
 pass "network-control wifi-get-qr keeps credentials and QR payload out of process argv"
+
+# ==============================================================================
+# 9. Security Audit: Private Permissions for Snapshots, History, and Runtime Cache
+# ==============================================================================
+# Ensure runtime base directory is user-private (mode 700) and never in world-readable /tmp
+runtime_base=$("$TRACKER" get-base-dir)
+[[ "$runtime_base" != "/tmp/omarchy-control-panel" ]] || fail "base runtime dir must not be world-shared /tmp/omarchy-control-panel"
+base_perms=$(stat -c "%a" "$runtime_base")
+[[ "$base_perms" == "700" ]] || fail "runtime base directory permissions must be 700 (got $base_perms)"
+pass "config-tracker runtime directory is user-private with 700 permissions"
+
+# Test that snapshots and history created with standard caller umask 022 remain strictly 0600
+sec_test_file="$TEST_TMP_DIR/security-test.json"
+printf '{"plugin_secret_token":"SUPER_SECRET_123","idle":{"screensaver":150,"lock":86400}}\n' > "$sec_test_file"
+
+(
+  umask 022
+  sec_snap=$("$TRACKER" snapshot "$sec_test_file")
+  snap_perms=$(stat -c "%a" "$sec_snap")
+  [[ "$snap_perms" == "600" ]] || fail "snapshot file permissions must be 600 under umask 022 (got $snap_perms)"
+
+  printf '{"plugin_secret_token":"SUPER_SECRET_123","idle":{"screensaver":300,"lock":86400}}\n' > "$sec_test_file"
+  "$TRACKER" record "power" "Security Idle Test" "$sec_test_file" "$sec_snap" >/dev/null
+
+  latest_file="$runtime_base/latest.json"
+  history_file="$runtime_base/history.json"
+  [[ -f "$latest_file" ]] || fail "latest.json exists"
+  [[ -f "$history_file" ]] || fail "history.json exists"
+
+  latest_perms=$(stat -c "%a" "$latest_file")
+  hist_perms=$(stat -c "%a" "$history_file")
+  [[ "$latest_perms" == "600" ]] || fail "latest.json permissions must be 600 under umask 022 (got $latest_perms)"
+  [[ "$hist_perms" == "600" ]] || fail "history.json permissions must be 600 under umask 022 (got $hist_perms)"
+
+  # Ensure other local users have zero read/write/execute permissions (other octet must be 0)
+  [[ "${base_perms: -1}" == "0" ]] || fail "base dir must have 0 other permissions"
+  [[ "${snap_perms: -1}" == "0" ]] || fail "snapshot must have 0 other permissions"
+  [[ "${latest_perms: -1}" == "0" ]] || fail "latest.json must have 0 other permissions"
+  [[ "${hist_perms: -1}" == "0" ]] || fail "history.json must have 0 other permissions"
+)
+pass "snapshots and history enforce strict 600 permissions even when caller has umask 022"
+
+# Test power-control set-idle preserves strict confidentiality and private permissions
+(
+  umask 022
+  "$SCRIPTS_DIR/power-control.sh" set-idle 150 86400 >/dev/null 2>&1 || true
+  latest_file="$runtime_base/latest.json"
+  if [[ -f "$latest_file" ]]; then
+    p_perms=$(stat -c "%a" "$latest_file")
+    [[ "$p_perms" == "600" ]] || fail "power-control set-idle latest.json must be 600"
+  fi
+)
+pass "power-control set-idle executes with complete file confidentiality and private permissions"
+
 
 

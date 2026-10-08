@@ -9,8 +9,48 @@ import re
 import shutil
 from pathlib import Path
 
-BASE_TMP = Path("/tmp/omarchy-control-panel")
-BASE_TMP.mkdir(parents=True, exist_ok=True)
+# Set strict process umask to 077 so all files and directories created
+# are accessible strictly by the owner (mode 0600 / 0700), protecting
+# user configs and credentials from local multi-user eavesdropping.
+os.umask(0o077)
+
+def get_base_dir() -> Path:
+    # 1. Environment variable override (e.g., for isolated test suites)
+    custom = os.environ.get("OCP_RUNTIME_DIR")
+    if custom:
+        p = Path(custom)
+    else:
+        # 2. Prefer XDG_RUNTIME_DIR (user-private tmpfs, typically /run/user/<uid> with mode 0700)
+        xdg_runtime = os.environ.get("XDG_RUNTIME_DIR")
+        if xdg_runtime and os.path.isdir(xdg_runtime):
+            p = Path(xdg_runtime) / "omarchy-control-panel"
+        else:
+            # 3. Fallback to user-private state directory (~/.local/state/omarchy/control-panel)
+            state_home = os.environ.get("XDG_STATE_HOME")
+            if state_home:
+                p = Path(state_home) / "omarchy" / "control-panel"
+            else:
+                p = Path.home() / ".local" / "state" / "omarchy" / "control-panel"
+
+    # Enforce strict 0700 permissions on directory
+    if not p.exists():
+        p.mkdir(parents=True, mode=0o700, exist_ok=True)
+    try:
+        os.chmod(p, 0o700)
+    except OSError:
+        pass
+
+    # Clean up legacy insecure /tmp/omarchy-control-panel if present
+    legacy_tmp = Path("/tmp/omarchy-control-panel")
+    if legacy_tmp.exists() and legacy_tmp != p:
+        try:
+            shutil.rmtree(legacy_tmp, ignore_errors=True)
+        except OSError:
+            pass
+
+    return p
+
+BASE_TMP = get_base_dir()
 HISTORY_FILE = BASE_TMP / "history.json"
 LATEST_FILE = BASE_TMP / "latest.json"
 
@@ -127,6 +167,10 @@ def cmd_snapshot(file_path_str: str):
         snap_file.write_bytes(p.read_bytes())
     else:
         snap_file.write_text("")
+    try:
+        os.chmod(snap_file, 0o600)
+    except OSError:
+        pass
     print(str(snap_file))
 
 def cmd_record(category: str, title: str, target_path_str: str, before_snap_str: str):
@@ -182,6 +226,10 @@ def cmd_record(category: str, title: str, target_path_str: str, before_snap_str:
     
     # Save latest
     LATEST_FILE.write_text(json.dumps(entry, indent=2))
+    try:
+        os.chmod(LATEST_FILE, 0o600)
+    except OSError:
+        pass
     
     # Update history
     history = []
@@ -193,6 +241,10 @@ def cmd_record(category: str, title: str, target_path_str: str, before_snap_str:
     history.insert(0, entry)
     history = history[:50]
     HISTORY_FILE.write_text(json.dumps(history, indent=2))
+    try:
+        os.chmod(HISTORY_FILE, 0o600)
+    except OSError:
+        pass
     
     print(json.dumps(entry))
 
@@ -218,6 +270,10 @@ def cmd_record_command(category: str, title: str, display_target: str, cmd_str: 
         "linesRemoved": 0
     }
     LATEST_FILE.write_text(json.dumps(entry, indent=2))
+    try:
+        os.chmod(LATEST_FILE, 0o600)
+    except OSError:
+        pass
     history = []
     if HISTORY_FILE.exists():
         try:
@@ -227,6 +283,10 @@ def cmd_record_command(category: str, title: str, display_target: str, cmd_str: 
     history.insert(0, entry)
     history = history[:50]
     HISTORY_FILE.write_text(json.dumps(history, indent=2))
+    try:
+        os.chmod(HISTORY_FILE, 0o600)
+    except OSError:
+        pass
     print(json.dumps(entry))
 
 def cmd_revert(entry_id_arg: str = ""):
@@ -465,11 +525,16 @@ def cmd_clear_history():
         HISTORY_FILE.unlink()
     if LATEST_FILE.exists():
         LATEST_FILE.unlink()
+    for snap in BASE_TMP.glob("snap_*"):
+        try:
+            snap.unlink()
+        except OSError:
+            pass
     print(json.dumps({"success": True}))
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: config-tracker.sh <snapshot|record|record-command|revert|copy|re-run|get-all-configs|get-latest|get-history|get-category-file|get-file-content|open-editor|clear-history> [args...]")
+        print("Usage: config-tracker.sh <snapshot|record|record-command|revert|copy|re-run|get-all-configs|get-latest|get-history|get-base-dir|get-category-file|get-file-content|open-editor|clear-history> [args...]")
         sys.exit(1)
         
     cmd = sys.argv[1]
@@ -516,6 +581,8 @@ def main():
         cmd_get_latest()
     elif cmd == "get-history":
         cmd_get_history()
+    elif cmd == "get-base-dir":
+        print(str(BASE_TMP))
     elif cmd == "clear-history":
         cmd_clear_history()
     elif cmd == "get-category-file":

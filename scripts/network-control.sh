@@ -206,7 +206,8 @@ case "$cmd" in
     qr_payload="WIFI:T:${sec_type};S:$(escape_wifi_qr "$target_ssid");P:$(escape_wifi_qr "$passw");;"
     has_qr=false
     if command -v qrencode >/dev/null 2>&1; then
-      if printf '%s' "$qr_payload" | qrencode -o "$qr_file" -s 6 -m 2 2>/dev/null; then
+      if ( umask 077; printf '%s' "$qr_payload" | qrencode -o "$qr_file" -s 6 -m 2 2>/dev/null ); then
+        chmod 600 "$qr_file" 2>/dev/null || true
         has_qr=true
       fi
     elif [[ -f "$qr_file" ]]; then

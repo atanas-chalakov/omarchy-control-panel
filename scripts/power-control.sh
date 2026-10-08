@@ -196,8 +196,13 @@ case "$cmd" in
 
     if [[ -f "$shell_json" && -n "$actual_screensaver" && -n "$actual_lock" ]]; then
       tmp_file="${shell_json}.tmp.$$"
-      jq --argjson s "$actual_screensaver" --argjson l "$actual_lock" \
-        '.idle.screensaver = $s | .idle.lock = $l' "$shell_json" > "$tmp_file" && mv "$tmp_file" "$shell_json"
+      (
+        umask 077
+        jq --argjson s "$actual_screensaver" --argjson l "$actual_lock" \
+          '.idle.screensaver = $s | .idle.lock = $l' "$shell_json" > "$tmp_file"
+      )
+      chmod 600 "$tmp_file" 2>/dev/null || true
+      mv "$tmp_file" "$shell_json"
 
       if [[ -n "$snap" && -x "$SCRIPT_DIR/config-tracker.sh" ]]; then
         "$SCRIPT_DIR/config-tracker.sh" record "power" "Screen Idle & Lock Timeouts" "$shell_json" "$snap" >/dev/null 2>&1 || true
